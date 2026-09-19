@@ -4,6 +4,10 @@
 
 本项目先用 Python 验证协议和流程，未来允许使用 Java、Go、Rust 等语言重写。因此核心边界必须与 Python 的具体库和操作系统解耦。
 
+## 交互架构图
+
+[在浏览器中打开 XDUWlan 交互架构图](visualizations/xduwlan-architecture.html)。图中可以切换 `status`、`login`、`watch`、`account` 和 `configure`，观察每条命令经过的分层与数据流。
+
 ## 依赖方向
 
 ```text
@@ -24,6 +28,20 @@ HTTP、凭据库、文件和日志适配器
 - `credentials`：系统凭据库适配器。
 - `storage`：会话及后续 SQLite 存储。
 - `cli`：命令解析和输出格式化。
+
+## 纵向切片实施方式
+
+架构按层保持解耦，开发顺序则按用户可运行的命令纵向穿过各层：
+
+```text
+status：CLI → 探测服务 → 网络模型与配置 → DNS/TCP/HTTP 适配器 → 真实或本地测试网络
+configure：CLI → 配置流程 → CredentialStore → keyring 适配器 → 操作系统凭据库
+login：CLI → 登录服务 → 探测与认证模型 → PortalClient → 校园网 Portal
+watch：CLI → WatchService → 复用探测和登录 → 计时与停止边界
+account：CLI → AccountService → 账户模型 → 自服务客户端与解析器 → 自服务平台
+```
+
+每个切片只实现当前命令需要的领域词汇和接口。例如 `status` 阶段不实现 `AuthenticationResult` 或 `AccountSnapshot`。切片内部仍然先测试后实现，但测试只覆盖当前目标，保证通过后可以立即运行对应 CLI 命令。
 
 ## 关键隔离
 

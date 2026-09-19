@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-设计规格已获用户批准，实施计划已完成。任务 1 的 Python CLI 骨架已实现并通过测试，业务功能尚未开始。
+设计规格已获用户批准，实施路线已调整为纵向切片。任务 1 的 Python CLI 骨架已实现并通过测试；当前进入切片一 `status`，只实现网络探测所需模型、配置、适配器和 CLI。
 
 ## 已完成
 
@@ -22,17 +22,21 @@
 - [x] 创建任务 1 的 CLI 测试并确认其因生产包缺失而失败。
 - [x] 完成任务 1 的可安装 Python CLI 骨架和五个占位命令。
 - [x] 通过任务 1 的 7 个 CLI 测试。
+- [x] 创建任务 2 的模型与配置测试，并确认测试在实现前按预期失败。
+- [x] 创建 `models.py`、`errors.py` 和 `config.py` 的类型签名、中文注释与占位异常。
+- [x] 将交互式项目架构图保存到 `docs/visualizations/xduwlan-architecture.html`，并从架构文档提供入口。
+- [x] 将实施方式调整为 `status` → `configure` → `login` → `watch` → `account` 的纵向切片，并写入协作规则、设计规格、架构和实施计划。
 
 ## 当前阻塞
 
-- 等待开始任务 2：定义核心模型、错误和配置。
+- 当前 `tests/test_models.py` 仍含认证和账户等未来切片测试；指导者需先将它们移出当前验收范围，恢复只针对 `status` 切片的清晰 RED/GREEN 信号。
 
 ## 下一步
 
-1. 开始任务 2：先编写模型和配置的失败测试。
-2. 学习者实现 `models.py`、`errors.py` 和 `config.py`。
-3. 从 M1 网络探测开始，以标准库优先实现。
+1. 指导者调整 `tests/test_models.py`，当前只测试 `NetworkState`、`ProbeStage`、`ProbeObservation` 和 `NetworkProbeResult`。
+2. 指导者逐行讲解 `Enum` 语法，学习者实现 `NetworkState` 和 `ProbeStage`。
+3. 测试通过后讲解 `dataclass(frozen=True)`，学习者实现两种网络探测数据模型，再进入探测配置和 DNS/TCP/HTTP。
 
 ## 最近验证
 
-已在 `xduwlan` Conda 环境中验证：任务 1 的 7 个测试通过，editable 安装后的 `xduwlan --help` 正常工作。
+最近一次验证中，任务 1 的 7 个测试通过；任务 2 骨架可导入和编译。任务 2 当时共有 15 个预期失败，其中认证和账户用例将在下一步按纵向切片规则移出当前验收范围。

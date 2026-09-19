@@ -25,6 +25,9 @@
 - 自动化测试由指导者编写和维护；学习者聚焦生产代码实现，但必须理解测试意图、测试数据、断言和失败原因。每个小步骤按“指导者先写失败测试 → 学习者实现 → 指导者运行并解释结果”的节奏推进。
 - 每个小步骤开始实现前，指导者必须说明具体文件、函数/类/Protocol、职责、输入输出、依赖方向、调用流程和贴近代码的伪代码，并与学习者对齐后再进入实现。
 - 指导者只实现本步所需的结构骨架：文件、目录、空符号、类型签名、边界和占位异常；具体业务逻辑由学习者实现。除非学习者明确要求接管，不得代写任务实现。
+- 实施采用纵向切片，顺序为 `status`、`configure`、`login`、`watch`、`account`；每个切片穿插所需模型、配置、服务、适配器、CLI、测试与文档，不提前完成未来切片的底层模块。
+- 学习者按 Python 初学者对待；每一步先解释本步实际出现的语法，再由学习者实现一个数分钟内可完成的小单元。
+- 未来切片的空骨架可保留作结构地图，但对应逻辑和测试延后；常规测试集合不得长期保留与当前切片无关的预期失败。
 - 代码注释和 docstring 使用中文；代码标识符、命令、协议字段、库名和 API 名称保留原文。
 - 每个任务完成后运行该任务的测试，更新 `docs/progress.md` 和 `docs/session-handoff.md`，再创建一个小步 Git 提交。
 
@@ -56,19 +59,33 @@
 - `tests/probe/test_integration_server.py`
 - `tests/portal/test_encoding.py`
 - `tests/portal/test_parser.py`
+- `tests/portal/test_client.py`
 - `tests/credentials/test_store.py`
 - `tests/watcher/test_state_machine.py`
 - `tests/monitor/test_parser.py`
+- `tests/monitor/test_client.py`
 - `tests/monitor/fixtures/home.html`
 - `tests/monitor/fixtures/login.html`
+- `tests/test_formatting.py`
+- `tests/test_logging.py`
 - `tests/test_cli.py`
 
 ### 将更新的文档
 
-- `docs/learning/01-dns.md` 至 `docs/learning/08-packaging.md`：每个主题记录原理、API 检索问题、实验和复盘。
+- `docs/learning/01-models-and-config.md` 至 `docs/learning/09-packaging.md`：按纵向切片顺序记录原理、Python 语法、API 检索问题、实验和复盘。
 - `docs/protocol/connectivity-detection.md`、`srun-authentication.md`、`self-service.md`：只记录脱敏且标记证据类型的协议事实。
 - `docs/progress.md`、`docs/session-handoff.md`：每个任务完成时更新。
 - `README.md`：在命令可用后补充安装和使用示例。
+
+## 纵向切片顺序
+
+1. **切片一 `status`（任务 2 至 4）**：只实现网络探测模型、探测所需配置、DNS/TCP/HTTP 适配器和 `status` CLI，完成后用户可以看到真实或本地模拟的网络状态。
+2. **切片二 `configure` 与 `login`（任务 5 至 6）**：在切片开始时再实现认证模型、凭据错误和协议错误；先让 `configure` 可保存凭据，再贯通 Portal 纯逻辑、HTTP 客户端和 `login`。
+3. **切片三 `watch`（任务 7）**：复用已通过测试的探测和登录，不在状态机中重写网络或协议逻辑。
+4. **切片四 `account`（任务 8 至 9）**：在切片开始时再实现账户模型，随后贯通 HTML 解析、人工验证码、会话和展示。
+5. **切片五交付（任务 10）**：统一完成日志脱敏、跨平台测试、打包和真实验收。
+
+每个切片都重复“语法与原理讲解 → 指导者写当前失败测试和骨架 → 学习者实现 → 指导者审查与 GREEN 验证 → CLI 运行 → 文档与提交”。
 
 ## 任务 1：建立可运行的 Python 项目骨架
 
@@ -119,7 +136,7 @@ def test_main_without_command_prints_help(capsys):
 
 更新进度和交接文档，将当前阶段写为“项目骨架已运行”，运行 `git add pyproject.toml src tests docs README.md && git commit -m "feat: 建立 Python 项目骨架"`。
 
-## 任务 2：定义核心模型、错误和配置
+## 任务 2：定义 `status` 所需的网络模型、错误和配置
 
 **Files:**
 - Create: `src/xduwlan/models.py`
@@ -131,9 +148,10 @@ def test_main_without_command_prints_help(capsys):
 
 **Interfaces:**
 - Produces `NetworkState`、`ProbeStage`、`ProbeObservation`、`NetworkProbeResult`。
-- Produces `AuthenticationState`、`AuthenticationResult`、`OnlineSession`、`ProductUsage`、`AccountSnapshot`。
+- Produces `ConfigurationError`；其他异常在使用它们的切片中再进入验收范围。
 - Produces `AppConfig.load(path: Path) -> AppConfig` 和 `AppConfig.defaults() -> AppConfig`。
 - 配置只包含 `portal_url`、`probe_url`、`probe_interval_seconds`、`request_timeout_seconds`、`operator_suffix` 和 `log_level`。
+- `AuthenticationState`、`AuthenticationResult`、`OnlineSession`、`ProductUsage`、`AccountSnapshot` 即使已有空骨架，本任务也不实现、不验收。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -160,19 +178,19 @@ def test_default_config_has_bounded_timeout():
 - [ ] **Step 2: 运行测试确认失败**
 
 运行：`python -m pytest tests/test_models.py tests/test_config.py -q`
-预期：导入失败。
+首次创建前预期因模块缺失而导入失败；当前仓库已有空骨架，预期改为枚举成员为空或 `NotImplementedError` 导致的行为失败。
 
-- [ ] **Step 3: 写最小实现**
+- [ ] **Step 3: 学习者写当前切片的最小实现**
 
 使用 `Enum` 和 `@dataclass(frozen=True)` 定义模型；使用 `tomllib.loads` 读取 TOML，缺少字段时使用明确默认值，数值字段校验为正数，非法值抛出 `ConfigurationError`。
 
 - [ ] **Step 4: 增加边界测试并运行**
 
-测试空 TOML、未知字段忽略、负超时拒绝、`Decimal` 余额和 `tuple` 会话集合。运行：`python -m pytest tests/test_models.py tests/test_config.py -q`。
+测试空 TOML、未知字段忽略、非正周期与超时拒绝，以及网络探测结果使用不可变 `tuple` 观察集合。认证和账户模型测试从当前测试集合移除，到对应切片再按 TDD 写入。运行：`python -m pytest tests/test_models.py tests/test_config.py -q`。
 
 - [ ] **Step 5: 更新中文学习记录并提交**
 
-创建 `docs/learning/01-models-and-config.md`，解释 `Enum`、`dataclass(frozen=True)`、`Decimal`、`tomllib`；更新架构、进度和交接文档；提交 `feat: 定义核心模型与配置`。
+创建 `docs/learning/01-models-and-config.md`，只解释本切片用到的 `Enum`、`dataclass(frozen=True)`、`tuple` 和 `tomllib`；`Decimal` 留到 `account` 切片。更新架构、进度和交接文档；提交 `feat: 定义 status 模型与配置`。
 
 ## 任务 3：实现 DNS、TCP、HTTP 的基础探测
 
@@ -271,93 +289,108 @@ def test_status_online_returns_zero_and_prints_state(monkeypatch, capsys):
 
 README 增加 `python -m xduwlan status` 示例；更新 M1 进度和交接；提交 `feat: 增加 status 命令`。
 
-## 任务 5：实现深澜协议纯逻辑和响应解析
+## 任务 5：贯通 `configure` 凭据保存切片
 
 **Files:**
+- Create: `src/xduwlan/credentials/store.py`
+- Create: `src/xduwlan/credentials/keyring_store.py`
+- Create: `tests/credentials/test_store.py`
+- Modify: `src/xduwlan/errors.py`
+- Modify: `src/xduwlan/config.py`
+- Modify: `src/xduwlan/cli.py`
+- Modify: `tests/test_cli.py`
+- Modify: `pyproject.toml`
+- Create: `docs/learning/05-credentials.md`
+
+**Interfaces:**
+- Produces `CredentialError`，从本任务开始进入实现和测试范围。
+- Produces `CredentialStore` Protocol：`save(account: str, password: str) -> None`、`load(account: str) -> str | None`、`delete(account: str) -> None`。
+- Produces `MemoryCredentialStore` 供测试使用。
+- Produces `KeyringCredentialStore(service_name: str)`，生产环境调用系统凭据库。
+- `configure` 使用 `input` 获取账号、使用 `getpass.getpass` 获取密码，不把密码写入 `AppConfig`。
+
+- [ ] **Step 1: 讲解 Protocol、凭据边界和失败测试**
+
+指导者先解释接口与实现的区别、为什么测试使用内存实现、为什么密码不能进入 TOML；再编写保存、读取、删除和缺失返回 `None` 的测试。
+
+- [ ] **Step 2: 运行内存存储测试确认失败**
+
+运行：`python -m pytest tests/credentials/test_store.py -q`。
+预期：凭据模块或 `MemoryCredentialStore` 尚不存在而失败。
+
+- [ ] **Step 3: 学习者实现 Protocol 和内存存储**
+
+指导者只提供类和方法签名；学习者用 `dict[str, str]` 实现保存、读取和删除。运行同一测试，预期内存存储用例通过。
+
+- [ ] **Step 4: 指导者增加 keyring 边界测试，学习者实现适配器**
+
+测试替换 `keyring.set_password/get_password/delete_password`，验证参数和异常转换；学习者实现最小调用逻辑，后端异常使用 `raise CredentialError(...) from exc` 保留异常链，禁止明文文件回退。
+
+- [ ] **Step 5: 接入并运行 `configure`**
+
+指导者在 `tests/test_cli.py` 增加虚构账号和输入函数测试；学习者让 `configure` 收集账号、密码和非敏感设置，调用 `CredentialStore.save`，成功返回 0，凭据后端失败返回 3。运行：`python -m pytest tests/credentials tests/test_cli.py -q`。
+
+- [ ] **Step 6: 更新文档并提交**
+
+记录 `typing.Protocol`、`getpass.getpass` 和 keyring 的官方 API 检索问题；更新安全、进度和交接文档；提交 `feat: 增加安全配置与凭据保存`。
+
+## 任务 6：贯通 `login` Portal 认证切片
+
+**Files:**
+- Modify: `src/xduwlan/models.py`
+- Modify: `src/xduwlan/errors.py`
+- Modify: `tests/test_models.py`
 - Create: `src/xduwlan/portal/models.py`
 - Create: `src/xduwlan/portal/encoding.py`
 - Create: `src/xduwlan/portal/parser.py`
+- Create: `src/xduwlan/portal/client.py`
 - Create: `tests/portal/test_encoding.py`
 - Create: `tests/portal/test_parser.py`
+- Create: `tests/portal/test_client.py`
 - Create: `tests/fixtures/srun_vectors.json`
-- Modify: `docs/protocol/srun-authentication.md`
-- Create: `docs/learning/05-cryptographic-fields.md`
+- Modify: `src/xduwlan/cli.py`
+- Modify: `tests/test_cli.py`
+- Create: `docs/protocol/srun-authentication.md`
+- Create: `docs/learning/06-portal-authentication.md`
 
 **Interfaces:**
+- Produces `AuthenticationState`、`AuthenticationResult`、`NetworkOperationError` 和 `ProtocolError`，这些符号从本任务开始进入实现和测试范围。
 - `parse_challenge_response(text: str) -> Challenge`。
 - `hmac_md5_hex(password: str, challenge: str) -> str`。
 - `xencode(message: str, key: str) -> str`。
 - `build_info(username: str, password: str, challenge: Challenge, config: PortalConfig) -> str`。
 - `build_checksum(parameters: LoginParameters) -> str`。
 - `parse_portal_response(text: str) -> AuthenticationResult`。
+- `PortalClient.authenticate(username: str, password: str) -> AuthenticationResult`。
 
-- [ ] **Step 1: 写固定向量失败测试**
+- [ ] **Step 1: 定义认证结果的当前测试和模型**
 
-测试从 `tests/fixtures/srun_vectors.json` 读取虚构用户名、密码、challenge、客户端 IP 和期望输出；分别断言 HMAC、`info` 和 checksum。禁止把真实请求值放入 fixture。
+指导者把认证状态稳定值、不可变结果和 `retryable` 行为测试加入 `tests/test_models.py`；学习者实现 `AuthenticationState` 与 `AuthenticationResult`，运行对应测试直到 GREEN。
 
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 2: 写脱敏固定向量和解析失败测试**
 
-运行：`python -m pytest tests/portal -q`。
+`tests/fixtures/srun_vectors.json` 只使用虚构用户名、密码、challenge 和客户端 IP；测试分别断言 HMAC、`info`、checksum，以及成功、密码错误、限流和未知响应分类。
+
+- [ ] **Step 3: 运行 Portal 纯逻辑测试确认失败**
+
+运行：`python -m pytest tests/portal/test_encoding.py tests/portal/test_parser.py -q`。
 预期：编码器和解析器尚不存在而失败。
 
-- [ ] **Step 3: 实现纯函数**
+- [ ] **Step 4: 学习者实现纯函数和响应解析**
 
-按已验证的 Portal 脚本顺序实现 URL-safe 参数编码、HMAC-MD5、深澜 `xencode` 变体和 checksum；函数只接受显式参数，不读取配置文件、凭据库或网络。
+按脱敏证据实现 URL-safe 参数编码、HMAC-MD5、深澜 `xencode`、checksum 和 JSONP/JSON 解析；纯函数不读取配置、凭据或网络。非法响应抛出 `ProtocolError`，异常消息不得包含原始正文。
 
-- [ ] **Step 4: 实现 JSONP/JSON 响应解析**
+- [ ] **Step 5: 指导者写客户端测试，学习者实现 PortalClient**
 
-解析成功、已在线、密码错误、认证间隔过短、服务器拒绝和未知响应；无法解析的正文抛出 `ProtocolError`，不把原始正文写入异常消息。
+使用 `httpx.MockTransport` 模拟 challenge 和登录响应，断言请求顺序、必要参数和错误分类；学习者用 `httpx.Client` 完成请求编排，超时转换为 `NETWORK_ERROR`，日志不包含密码、challenge 或完整 URL。
 
-- [ ] **Step 5: 运行向量和性质测试**
+- [ ] **Step 6: 接入并运行 `login`**
 
-运行：`python -m pytest tests/portal -q`。额外验证同一输入纯函数输出稳定、空 challenge 和非法编码会明确失败。
+`login` 先调用探测器；`ONLINE` 返回 `ALREADY_ONLINE`，不是 `PORTAL_REQUIRED` 时不读取密码；需要认证时从任务 5 的 `CredentialStore` 读取密码，认证成功后再次探测。运行：`python -m pytest tests/credentials tests/portal tests/test_cli.py -q`。
 
-- [ ] **Step 6: 更新协议和学习文档并提交**
+- [ ] **Step 7: 更新协议、学习和安全文档并提交**
 
-记录每个字段的证据类型（已观察、已验证或推断），说明 `hashlib`、`hmac`、`base64`、`urllib.parse.urlencode` 的检索入口；提交 `feat: 实现深澜协议编码与解析`。
-
-## 任务 6：接入凭据、安全配置和 Portal 登录
-
-**Files:**
-- Create: `src/xduwlan/credentials/store.py`
-- Create: `src/xduwlan/credentials/keyring_store.py`
-- Create: `src/xduwlan/portal/client.py`
-- Modify: `src/xduwlan/config.py`
-- Modify: `src/xduwlan/cli.py`
-- Create: `tests/credentials/test_store.py`
-- Create: `tests/portal/test_client.py`
-- Create: `docs/learning/06-credentials-and-http-client.md`
-
-**Interfaces:**
-- `MemoryCredentialStore`：仅测试使用，内存中保存账号到密码的映射。
-- `KeyringCredentialStore(service_name: str)`：调用 `keyring.set_password/get_password/delete_password`。
-- `PortalClient.authenticate(username: str, password: str) -> AuthenticationResult`。
-- `configure` 交互输入账号和密码，密码通过 `getpass.getpass` 获取。
-
-- [ ] **Step 1: 写凭据适配器失败测试**
-
-断言内存实现能保存、读取、删除；通过 `unittest.mock` 断言生产实现只调用 `keyring`，不写文件。
-
-- [ ] **Step 2: 运行测试确认失败**
-
-运行：`python -m pytest tests/credentials -q`。
-预期：凭据模块尚不存在而失败。
-
-- [ ] **Step 3: 实现凭据存储和 `configure`**
-
-账号允许作为服务内的用户名标识；密码只传递给 `set_password`，不写入配置对象或日志。配置文件只写非敏感设置。系统凭据后端不可用时抛出 `CredentialError` 并提示用户，不回退到明文。
-
-- [ ] **Step 4: 写 Portal 客户端失败测试**
-
-使用 `httpx.MockTransport` 模拟 challenge 响应和登录响应，断言请求顺序、参数存在性和错误分类；断言日志记录不包含密码、challenge 或完整 URL。
-
-- [ ] **Step 5: 实现 Portal HTTP 客户端**
-
-用 `httpx.Client` 管理超时和连接复用；先请求 challenge，再调用纯编码函数构造参数，发送认证请求，交给响应解析器；发生超时转换为 `NETWORK_ERROR`，服务器字段错误转换为对应不可重试状态。
-
-- [ ] **Step 6: 接入 `login` 和安全文档**
-
-`login` 先调用探测器；`ONLINE` 返回 `ALREADY_ONLINE`，不是 `PORTAL_REQUIRED` 时不读取密码；认证成功后再次探测。运行 `python -m pytest tests/credentials tests/portal -q`，更新 M2、`docs/security.md` 和交接文档；提交 `feat: 增加凭据管理与 Portal 登录`。
+按已观察、已验证或推断记录协议字段；记录 `hashlib`、`hmac`、`base64`、`urllib.parse.urlencode` 和 `httpx.MockTransport` 的检索问题；更新 M2 和交接文档；提交 `feat: 增加 Portal 登录`。
 
 ## 任务 7：实现前台 `watch` 状态机
 
@@ -411,8 +444,12 @@ README 增加 `python -m xduwlan status` 示例；更新 M1 进度和交接；�
 - Create: `tests/monitor/test_client.py`
 - Create: `docs/learning/08-session-cookie-csrf.md`
 - Create: `docs/protocol/self-service.md`
+- Modify: `src/xduwlan/models.py`
+- Modify: `src/xduwlan/errors.py`
+- Modify: `tests/test_models.py`
 
 **Interfaces:**
+- Produces `OnlineSession`、`ProductUsage`、`AccountSnapshot` 和 `ParseError`，这些符号从本切片开始进入测试与实现范围。
 - `parse_account_home(html: str, collected_at: datetime) -> AccountSnapshot`。
 - `SelfServiceClient.begin_login() -> CaptchaChallenge`。
 - `SelfServiceClient.complete_login(username: str, password: str, captcha_text: str) -> LoginResult`。
@@ -528,19 +565,20 @@ README 增加 `account` 首次使用说明和验证码边界；更新 M4 进度�
 
 - 项目目标、Python 首版和跨语言迁移：任务 1、2、10。
 - `status` 和网络状态分类：任务 3、4。
-- 深澜 Portal 认证、测试向量和错误分类：任务 5、6。
+- `configure`、keyring 和凭据安全：任务 5。
+- 深澜 Portal 认证、测试向量和错误分类：任务 6。
 - 前台 `watch`、退避、停止和状态机：任务 7。
 - `account`、人工验证码、会话和 HTML 解析：任务 8、9。
-- `keyring`、日志脱敏和安全边界：任务 6、8、10。
+- `keyring`、日志脱敏和安全边界：任务 5、8、10。
 - 中文文档、进度和跨会话恢复：每个任务的文档步骤及任务 10。
 - 跨平台测试和打包：任务 10。
 
 ### 一致性检查
 
-- 任务 2 先定义 `NetworkProbeResult`、`AuthenticationResult` 和账户模型；后续任务只消费这些类型。
+- 任务 2 只定义 `status` 使用的 `NetworkProbeResult` 等网络模型；任务 6 才定义认证模型，任务 8 才定义账户模型。
 - 任务 3 的 `HttpObservation`、`ResolvedAddress`、`TcpObservation` 需在 `probe/interfaces.py` 中统一定义，任务 4 只依赖 `NetworkProbe`。
-- 任务 5 的纯编码函数由任务 6 的 `PortalClient` 调用，任务 7 只依赖 `PortalClient` 接口，不依赖编码实现。
-- 任务 8 的 `AccountSnapshot` 与任务 2 的模型字段保持一致，任务 9 只依赖解析器和展示接口。
+- 任务 5 的 `CredentialStore` 由任务 6 的登录服务复用；任务 6 的纯编码函数只由 `PortalClient` 调用，任务 7 只依赖 `PortalClient` 接口。
+- 任务 8 在实现解析器前先定义 `AccountSnapshot` 等账户模型，任务 9 只依赖解析器和展示接口。
 - 任务 10 的打包和真实验收在全部功能测试通过后进行，不改变核心接口。
 
 ### 完整性检查
