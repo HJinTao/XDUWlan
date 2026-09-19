@@ -1,4 +1,4 @@
-"""Command-line entry point for XDUWlan."""
+"""XDUWlan 命令行入口。"""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ COMMANDS = ("status", "login", "watch", "account", "configure")
 
 
 def _handle_placeholder(_args: argparse.Namespace) -> int:
-    """Return success until a command receives its application service."""
+    """在命令接入应用服务前提供成功占位结果。"""
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the top-level parser and register the current command skeleton."""
+    """创建顶层解析器并注册当前命令骨架。"""
     parser = argparse.ArgumentParser(
         prog="xduwlan",
         description="西电校园网认证与状态监测工具",
@@ -29,7 +29,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Parse ``argv`` and run the selected command skeleton."""
+    """解析 ``argv`` 并运行选中的命令骨架。"""
     parser = build_parser()
     args = parser.parse_args(argv)
 

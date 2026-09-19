@@ -16,6 +16,8 @@
 - 已创建逐任务实施计划：`docs/superpowers/plans/2026-09-19-xduwlan-mvp.md`。
 - 已约定测试分工：指导者编写、运行和解释自动化测试；学习者负责生产代码实现并理解测试逻辑。
 - 已约定架构讲解粒度：每个小步骤开始前必须对齐具体文件、函数/类/Protocol、职责、输入输出、依赖方向和调用流程，不能只描述抽象模块。
+- 已约定实现分工：指导者只搭建文件、符号、类型签名和占位边界；学习者实现具体逻辑。除非明确要求接管，指导者不代写任务实现。
+- 已约定代码注释和 docstring 使用中文。
 - 已创建任务 1 的 CLI 测试文件 `tests/test_cli.py`，并完成过预期的 RED 验证。
 - 已创建 Conda 环境 `xduwlan`，Python 版本为 3.11.16，pytest 版本为 9.1.1。
 - 已完成任务 1：`pyproject.toml`、`src/xduwlan/__init__.py` 和 `src/xduwlan/cli.py` 已实现，7 个 CLI 测试通过。
