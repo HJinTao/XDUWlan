@@ -1,0 +1,29 @@
+# Python 缓存和构建产物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# 本地配置、凭据和会话
+.env
+*.session
+*.cookie
+*.credentials
+data/
+secrets/
+
+# 调试输出和真实实验产物
+logs/
+captures/
+*.log
+captcha-*.png
+response-*.html
+
+# 操作系统文件
+.DS_Store
+.idea/
+.vscode/
