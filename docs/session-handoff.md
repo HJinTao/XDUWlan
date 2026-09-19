@@ -2,7 +2,7 @@
 
 ## 当前目标
 
-完成中文设计规格的审阅，确认后编写实施计划；暂不进入功能代码实现。
+根据已批准的中文设计规格，选择执行方式并开始实施计划中的任务 1；继续保持结对学习和先测试后实现。
 
 ## 已完成
 
@@ -13,6 +13,7 @@
 - 确定 `status`、`login`、`watch`、`account`、`configure` 五个 MVP 命令。
 - 确定前台运行、系统凭据库、人工验证码和中文文档规则。
 - 已创建正式规格及基础项目文档。
+- 已创建逐任务实施计划：`docs/superpowers/plans/2026-09-19-xduwlan-mvp.md`。
 
 ## 当前代码状态
 
@@ -20,15 +21,16 @@
 
 ## 下一步任务
 
-1. 请用户阅读 `docs/superpowers/specs/2026-09-19-xduwlan-design.md`。
-2. 如果有修改意见，先修改规格并再次自审。
-3. 用户确认后，使用 `superpowers:writing-plans` 编写 `docs/superpowers/plans/` 下的中文实施计划。
+1. 用户选择“子任务驱动”或“当前会话内执行”。
+2. 开始任务 1：建立可运行的 Python 项目骨架。
+3. 每个小步骤先讲解原理和 API，再由用户实现或明确要求接管。
 
 ## 必须先阅读
 
 - `AGENTS.md`
 - `docs/progress.md`
 - `docs/superpowers/specs/2026-09-19-xduwlan-design.md`
+- `docs/superpowers/plans/2026-09-19-xduwlan-mvp.md`
 
 ## 已知风险
 
