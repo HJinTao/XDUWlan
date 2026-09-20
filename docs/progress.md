@@ -26,17 +26,35 @@
 - [x] 创建 `models.py`、`errors.py` 和 `config.py` 的类型签名、中文注释与占位异常。
 - [x] 将交互式项目架构图保存到 `docs/visualizations/xduwlan-architecture.html`，并从架构文档提供入口。
 - [x] 将实施方式调整为 `status` → `configure` → `login` → `watch` → `account` 的纵向切片，并写入协作规则、设计规格、架构和实施计划。
+- [x] 按 `status` 切片重整任务 2 代码骨架和测试，移除当前不需要的认证、凭据与账户符号。
+- [x] 创建当前仓库文件框架图，随新增学习文档更新至 25 个文件。
+- [x] 完成 `NetworkState` 五个成员名称与稳定字符串值，并补强测试以同时保护名称和值的对应关系。
+- [x] 完成 `ProbeStage` 的 `DNS`、`TCP`、`HTTP` 成员，小步 2A 的两个枚举测试全部通过。
+- [x] 使用 `@dataclass(frozen=True)` 完成 `ProbeObservation`，字段保存与不可变性测试通过。
+- [x] 完成 `NetworkProbeResult` 的状态、`tuple` 观察集合、可选 Portal 地址和不可变性；`models.py` 的 4 个测试全部通过。
+- [x] 整理 `models.py` 的标准库导入、顶层空行和尾随空格，回归测试保持通过。
+- [x] 将 `AppConfig` 改为不可变数据类并实现 `defaults()`；默认字段与不可变性测试通过。
+- [x] 完成 TOML 读取、默认值合并和未知字段忽略，三个正常加载测试通过。
+- [x] 完成两个数值字段的字符串类型校验；补充 TOML 布尔值边界测试并确认其因 `bool` 是 `int` 子类而正确 RED。
+- [x] 显式排除两个数值字段的布尔值，字符串和布尔类型的四个测试全部通过。
+- [x] 完成两个数值字段的大于零校验，原定 17 个任务二测试全部通过。
+- [x] 契约复核发现 TOML 解析异常尚未转换，新增异常链测试并确认其准确 RED。
+- [x] 使用 `raise ... from exc` 将 `TOMLDecodeError` 转换为 `ConfigurationError` 并保留异常链。
+- [x] 完成任务 2 的 18 个模型与配置测试，并创建 `docs/learning/01-models-and-config.md` 学习记录。
 
 ## 当前阻塞
 
-- 当前 `tests/test_models.py` 仍含认证和账户等未来切片测试；指导者需先将它们移出当前验收范围，恢复只针对 `status` 切片的清晰 RED/GREEN 信号。
+- 无。任务 2 的 18 个测试和全仓库 25 个测试全部通过。
+
+## 后续按需处理
+
+- 配置文件缺失、字符串字段类型、非有限数值，以及数据类传入非元组观察集合等边界，留到相关功能接入或实际遇到问题时再补测修复；不阻断当前教学进度。
 
 ## 下一步
 
-1. 指导者调整 `tests/test_models.py`，当前只测试 `NetworkState`、`ProbeStage`、`ProbeObservation` 和 `NetworkProbeResult`。
-2. 指导者逐行讲解 `Enum` 语法，学习者实现 `NetworkState` 和 `ProbeStage`。
-3. 测试通过后讲解 `dataclass(frozen=True)`，学习者实现两种网络探测数据模型，再进入探测配置和 DNS/TCP/HTTP。
+1. 进入任务 3，先对齐 DNS/TCP/HTTP 探测将新增的文件、符号和调用关系。
+2. 从最小 DNS 解析观察开始，继续遵循“指导者写测试与骨架、学习者实现逻辑”。
 
 ## 最近验证
 
-最近一次验证中，任务 1 的 7 个测试通过；任务 2 骨架可导入和编译。任务 2 当时共有 15 个预期失败，其中认证和账户用例将在下一步按纵向切片规则移出当前验收范围。
+已在 `xduwlan` Conda 环境中验证：任务 2 的 18 个测试全部通过；全仓库 25 个测试全部通过；源码和测试可编译；`git diff --check` 通过。

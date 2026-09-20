@@ -22,22 +22,38 @@
 - 已创建 Conda 环境 `xduwlan`，Python 版本为 3.11.16，pytest 版本为 9.1.1。
 - 已完成任务 1：`pyproject.toml`、`src/xduwlan/__init__.py` 和 `src/xduwlan/cli.py` 已实现，7 个 CLI 测试通过。
 - 已创建 `docs/learning/00-python-cli.md` 并更新 README 的开发安装说明。
-- 已创建任务 2 的 `tests/test_models.py` 和 `tests/test_config.py`，覆盖不可变模型、稳定枚举值、`Decimal`、`tuple`、默认配置、部分覆盖、未知字段和非法数值。
+- 已创建任务 2 的 `tests/test_models.py` 和 `tests/test_config.py`，当前覆盖网络枚举、不可变探测结果、`tuple` 观察集合、默认配置、部分覆盖、未知字段和非法数值。
 - 已创建 `src/xduwlan/models.py`、`src/xduwlan/errors.py` 和 `src/xduwlan/config.py` 骨架，包含类型签名、中文 docstring、`TODO` 和 `NotImplementedError`，未实现业务逻辑。
-- 已验证骨架可以正常导入和编译；任务 2 的 15 个测试因待实现行为而按预期失败，任务 1 的 7 个 CLI 测试继续通过。
+- 已验证初始骨架可以正常导入和编译，并完成过预期 RED 验证。
 - 已将五个命令的交互式分层架构图保存到 `docs/visualizations/xduwlan-architecture.html`，入口位于 `docs/architecture.md`。
+- 已将当前仓库 25 个有效文件的交互式框架图保存到 `docs/visualizations/xduwlan-file-architecture.html`，可从文件树查看每个文件的输入、内部结构、输出、状态和边界。
+- 已约定当前文件框架图作为活文档维护：后续每次讲解或实现改变文件结构、主要符号、调用关系或完成状态时同步更新。
 - 已根据学习者要求把实施路线改为纵向切片：`status`、`configure`、`login`、`watch`、`account`；不再要求先完成所有底层模型。
 - 已明确按 Python 初学者教学：每个小步先解释语法，再由学习者实现数分钟规模的单元。
+- 已从 `models.py`、`errors.py` 和 `tests/test_models.py` 移除认证、凭据和账户相关符号；这些内容将在对应切片重新按 TDD 引入。
+- 任务 2 的 18 个模型与配置测试全部通过；全仓库 25 个测试全部通过。
+- 学习者已完成 `NetworkState` 五个枚举成员；指导者因拼写错误未被原测试捕获而补强测试，使成员名称和值都进入稳定契约，当前该测试已通过。
+- 学习者已完成 `ProbeStage` 的 `DNS`、`TCP` 和 `HTTP`，小步 2A 的两个枚举测试全部通过。
+- 指导者已把原先合并的结果测试拆成 `ProbeObservation` 与 `NetworkProbeResult` 两个独立测试，使小步 2B 可以逐类获得 RED/GREEN 反馈。
+- 学习者已使用 `@dataclass(frozen=True)` 完成 `ProbeObservation`，四个字段和不可变行为测试通过；进入 `NetworkProbeResult` 前先做一次纯格式整理。
+- 学习者已完成 `NetworkProbeResult`，`models.py` 的 4 个测试全部通过；指导者按学习者授权整理了该文件的导入顺序、顶层空行和尾随空格，行为未改变。
+- 学习者已把 `AppConfig` 改为 `@dataclass(frozen=True)` 并实现 `defaults()`；默认值和不可变性测试通过，指导者按授权整理了该文件格式。
+- 学习者已完成 `AppConfig.load()` 的 TOML 读取、默认值合并和未知字段忽略；三个正常加载测试通过，指导者按授权整理了导入与 docstring 格式。
+- 指导者已将错误数值类型测试参数化，`probe_interval_seconds` 和 `request_timeout_seconds` 都必须拒绝字符串值。
+- 字符串类型测试已通过；指导者补充 TOML `true` 用例，揭示 `isinstance(True, int)` 为真的 Python 边界，等待学习者显式排除 `bool`。
+- 学习者已显式排除 `bool`，两个数值字段的字符串和布尔类型测试全部通过。
+- 学习者已完成大于零校验，原定 17 个任务二测试通过；指导者复核 `load()` docstring 后新增畸形 TOML 异常链测试，当前该测试准确 RED。
+- 学习者已用 `raise ... from exc` 完成 TOML 解析异常转换，异常链测试通过；任务 2 已完成。
+- 已创建 `docs/learning/01-models-and-config.md`，记录任务二原理、语法、调用流程、测试和实际易错点。
 
 ## 当前代码状态
 
-仓库已有任务 1 的 Python CLI 骨架，以及任务 2 的全局模型、错误和配置空骨架。五个命令仍是占位实现。当前只把 `NetworkState`、`ProbeStage`、`ProbeObservation`、`NetworkProbeResult` 和探测配置视为待实现范围；认证与账户符号留待未来切片。
+仓库已有任务 1 的 Python CLI 骨架，以及任务 2 已完成的 `status` 网络模型、`ConfigurationError` 和 `AppConfig`。五个命令仍是占位实现，尚未执行真实网络探测。
 
 ## 下一步任务
 
-1. 指导者从 `tests/test_models.py` 移出认证结果和账户快照测试，未来在 `login`、`account` 切片按 TDD 重新加入。
-2. 指导者讲解 `from enum import Enum`、`class`、继承、缩进、赋值和字符串；学习者只实现 `NetworkState` 与 `ProbeStage`。
-3. 指导者运行两个枚举测试并解释结果；GREEN 后再讲解和实现 `ProbeObservation`、`NetworkProbeResult`。
+1. 进入任务 3：先对齐 DNS/TCP/HTTP 探测将新增的文件、类、函数、输入输出和调用关系。
+2. 指导者为第一个 DNS 解析小步搭建测试与骨架，学习者实现最小逻辑。
 
 ## 必须先阅读
 
