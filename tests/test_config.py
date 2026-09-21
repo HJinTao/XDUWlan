@@ -15,7 +15,7 @@ def test_default_config_has_explicit_operational_values():
     config = AppConfig.defaults()
 
     assert config.portal_url.startswith(("http://", "https://"))
-    assert config.probe_url.startswith(("http://", "https://"))
+    assert config.probe_url == "https://connect.rom.miui.com/generate_204"
     assert config.probe_interval_seconds == 30
     assert config.request_timeout_seconds == 5
     assert config.operator_suffix == ""

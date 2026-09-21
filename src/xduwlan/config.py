@@ -28,7 +28,7 @@ class AppConfig:
         """返回不包含密码、Cookie 等敏感信息的默认配置。"""
         return cls(
             portal_url="https://w.xidian.edu.cn",
-            probe_url="http://connectivitycheck.gstatic.com/generate_204",
+            probe_url="https://connect.rom.miui.com/generate_204",
             probe_interval_seconds=30,
             request_timeout_seconds=5,
             operator_suffix="",
