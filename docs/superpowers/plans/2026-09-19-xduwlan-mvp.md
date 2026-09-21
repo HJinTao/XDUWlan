@@ -198,11 +198,14 @@ def test_default_config_has_bounded_timeout():
 本任务的每个小步都先完成网络原理讲解再写测试：DNS 解释主机名、解析器、IP 地址及地址候选；TCP 解释端点、连接建立、超时及其与 DNS 结果的关系；HTTP 解释请求与响应、状态码、重定向和 Captive Portal。每次讲解都要把网络数据流映射到本任务的类型、函数、参数、返回值和测试替身，不把标准库调用当作黑盒。
 
 **Files:**
+- Create: `src/xduwlan/probe/__init__.py`
 - Create: `src/xduwlan/probe/interfaces.py`
 - Create: `src/xduwlan/probe/dns.py`
 - Create: `src/xduwlan/probe/tcp.py`
 - Create: `src/xduwlan/probe/http.py`
 - Create: `src/xduwlan/probe/classifier.py`
+- Create: `tests/probe/test_dns.py`
+- Create: `tests/probe/test_tcp.py`
 - Create: `tests/probe/test_http.py`
 - Create: `tests/probe/test_classifier.py`
 - Create: `tests/probe/test_integration_server.py`
@@ -214,7 +217,37 @@ def test_default_config_has_bounded_timeout():
 - `NetworkProbe.probe() -> NetworkProbeResult`。
 - `classify_http_observation(observation: HttpObservation, portal_hosts: frozenset[str]) -> NetworkState`。
 
-- [ ] **Step 1: 写分类失败测试**
+- [x] **Step 1: 对齐 DNS 文件、符号和调用关系，创建第一个失败测试与骨架**
+
+先建立 `URL → 主机名 → DNS 地址候选 → IP 地址与端口 → TCP → HTTP` 的完整路径，再把当前小步收窄到：
+
+```text
+SystemDnsResolver.resolve(host, port)
+  → socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+  → 逐条转换系统地址记录
+  → tuple[ResolvedAddress, ...]
+```
+
+指导者创建 `ResolvedAddress`、`DnsResolver`、`SystemDnsResolver.resolve()` 骨架和 `tests/probe/test_dns.py`；测试使用 `monkeypatch` 替换 `socket.getaddrinfo`，不访问真实网络。
+
+- [x] **Step 2: 运行 DNS 指定测试确认失败**
+
+运行：`python -m pytest tests/probe/test_dns.py -q`
+预期且已验证：`SystemDnsResolver.resolve()` 抛出 `NotImplementedError`，1 个测试失败，既有 25 个回归测试仍通过。
+
+- [x] **Step 3: 学习者实现最小 DNS 地址转换逻辑**
+
+调用 `socket.getaddrinfo`，只请求 `SOCK_STREAM` 地址；从每条系统记录中读取 `family` 和 `sockaddr`，构造 `ResolvedAddress(host, port, family)`，最终返回不可变 `tuple`。本小步暂不加入真实网络实验、失败分类、去重或额外边界。
+
+- [x] **Step 4: 完成 TCP 小步**
+
+DNS 实现已经审查并通过目标测试。TCP 端点、连接建立、超时和 DNS 多候选地址之间的关系已经讲解；`TcpObservation`、`TcpConnector` 和 `SystemTcpConnector` 已建立。成功连接先完成 RED → GREEN；随后根据学习者希望适当增大实现单元的反馈，把 `socket.timeout` 与其他 `OSError` 合并为同一参数化测试轮次。学习者一次完成两类失败观察，最终 TCP 3 个用例全部 GREEN，且底层错误正文未泄漏。
+
+- [x] **Step 5: 完成 HTTP 请求与响应观察**
+
+HTTP 请求、响应、状态码、Header、正文、重定向和 Captive Portal 已完成讲解。`HttpObservation`、`HttpConnectivityChecker`、`NoRedirectHandler` 和 `SystemHttpConnectivityChecker` 已实现。测试覆盖默认禁止重定向 opener、204、按字符集解码与 64 KiB 上限、原始 302 `HTTPError`、`socket.timeout`、`URLError` 和一般 `OSError`；8 个目标测试已完成 RED → GREEN，底层错误正文未泄漏。
+
+- [x] **Step 6: 完成纯分类逻辑**
 
 ```python
 def test_expected_204_is_online():
@@ -232,26 +265,19 @@ def test_redirect_to_portal_requires_authentication():
     assert classify_http_observation(observation, frozenset({"w.xidian.edu.cn"})) is NetworkState.PORTAL_REQUIRED
 ```
 
-- [ ] **Step 2: 运行指定测试确认失败**
+分类器 8 个目标测试已完成 RED → GREEN。实现覆盖 `204 -> ONLINE`、已知 Portal 主机的 `3xx -> PORTAL_REQUIRED`、正文含大小写不同深澜特征的 `200 -> PORTAL_REQUIRED`，其他响应返回 `UNKNOWN`。URL 使用 `urllib.parse.urlparse` 分解并精确匹配 hostname，查询参数伪装与畸形 `Location` 均安全回退。
 
-运行：`python -m pytest tests/probe/test_classifier.py -q`
-预期：模型或分类函数尚不存在而失败。
+- [x] **Step 7: 用本地 HTTP 服务器写集成测试**
 
-- [ ] **Step 3: 实现最小纯分类逻辑**
+使用 `http.server.ThreadingHTTPServer` 在 loopback 临时端口启动三个路径：`/online` 返回 204、`/portal` 返回 302、`/login` 返回 200 深澜特征。3 个集成测试已验证真实 `urllib` 与分类器协作、请求器不跟随 302，以及服务循环、监听 socket 和线程在测试后关闭。
 
-先实现 `204 -> ONLINE`、已知 Portal 主机的 `3xx -> PORTAL_REQUIRED`、正文含深澜登录特征的 `200 -> PORTAL_REQUIRED`，其他响应返回 `UNKNOWN`。URL 使用 `urllib.parse.urlparse` 分解，不用字符串包含替代结构化解析。
+- [x] **Step 8: 更新学习和协议文档**
 
-- [ ] **Step 4: 实现标准库网络适配器**
+已创建 `docs/learning/02-dns.md`、`03-tcp.md`、`04-http.md` 和 `docs/protocol/connectivity-detection.md`，记录 `getaddrinfo`、`create_connection`、`Request`、重定向处理器、分类规则、异常边界与待实测假设。任务 3 的 23 个探测测试和全仓库 48 个测试全部通过。
 
-使用 `socket.getaddrinfo` 解析地址，使用 `socket.create_connection` 建立 TCP，使用 `urllib.request.Request` 和自定义 `HTTPRedirectHandler` 禁止自动跟随重定向。捕获 `socket.timeout`、`OSError`、`urllib.error.URLError`，转成观察结果而不是泄漏堆栈。
+- [x] **Step 9: 提交任务 3**
 
-- [ ] **Step 5: 用本地 HTTP 服务器写集成测试**
-
-使用 `http.server.ThreadingHTTPServer` 在测试线程启动三个路径：`/online` 返回 204、`/portal` 返回 302、`/login` 返回 200 深澜特征；验证请求器不跟随 302，并在测试结束关闭服务器。
-
-- [ ] **Step 6: 更新学习和协议文档并提交**
-
-创建 `docs/learning/02-dns.md`、`03-tcp.md`、`04-http.md` 和 `docs/protocol/connectivity-detection.md`，记录 `getaddrinfo`、`create_connection`、`Request`、重定向处理器和异常边界；运行全部探测测试；提交 `feat: 实现基础网络探测`。
+生产代码与测试已提交为 `8f1af1b feat: 实现基础网络探测`；学习、协议、进度和架构文档由随后的文档提交记录。
 
 ## 任务 4：接入 `status` 命令
 
