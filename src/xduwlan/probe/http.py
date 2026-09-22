@@ -78,9 +78,3 @@ def _failure_observation(start, detail):
         detail=detail,
     )
 
-req = Request(url="http://connect.rom.miui.com/generate_204", method="GET")
-opener = build_opener()
-response = opener.open(req)
-print(response.status)
-print(response.headers)
-print(response.read().decode())
