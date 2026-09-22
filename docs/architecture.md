@@ -1,62 +1,80 @@
 # 架构说明
 
-## 目标
+## 架构目标
 
-本项目先用 Python 验证协议和流程，未来允许使用 Java、Go、Rust 等语言重写。因此核心边界必须与 Python 的具体库和操作系统解耦。
-
-## 交互架构图
-
-[在浏览器中打开 XDUWlan 交互架构图](visualizations/xduwlan-architecture.html)。图中可以切换 `status`、`login`、`watch`、`account` 和 `configure`，观察每条命令经过的分层与数据流。
-
-[在浏览器中打开当前文件框架图](visualizations/xduwlan-file-architecture.html)。图中可以从项目文件树选择当前 43 个源码、测试、配置或文档文件，观察每个文件的输入依据、内部结构、输出影响和当前边界。
-
-当前文件框架图是随教学推进维护的活文档。文件结构、主要符号、调用关系或完成状态实际变化时，同步更新相关部分；单纯讲解不要求重绘。
-
-## 依赖方向
+XDUWlan 使用“CLI → 应用服务 → 端口接口 ← 基础设施适配器”的依赖方向。核心数据、状态机和协议纯逻辑不依赖 CLI、操作系统、`httpx` 或 `keyring`，便于单元测试和未来跨语言实现。
 
 ```text
-CLI → 应用服务 → 核心模型与端口接口
-                     ↑
-HTTP、凭据库、文件和日志适配器
+CLI
+  → 应用服务
+    → 核心模型与端口接口
+      ← DNS、TCP、HTTP、凭据库和文件适配器
 ```
 
-核心不能导入 CLI、`httpx`、`keyring` 或操作系统专属模块。平台差异集中在适配器中。
+CLI 负责解析输入、装配依赖、调用服务和格式化结果；应用服务负责编排流程；端口接口描述调用方需要的能力；适配器连接 Python 标准库、第三方库或操作系统。
 
-## 主要组件
-
-- `models`：不可变领域数据和枚举。
-- `probe`：DNS、TCP、HTTP 和 Portal 识别。
-- `portal`：深澜 challenge、编码、请求和响应解析。
-- `watcher`：周期探测、认证、验证、退避和停止。
-- `monitor`：自服务登录、会话恢复和 HTML 解析。
-- `credentials`：系统凭据库适配器。
-- `storage`：会话及后续 SQLite 存储。
-- `cli`：命令解析和输出格式化。
-
-## 纵向切片实施方式
-
-架构按层保持解耦，开发顺序则按用户可运行的命令纵向穿过各层：
+## 当前实现
 
 ```text
-status：CLI → 探测服务 → 网络模型与配置 → DNS/TCP/HTTP 适配器 → 真实或本地测试网络
-configure：CLI → 配置流程 → CredentialStore → keyring 适配器 → 操作系统凭据库
-login：CLI → 登录服务 → 探测与认证模型 → PortalClient → 校园网 Portal
-watch：CLI → WatchService → 复用探测和登录 → 计时与停止边界
-account：CLI → AccountService → 账户模型 → 自服务客户端与解析器 → 自服务平台
+src/xduwlan/
+├── cli.py
+├── config.py
+├── errors.py
+├── models.py
+└── probe/
+    ├── interfaces.py
+    ├── dns.py
+    ├── tcp.py
+    ├── http.py
+    ├── classifier.py
+    └── service.py
 ```
 
-每个切片只实现当前命令需要的领域词汇和接口。例如 `status` 阶段不实现 `AuthenticationResult` 或 `AccountSnapshot`。切片内部仍然先测试后实现，但测试只覆盖当前目标，保证通过后可以立即运行对应 CLI 命令。
+- `models.py`：网络状态、探测阶段和不可变结果；
+- `config.py`：非敏感配置的默认值、TOML 合并与校验；
+- `probe/interfaces.py`：DNS、TCP、HTTP 和完整探测的端口契约；
+- `probe/dns.py`、`tcp.py`、`http.py`：系统网络适配器；
+- `probe/classifier.py`：把 HTTP 证据分类为稳定网络状态；
+- `probe/service.py`：编排阶段并生成 `NetworkProbeResult`；
+- `cli.py`：装配系统适配器并提供 `status` 用户界面。
 
-## 关键隔离
+## `status` 调用链
 
-Portal 认证与自服务监测是两条独立链路。Portal 负责让设备联网；自服务平台负责读取设备和套餐数据。自服务验证码或页面改版不能直接破坏 Portal 认证。
+```text
+xduwlan status
+  → main()
+  → _handle_status()
+  → AppConfig.defaults() / AppConfig.load()
+  → build_network_probe()
+  → DefaultNetworkProbe.probe()
+      → DnsResolver.resolve()
+      → TcpConnector.connect()
+      → HttpConnectivityChecker.request()
+      → classify_http_observation()
+  → NetworkProbeResult
+  → 中文 / JSON / debug 输出
+```
 
-## 未来迁移
+`DefaultNetworkProbe` 依赖 `Protocol`，不知道系统适配器如何完成网络操作。测试可以注入替代对象，不访问外部网络。
 
-跨语言迁移优先复用：
+## 计划边界
 
-1. 网络状态枚举和认证状态枚举；
-2. 状态机转换规则；
-3. JSON 协议测试向量；
-4. 脱敏和错误分类规则；
-5. CLI 输入输出约定。
+以下模块尚未实现，具体文件和接口在对应子任务开始前对齐：
+
+| 切片 | 计划职责 |
+| --- | --- |
+| `configure` | 凭据端口、`keyring` 适配器和交互输入 |
+| `login` | 深澜 challenge、参数编码、响应解析和认证编排 |
+| `watch` | 周期探测、认证、验证、退避和停止 |
+| `account` | 自服务会话、人工验证码、HTTP 客户端和 HTML 解析 |
+
+Portal 认证与自服务监测必须保持独立：前者负责让设备联网，后者负责读取账户数据。验证码或自服务页面变化不得直接破坏 Portal 登录。
+
+## 稳定边界
+
+未来跨语言实现优先复用网络与认证状态值、协议测试向量、错误分类、状态机转换和 CLI 输入输出约定。平台差异集中在适配器，不进入核心模型。
+
+## 可视化
+
+- [命令分层与数据流](visualizations/xduwlan-architecture.html)
+- [文件、符号与依赖关系](visualizations/xduwlan-file-architecture.html)
