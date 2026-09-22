@@ -1,0 +1,75 @@
+# 当前工作记忆
+
+## 当前切片
+
+`status` 已完成，下一切片是 `configure`。它的目标是安全收集校园网账号与密码，并通过系统凭据库保存密码。
+
+当前尚未为 `configure` 创建测试、模块或实现；开始前需要按子任务对齐凭据边界。
+
+## 已完成能力
+
+- Python 3.11+ 可安装 CLI，注册 `status`、`configure`、`login`、`watch`、`account`；除 `status` 外仍是占位命令。
+- `AppConfig` 提供非敏感默认配置、TOML 合并、数值校验和解析异常转换。
+- 网络探测模型使用稳定枚举和不可变数据类。
+- 系统适配器完成 DNS 地址解析、TCP 连接观察、禁止自动重定向的 HTTP 请求和有限正文读取。
+- `DefaultNetworkProbe` 编排 DNS、TCP 多候选和 HTTP 分类，阶段失败返回安全结果。
+- `status` 支持 `--config`、`--json` 和 `--debug`，不会在 JSON 中输出 Portal URL、HTTP 正文或底层异常。
+
+## 下一子任务
+
+先对齐 `configure` 的凭据存储边界。候选结构尚未批准，预计涉及：
+
+- 新增 `CredentialStore` 端口接口；
+- 测试用内存实现；
+- 调用系统 `keyring` 的生产适配器；
+- 将后端异常转换为不泄漏凭据的项目错误。
+
+本子任务不接入 Portal 登录，不实现协议编码，不把密码写入 TOML，也不提供明文文件回退。
+
+## 候选调用关系
+
+```text
+configure CLI
+  → 收集账号与密码
+  → CredentialStore
+  → keyring 适配器
+  → 操作系统凭据库
+```
+
+该调用关系需要在创建测试前与学习者确认；文件、符号和测试范围以对齐结果为准。
+
+## 学习上下文
+
+学习者已经接触 `Enum`、不可变 `dataclass`、类型标注、TOML、异常链、`Protocol`、依赖注入，以及 DNS → TCP → HTTP 的基本路径。
+
+`configure` 预计新增或加深：端口接口与适配器的区别、系统凭据库、`getpass.getpass()`、第三方库异常边界。讲解只覆盖第一个凭据子任务需要的内容。
+
+## 当前验证
+
+- 最近记录的完整基线：提交 `e987129` 上执行 `conda run -n xduwlan python -m pytest -q`，结果为 `66 passed`。
+- 本轮是纯文档重构，按已批准规则不重复运行 Python 测试。
+- 文档重构前工作区干净；记忆架构决策已提交为 `5d7ec16`。
+
+## 后续事项
+
+- 配置字符串字段类型、非有限数值和结果模型运行时容器类型暂未加强；不阻断 `configure`。
+- 西电 Portal 的真实字段和响应必须在 `login` 切片通过脱敏证据确认。
+- 自服务平台验证码继续坚持人工输入，不实现识别或绕过。
+
+## 下一责任人和动作
+
+指导者先向学习者对齐第一个凭据子任务的目标、文件、符号、调用关系、知识和完整 RED 范围；确认后由指导者编写测试与骨架。
+
+## 本任务索引
+
+开始 `configure` 前按需读取：
+
+- `docs/security.md`
+- `docs/architecture.md`
+- `docs/roadmap.md`
+- `docs/decisions/0003-system-keyring.md`
+- `src/xduwlan/cli.py`
+- `src/xduwlan/config.py`
+- `src/xduwlan/errors.py`
+- `tests/test_cli.py`
+- `pyproject.toml`
