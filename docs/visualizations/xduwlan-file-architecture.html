@@ -1,2536 +1,616 @@
 <!doctype html>
-<html lang="en" data-visualize-standalone>
+<html lang="zh-CN">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="referrer" content="no-referrer">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Xduwlan File Architecture</title>
-<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
-</head>
-<body>
-<iframe id="codex-visualization" sandbox="allow-scripts" referrerpolicy="no-referrer" title="Xduwlan File Architecture" data-srcdoc="&lt;!doctype html&gt;
-&lt;html lang=&quot;en&quot; data-visualize-standalone&gt;
-&lt;head&gt;
-&lt;meta charset=&quot;utf-8&quot;&gt;
-&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
-&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
-&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
-&lt;title&gt;Xduwlan File Architecture&lt;/title&gt;
-&lt;style&gt;:root {
-  color-scheme: light dark;
-  background-color: var(
-    --background,
-    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
-  ) !important;
-
-  /* Agent-facing contract; keep in sync with SKILL.md. */
-  --background: var(
-    --color-background-primary,
-    light-dark(rgb(255 255 255), rgb(24 24 24))
-  );
-  --foreground: var(
-    --color-text-primary,
-    light-dark(rgb(26 28 31), rgb(255 255 255))
-  );
-  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
-  --card-foreground: var(
-    --color-text-primary,
-    light-dark(rgb(26 28 31), rgb(255 255 255))
-  );
-  --popover: var(
-    --color-background-secondary,
-    light-dark(rgb(255 255 255), rgb(45 45 45))
-  );
-  --popover-foreground: var(
-    --color-text-primary,
-    light-dark(rgb(26 28 31), rgb(255 255 255))
-  );
-  --primary: var(
-    --color-text-info,
-    light-dark(rgb(51 156 255), rgb(131 195 255))
-  );
-  --primary-foreground: var(
-    --color-text-inverse,
-    light-dark(rgb(255 255 255), rgb(13 13 13))
-  );
-  --secondary: var(
-    --color-background-secondary,
-    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
-  );
-  --secondary-foreground: var(
-    --color-text-primary,
-    light-dark(rgb(26 28 31), rgb(255 255 255))
-  );
-  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
-  --muted-foreground: var(
-    --color-text-secondary,
-    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
-  );
-  --accent: var(
-    --color-background-info,
-    light-dark(rgb(229 242 255), rgb(13 39 63))
-  );
-  --accent-foreground: var(
-    --color-text-info,
-    light-dark(rgb(51 156 255), rgb(131 195 255))
-  );
-  --destructive: var(
-    --color-text-warning,
-    light-dark(rgb(226 85 7), rgb(255 133 73))
-  );
-  --border: var(
-    --color-border-secondary,
-    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
-  );
-  --input: var(
-    --color-border-primary,
-    light-dark(
-      rgb(26 28 31 / 11.8%),
-      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
-    )
-  );
-  --ring: var(
-    --color-ring-primary,
-    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
-  );
-  --font-size-base: var(--font-text-md-size, 14px);
-  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
-  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
-  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
-  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
-  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
-  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
-  --viz-series-1: var(--primary);
-  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
-  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
-  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
-  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
-  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
-
-  /* Internal implementation variables; not part of the agent contract. */
-  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
-    monospace;
-  --font-size-normal: max(11px, var(--font-size-base));
-  --font-size-tooltip: calc(var(--font-size-base) - 1px);
-  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
-  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
-  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
-  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
-  --font-weight-normal: 430;
-  --font-weight-medium: 500;
-  --icon-size: 16px;
-  --line-height-normal: calc(var(--font-size-normal) * 1.5);
-  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
-  --line-height-small: calc(var(--font-size-small) + 4px);
-  --corner-shape: round;
-  --radius: var(--border-radius-lg, 10px);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-2xl: calc(var(--radius) * 1.6);
-  --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
-  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
-
-  /* Legacy aliases; not part of the current agent contract. */
-  --viz-bg: transparent;
-  --viz-panel: var(--card);
-  --viz-border: var(--border);
-  --viz-text: var(--foreground);
-  --viz-muted: var(--muted-foreground);
-  --viz-accent: var(--primary);
-  --viz-accent-text: var(--primary-foreground);
-  --viz-accent-bg: var(--accent);
-  --viz-font-size: var(--font-size-base);
-  --viz-warning: var(--destructive);
-}
-
-:root[data-theme=&quot;light&quot;] {
-  color-scheme: light;
-}
-
-:root[data-theme=&quot;dark&quot;] {
-  color-scheme: dark;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html &gt; body {
-  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
-  --color-background-primary: var(
-    --background,
-    light-dark(rgb(255 255 255), rgb(24 24 24))
-  );
-  --color-text-primary: var(
-    --foreground,
-    light-dark(rgb(26 28 31), rgb(255 255 255))
-  );
-  --color-border-secondary: var(
-    --border,
-    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
-  );
-
-  margin: 0;
-  padding: var(--visualize-paint-gutter, 0px);
-  color: var(--foreground);
-  background: transparent !important;
-  font-family: var(--font-sans) !important;
-  font-size: var(--font-size-normal);
-  font-weight: var(--font-weight-normal);
-  line-height: var(--line-height-normal);
-}
-
-.cursor-interaction {
-  cursor: var(--cursor-interaction, pointer);
-}
-
-a {
-  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
-  cursor: var(--cursor-interaction, pointer);
-  font-weight: var(--font-weight-medium, 500);
-  text-decoration: none;
-  text-underline-offset: 2px;
-}
-
-a:is(:hover, :focus-visible) {
-  text-decoration-line: underline;
-  text-decoration-style: dashed;
-  text-decoration-thickness: 0.5px;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-p {
-  margin-block: 0;
-}
-
-h1 {
-  font-size: var(--font-size-h1);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.25;
-}
-
-h2 {
-  font-size: var(--font-size-h2);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.25;
-}
-
-h3,
-h4,
-h5,
-h6 {
-  font-size: var(--font-size-h3);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.3;
-}
-
-b,
-strong,
-th {
-  font-weight: var(--font-weight-medium);
-}
-
-code:not(pre code) {
-  display: inline;
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  corner-shape: var(--corner-shape);
-  background: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.92em;
-  overflow-wrap: anywhere;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-  word-break: break-word;
-}
-
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
-  scrollbar-width: thin;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  color: var(--foreground);
-  font: inherit;
-  text-align: start;
-}
-
-.table :is(th, td) {
-  padding-block: 10px;
-  padding-inline: 0 24px;
-  overflow-wrap: anywhere;
-  border-bottom: 1px solid var(--border);
-  text-align: start;
-  vertical-align: top;
-}
-
-.table-responsive &gt; .table :is(th, td) {
-  overflow-wrap: break-word;
-}
-
-.table :is(th, td):last-child {
-  padding-inline-end: 0;
-}
-
-.table :is(caption, thead th) {
-  font-weight: 600;
-}
-
-.table thead th {
-  padding-block: 8px;
-  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
-}
-
-.table tbody tr:last-child :is(th, td) {
-  border-bottom: 0;
-}
-
-.table.table-sm :is(th, td) {
-  padding-block: 6px;
-}
-
-.table.table-sm :is(th, td):not(:last-child) {
-  padding-inline-end: 16px;
-}
-
-.table :is(.text-end, [align=&quot;right&quot;]) {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
-.table :is(.text-center, [align=&quot;center&quot;]) {
-  text-align: center;
-}
-
-.table .text-nowrap {
-  white-space: nowrap;
-}
-
-#widget {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  padding: 0;
-  background: transparent !important;
-}
-
-.card {
-  min-width: 0;
-  padding: 12px;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  border-radius: var(--radius-2xl);
-  corner-shape: var(--corner-shape);
-  color: var(--card-foreground);
-  background: var(--card);
-}
-
-#widget &gt; :not(.card, .progress) {
-  width: 100% !important;
-  max-width: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-}
-
-.tooltip {
-  position: fixed;
-  z-index: 50;
-  top: 0;
-  left: 0;
-  width: max-content;
-  max-width: min(
-    20rem,
-    var(--tooltip-available-width, calc(100vw - 10px)),
-    calc(100vw - 10px)
-  );
-  max-height: min(
-    var(--tooltip-available-height, calc(100vh - 10px)),
-    calc(100vh - 10px)
-  );
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  corner-shape: var(--corner-shape);
-  color: var(--popover-foreground);
-  background: var(--popover);
-  box-shadow: none;
-  font-size: var(--font-size-tooltip);
-  line-height: var(--line-height-tooltip);
-  overflow-wrap: break-word;
-  white-space: normal;
-  pointer-events: none;
-  user-select: none;
-}
-
-.viz-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
-  gap: 10px;
-}
-
-.viz-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.viz-stat-value {
-  font-size: var(--font-size-h2);
-  font-weight: var(--font-weight-medium);
-  line-height: 1.25;
-}
-
-.viz-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-hr {
-  width: 100%;
-  height: 1px;
-  margin-block: 6px;
-  border: 0;
-  background: var(--border);
-}
-
-.nav {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 4px;
-}
-
-.progress {
-  display: flex;
-  height: 8px;
-  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
-  overflow: hidden;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: var(--muted);
-}
-
-.progress-bar:only-child {
-  border-radius: var(--radius-full);
-}
-
-.progress-bar {
-  height: 100%;
-  flex-shrink: 0;
-  border: 0;
-  background: var(--viz-series-1);
-}
-
-.viz-badge {
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  color: var(--accent-foreground);
-  background: var(--accent);
-  font-weight: var(--font-weight-medium);
-}
-
-small,
-.text-small,
-.viz-badge {
-  font-size: var(--font-size-small);
-  line-height: var(--line-height-small);
-}
-
-.text-muted {
-  color: var(--muted-foreground);
-}
-
-.tabular-nums {
-  font-variant-numeric: tabular-nums;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.viz-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.viz-controls &gt; .form-label {
-  display: grid;
-  min-width: min(100%, 260px);
-  flex: 1 1 280px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 2px 12px;
-  margin-bottom: 0;
-}
-
-.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
-  grid-column: 1 / -1;
-}
-
-.btn,
-.nav-link,
-.form-check-input,
-.form-control,
-.form-range,
-.form-select {
-  font: inherit;
-}
-
-.btn,
-.nav-link {
-  appearance: button;
-  display: inline-flex;
-  inline-size: fit-content;
-  max-inline-size: 100%;
-  min-height: 28px;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  margin: 0;
-  padding: 0 8px;
-  -webkit-app-region: no-drag;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-lg);
-  corner-shape: var(--corner-shape);
-  color: var(--secondary-foreground);
-  background: var(--secondary);
-  cursor: var(--cursor-interaction, pointer);
-  text-align: center;
-  text-decoration: none;
-  white-space: nowrap;
-  user-select: none;
-  -webkit-font-smoothing: antialiased;
-}
-
-.btn:is(.btn-block, .viz-tile) {
-  inline-size: 100%;
-}
-
-.btn.viz-tile {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-a.btn {
-  cursor: var(--cursor-interaction, pointer);
-  text-decoration: none;
-}
-
-.btn:not(:disabled):hover,
-.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
-  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
-}
-
-.btn-primary {
-  border-color: transparent;
-  color: var(--primary-foreground);
-  background: var(--foreground);
-  background-clip: padding-box;
-}
-
-.btn-primary .text-muted {
-  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
-}
-
-.btn-primary:not(:disabled):hover {
-  background: color-mix(in srgb, var(--foreground) 80%, transparent);
-  background-clip: padding-box;
-}
-
-.btn-ghost {
-  border-color: transparent;
-  color: var(--muted-foreground);
-  background: transparent;
-}
-
-.btn-ghost:not(:disabled):hover {
-  color: var(--foreground);
-  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
-}
-
-.nav-pills .nav-link {
-  min-width: 0;
-  border-color: transparent;
-  color: var(--muted-foreground);
-  background: transparent;
-}
-
-.nav-justified .nav-link {
-  flex: 1 1 0;
-  overflow-wrap: anywhere;
-  white-space: normal;
-}
-
-.nav-pills .nav-link.active {
-  color: var(--foreground);
-  background: var(--muted);
-}
-
-.btn:disabled,
-.nav-link:disabled,
-.nav-link[aria-disabled=&quot;true&quot;] {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-[data-lucide] {
-  stroke-width: 1.6;
-}
-
-.form-label {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--foreground);
-}
-
-.form-control {
-  display: block;
-  width: 100%;
-  min-height: 28px;
-  padding: 0 8px;
-  outline: none;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-lg);
-  corner-shape: var(--corner-shape);
-  color: var(--foreground);
-  background: var(--secondary);
-}
-
-.form-control::placeholder {
-  color: var(--muted-foreground);
-}
-
-.form-control[type=&quot;file&quot;] {
-  padding: 0;
-  overflow: hidden;
-  cursor: var(--cursor-interaction, pointer);
-}
-
-.form-control[type=&quot;file&quot;]::file-selector-button {
-  min-height: 26px;
-  margin-right: 8px;
-  padding: 0 8px;
-  border: 0;
-  border-right: 1px solid var(--input);
-  color: var(--secondary-foreground);
-  background: var(--secondary);
-  cursor: inherit;
-  font: inherit;
-}
-
-.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
-  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
-}
-
-.form-control-color[type=&quot;color&quot;] {
-  width: 40px;
-  height: 28px;
-  padding: 3px;
-  cursor: var(--cursor-interaction, pointer);
-}
-
-.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
-  border: 0;
-  border-radius: calc(var(--radius-lg) - 4px);
-  corner-shape: var(--corner-shape);
-}
-
-textarea.form-control {
-  height: auto;
-  min-height: 72px;
-  padding: 8px 10px;
-  resize: vertical;
-}
-
-.form-control:focus-visible {
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 1px var(--ring);
-}
-
-.form-control:disabled,
-.form-select:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.form-select {
-  appearance: none;
-  display: block;
-  width: 100%;
-  min-height: 28px;
-  margin: 0;
-  padding: 0 32px 0 8px;
-  outline: none;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-lg);
-  corner-shape: var(--corner-shape);
-  color: var(--foreground);
-  background-color: var(--secondary);
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
-    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
-  background-position:
-    calc(100% - 14px) 50%,
-    calc(100% - 10px) 50%;
-  background-repeat: no-repeat;
-  background-size: 4px 4px;
-  cursor: var(--cursor-interaction, default);
-}
-
-.form-select:not(:disabled):hover {
-  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
-}
-
-.form-select:focus-visible {
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 1px var(--ring);
-}
-
-.form-check {
-  display: flex;
-  min-height: 20px;
-  align-items: center;
-  gap: 6px;
-}
-
-.form-check-input {
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 auto;
-  margin: 0;
-  border: 1px solid var(--input);
-  color: var(--primary-foreground);
-  background-color: transparent;
-  cursor: var(--cursor-interaction, default);
-  transition:
-    background-color 150ms,
-    border-color 150ms,
-    box-shadow 150ms;
-}
-
-.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
-  border-color: var(--input);
-  border-radius: var(--radius-sm);
-  corner-shape: var(--corner-shape);
-  background-color: var(--secondary);
-  box-shadow: var(--shadow-sm);
-}
-
-.form-check:not(.form-switch)
-  .form-check-input:not(:disabled):not(:checked):hover {
-  background-color: var(--card);
-}
-
-.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
-  border-color: var(--primary);
-  background-color: var(--primary);
-}
-
-.form-check:not(.form-switch)
-  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
-  display: block;
-  width: 100%;
-  height: 100%;
-  background: var(--primary-foreground);
-  content: &quot;&quot;;
-  mask: var(--checkmark-image) center / 12px 12px no-repeat;
-}
-
-.form-check-input[type=&quot;radio&quot;] {
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius-full);
-}
-
-.form-check-input[type=&quot;radio&quot;]:checked {
-  border: 2px solid var(--primary);
-  background:
-    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
-    var(--primary);
-}
-
-.form-check:not(.form-switch) .form-check-input:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-.form-check:not(.form-switch) .form-check-input:disabled {
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
-  cursor: not-allowed;
-}
-
-.form-switch .form-check-input:disabled,
-.form-switch .form-check-input:disabled + .form-check-label {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-.form-check-label {
-  color: var(--foreground);
-  cursor: var(--cursor-interaction, default);
-}
-
-.form-switch .form-check-input {
-  position: relative;
-  width: 32px;
-  height: 20px;
-  border: 0;
-  border-radius: var(--radius-full);
-  background: var(--muted);
-  box-shadow: none;
-  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.form-switch .form-check-input::before {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  box-sizing: border-box;
-  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
-  border-radius: var(--radius-full);
-  background: light-dark(var(--primary-foreground), var(--foreground));
-  box-shadow: var(--shadow-sm);
-  content: &quot;&quot;;
-  transform: translate(2px, -50%);
-  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
-}
-
-.form-switch .form-check-input:checked {
-  background: var(--primary);
-}
-
-.form-switch .form-check-input:checked::before {
-  transform: translate(14px, -50%);
-}
-
-.form-switch .form-check-input:focus-visible {
-  box-shadow: 0 0 0 2px var(--ring);
-}
-
-.form-range {
-  appearance: none;
-  display: block;
-  width: 100%;
-  height: 28px;
-  flex: 1;
-  margin: 0;
-  padding: 0;
-  outline: none;
-  border: 0;
-  accent-color: var(--primary);
-  background: linear-gradient(
-      color-mix(in srgb, var(--foreground) 7%, transparent),
-      color-mix(in srgb, var(--foreground) 7%, transparent)
-    )
-    center / 100% 2px no-repeat;
-}
-
-.form-range::-webkit-slider-runnable-track {
-  height: 28px;
-  background: transparent;
-}
-
-.form-range::-webkit-slider-thumb {
-  appearance: none;
-  width: 20px;
-  height: 20px;
-  margin-top: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  background: light-dark(var(--primary-foreground), var(--foreground));
-}
-
-.form-range:focus-visible::-webkit-slider-thumb {
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 1px var(--ring);
-}
-
-.form-range::-moz-range-track {
-  height: 28px;
-  background: transparent;
-}
-
-.form-range::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  background: light-dark(var(--primary-foreground), var(--foreground));
-}
-
-.form-range:focus-visible::-moz-range-thumb {
-  border-color: var(--ring);
-  box-shadow: inset 0 0 0 1px var(--ring);
-}
-
-.form-range:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.btn:not(.btn-primary, .viz-tile):is(
-  [aria-pressed=&quot;true&quot;],
-  [aria-selected=&quot;true&quot;],
-  .is-selected
-) {
-  border-color: var(--primary);
-  color: var(--primary-foreground);
-  background: var(--primary);
-}
-
-.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
-  border-color: var(--primary);
-  box-shadow: inset 0 0 0 1px var(--primary);
-}
-
-.btn:focus-visible,
-.nav-link:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-@media (pointer: coarse) {
-  .btn,
-  .nav-link,
-  .form-control,
-  .form-select {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  /* Keep small-screen WebKit from zooming when a text field receives focus. */
-  .form-control,
-  .form-select {
-    font-size: max(16px, var(--font-size-normal));
-  }
-
-  .form-control[type=&quot;file&quot;]::file-selector-button {
-    min-width: 44px;
-    min-height: 44px;
-  }
-
-  .form-control-color[type=&quot;color&quot;] {
-    width: 44px;
-    height: 44px;
-  }
-
-  .form-control:is(
-    [type=&quot;date&quot;],
-    [type=&quot;datetime-local&quot;],
-    [type=&quot;month&quot;],
-    [type=&quot;time&quot;],
-    [type=&quot;week&quot;]
-  ) {
-    min-width: 0;
-    max-width: 100%;
-    padding-block: 8px;
-  }
-
-  .form-check {
-    min-height: 44px;
-    padding-inline: 15px;
-  }
-
-  .form-check-input {
-    position: relative;
-  }
-
-  .form-check-input::after {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 44px;
-    height: 44px;
-    content: &quot;&quot;;
-    transform: translate(-50%, -50%);
-  }
-
-  .form-check-label {
-    display: inline-flex;
-    min-width: 44px;
-    min-height: 44px;
-    align-items: center;
-  }
-
-  .form-range {
-    height: 44px;
-    touch-action: pan-y;
-  }
-
-  .form-range::-webkit-slider-runnable-track {
-    height: 44px;
-  }
-
-  .form-range::-moz-range-track {
-    height: 44px;
-  }
-
-  .form-range::-webkit-slider-thumb {
-    margin-top: 12px;
-  }
-}
-
-svg {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-#widget &gt; svg {
-  width: 100%;
-}
-
-/* Model-authored chart rules can otherwise stretch icons after these styles load. */
-svg.lucide {
-  display: block;
-  width: var(--icon-size) !important;
-  height: var(--icon-size) !important;
-  flex: none;
-  margin: 0 !important;
-  stroke-width: 1.6;
-}
-
-.text-warning,
-.text-destructive {
-  color: var(--destructive);
-}
-
-html&gt;body{padding:0}&lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-&lt;script type=&quot;application/json&quot; id=&quot;codex-visualization-widget-state&quot;&gt;__CODEX_VISUALIZATION_WIDGET_STATE__&lt;/script&gt;
-&lt;script&gt;(() =&gt; {
-  const root = document.documentElement;
-  const mediaQuery = globalThis.matchMedia(&quot;(prefers-color-scheme: dark)&quot;);
-  const apply = Reflect.apply;
-  const isArray = Array.isArray;
-  const hasOwn = Object.hasOwn;
-  const parentWindow = globalThis.parent;
-  const stringify = JSON.stringify;
-  const parse = JSON.parse;
-  const encode = TextEncoder.prototype.encode.bind(new TextEncoder());
-  const initialStateElement = document.getElementById(
-    &quot;codex-visualization-widget-state&quot;,
-  );
-  const initialGlobals = parse(initialStateElement?.textContent ?? &quot;{}&quot;);
-  initialStateElement?.remove();
-  /** @type {Record&lt;string, unknown&gt; | null} */
-  let state = initialGlobals.widgetState ?? null;
-  const statePersistence = initialGlobals.statePersistence ?? &quot;none&quot;;
-  let nextStateRequestId = 0;
-  /** @type {Map&lt;number, { resolve: () =&gt; void; reject: (error: Error) =&gt; void; timeout: ReturnType&lt;typeof globalThis.setTimeout&gt;; serializedState: string }&gt;} */
-  const pendingStateWrites = new Map();
-  const persistenceError = () =&gt;
-    Object.assign(
-      new Error(&quot;The host could not persist the widget state update&quot;),
-      {
-        code: -32000,
-        data: { code: &quot;widget_state_persistence_failed&quot;, retryable: false },
-      },
-    );
-  /**
-   * @param {object} prototype
-   * @param {string} property
-   */
-  const getPrototypeGetter = (prototype, property) =&gt; {
-    // oxlint-disable-next-line typescript/unbound-method -- invoked through captured Reflect.apply
-    const getter = Object.getOwnPropertyDescriptor(prototype, property)?.get;
-    if (getter == null) {
-      throw new Error(`Missing ${property} getter`);
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XDUWlan 文件职责图</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: light-dark(#f7f8fa, #111418);
+      --panel: light-dark(#ffffff, #1a1f26);
+      --soft: light-dark(#eef3f8, #212a34);
+      --text: light-dark(#17202a, #eef3f7);
+      --muted: light-dark(#586574, #aab5c0);
+      --border: light-dark(#d7dee6, #36414d);
+      --accent: light-dark(#185fa5, #78b8f4);
+      --accent-soft: light-dark(#e6f1fb, #16344d);
     }
-    return getter;
-  };
-  const getMessageData = getPrototypeGetter(MessageEvent.prototype, &quot;data&quot;);
-  const getMessagePorts = getPrototypeGetter(MessageEvent.prototype, &quot;ports&quot;);
-  const getMessageSource = getPrototypeGetter(MessageEvent.prototype, &quot;source&quot;);
-  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
-  const addHostMessageListener = MessagePort.prototype.addEventListener;
-  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
-  const postHostMessage = MessagePort.prototype.postMessage;
-  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
-  const startHostPort = MessagePort.prototype.start;
-  // oxlint-disable-next-line typescript/unbound-method -- captured before the untrusted fragment runs
-  const stopMessagePropagation = Event.prototype.stopImmediatePropagation;
-  /** @type {MessagePort | null} */
-  let hostPort = null;
-  const postToHost = (type, payload) =&gt; {
-    if (hostPort != null) {
-      apply(postHostMessage, hostPort, [{ type, ...payload }]);
-    }
-  };
-  const openExternal = ({ href }) =&gt; {
-    if (globalThis.navigator.userActivation?.isActive === true) {
-      postToHost(&quot;open-external&quot;, { href });
-    }
-  };
-  const sendFollowUpMessage = ({ context, prompt, title }) =&gt; {
-    if (globalThis.navigator.userActivation?.isActive === true) {
-      postToHost(&quot;follow-up&quot;, { context, prompt, title });
-    }
-    return Promise.resolve();
-  };
-  /**
-   * @param {Record&lt;string, unknown&gt; | ((previous: Record&lt;string, unknown&gt; | null) =&gt; Record&lt;string, unknown&gt;)} next
-   * @returns {Promise&lt;void&gt;}
-   */
-  const setWidgetState = async (next) =&gt; {
-    const nextState = typeof next === &quot;function&quot; ? next(state) : next;
-    if (
-      nextState == null ||
-      typeof nextState !== &quot;object&quot; ||
-      isArray(nextState)
-    ) {
-      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
-    }
-    const inputState = stringify(
-      nextState,
-      (_key, /** @type {unknown} */ value) =&gt; {
-        if (
-          typeof value === &quot;undefined&quot; ||
-          typeof value === &quot;function&quot; ||
-          typeof value === &quot;symbol&quot; ||
-          (typeof value === &quot;number&quot; &amp;&amp; !Number.isFinite(value))
-        ) {
-          throw new TypeError(&quot;Widget state must be a JSON object&quot;);
-        }
-        return value;
-      },
-    );
-    const parsedState = parse(inputState);
-    if (
-      parsedState == null ||
-      typeof parsedState !== &quot;object&quot; ||
-      isArray(parsedState)
-    ) {
-      throw new TypeError(&quot;Widget state must be a JSON object&quot;);
-    }
-    const storedState = {
-      modelContent: null,
-      privateContent: null,
-      ...parsedState,
-    };
-    const serializedState = stringify(storedState);
-    if (encode(serializedState).length &gt; 16 * 1024) {
-      throw new TypeError(
-        &quot;Widget state must be a JSON object of at most 16 KiB&quot;,
-      );
-    }
-    if (
-      hasOwn(storedState, &quot;imageIds&quot;) &amp;&amp;
-      (!isArray(storedState.imageIds) ||
-        storedState.imageIds.some(
-          (/** @type {unknown} */ id) =&gt; typeof id !== &quot;string&quot;,
-        ))
-    ) {
-      throw new TypeError(&quot;Widget state imageIds must be an array of strings&quot;);
-    }
-    if (storedState.imageIds?.length &gt; 0) {
-      throw Object.assign(
-        new TypeError(&quot;Visualization state does not support image attachments&quot;),
-        { code: -32602, data: { code: &quot;images_unsupported&quot; } },
-      );
-    }
-    state = storedState;
-    globalThis.openai.widgetState = state;
-    globalThis.dispatchEvent(
-      new CustomEvent(&quot;openai:set_globals&quot;, {
-        detail: { globals: { widgetState: state } },
-      }),
-    );
-    if (statePersistence === &quot;none&quot;) {
-      throw persistenceError();
-    }
-    const id = ++nextStateRequestId;
-    return new Promise((resolve, reject) =&gt; {
-      const timeout = globalThis.setTimeout(() =&gt; {
-        pendingStateWrites.delete(id);
-        reject(persistenceError());
-      }, 30_000);
-      pendingStateWrites.set(id, { resolve, reject, timeout, serializedState });
-      postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
-    });
-  };
-  const syncTheme = () =&gt; {
-    const theme = mediaQuery.matches ? &quot;dark&quot; : &quot;light&quot;;
-    root.dataset.theme = theme;
-    globalThis.openai = {
-      ...globalThis.openai,
-      openExternal,
-      sendFollowUpMessage,
-      setWidgetState,
-      theme,
-      visualizationStyleVariables: {},
-      visualizationTheme: theme,
-      widgetState: state,
-      statePersistence,
-      stateModelContext: &quot;none&quot;,
-    };
-    globalThis.dispatchEvent(
-      new CustomEvent(&quot;openai:set_globals&quot;, {
-        detail: { globals: globalThis.openai },
-      }),
-    );
-  };
-  const sendHeight = () =&gt; {
-    postToHost(&quot;height&quot;, {
-      height: Math.ceil(
-        Math.max(
-          document.body.scrollHeight,
-          document.body.getBoundingClientRect().height,
-        ),
-      ),
-    });
-  };
-
-  globalThis.addEventListener(
-    &quot;message&quot;,
-    (event) =&gt; {
-      const data = apply(getMessageData, event, []);
-      const ports = apply(getMessagePorts, event, []);
-      const source = apply(getMessageSource, event, []);
-      if (
-        hostPort != null ||
-        source !== parentWindow ||
-        typeof data !== &quot;object&quot; ||
-        data?.type !== &quot;codex-visualization-initialize&quot; ||
-        !isArray(ports) ||
-        ports.length !== 1
-      ) {
-        return;
-      }
-      apply(stopMessagePropagation, event, []);
-      const nextHostPort = ports[0];
-      try {
-        apply(addHostMessageListener, nextHostPort, [
-          &quot;message&quot;,
-          (event) =&gt; {
-            const data = apply(getMessageData, event, []);
-            if (typeof data === &quot;object&quot; &amp;&amp; data?.type === &quot;measure&quot;) {
-              sendHeight();
-            } else if (
-              typeof data === &quot;object&quot; &amp;&amp;
-              data?.type === &quot;widget-state-result&quot;
-            ) {
-              /** @type {unknown} */
-              const id = data.id;
-              if (typeof id !== &quot;number&quot;) {
-                return;
-              }
-              const pending = pendingStateWrites.get(id);
-              if (pending != null) {
-                pendingStateWrites.delete(id);
-                globalThis.clearTimeout(pending.timeout);
-                if (data.ok === true) {
-                  pending.resolve();
-                } else {
-                  pending.reject(persistenceError());
-                }
-              }
-            }
-          },
-        ]);
-        apply(startHostPort, nextHostPort, []);
-      } catch {
-        return;
-      }
-      hostPort = nextHostPort;
-      for (const [id, { serializedState }] of pendingStateWrites) {
-        postToHost(&quot;widget-state-write&quot;, { id, state: serializedState });
-      }
-      sendHeight();
-    },
-    { capture: true },
-  );
-  document.currentScript?.remove();
-  mediaQuery.addEventListener(&quot;change&quot;, syncTheme);
-  globalThis.addEventListener(&quot;click&quot;, (event) =&gt; {
-    if (event.defaultPrevented) {
-      return;
-    }
-    let element = null;
-    if (event.target instanceof globalThis.Element) {
-      element = event.target;
-    } else if (event.target instanceof globalThis.Node) {
-      element = event.target.parentElement;
-    }
-    const link = element?.closest(&quot;a[href]&quot;);
-    const href = link?.getAttribute(&quot;href&quot;);
-    if (href == null) {
-      return;
-    }
-    if (href.startsWith(&quot;#&quot;)) {
-      let id;
-      try {
-        id = decodeURIComponent(href.slice(1));
-      } catch {
-        return;
-      }
-      const target = id.length === 0 ? root : document.getElementById(id);
-      if (
-        target == null ||
-        globalThis.navigator.userActivation?.isActive !== true
-      ) {
-        return;
-      }
-      event.preventDefault();
-      postToHost(&quot;scroll-to&quot;, {
-        top: target.getBoundingClientRect().top + globalThis.scrollY,
-      });
-      return;
-    }
-    event.preventDefault();
-    openExternal({ href });
-  });
-  new ResizeObserver(sendHeight).observe(document.body);
-  syncTheme();
-})();
-&lt;/script&gt;
-&lt;div id=&quot;xduwlan-file-architecture&quot;&gt;
-  &lt;style&gt;
-    #xduwlan-file-architecture {
-      color: var(--foreground);
-      display: grid;
-      gap: 16px;
-    }
-    #xduwlan-file-architecture .fa-heading {
-      display: grid;
-      gap: 4px;
-    }
-    #xduwlan-file-architecture .fa-heading p,
-    #xduwlan-file-architecture .fa-node p,
-    #xduwlan-file-architecture .fa-notes dd {
+    * { box-sizing: border-box; }
+    body {
       margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
     }
-    #xduwlan-file-architecture .fa-layout {
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 32px auto;
       display: grid;
-      grid-template-columns: minmax(210px, 0.72fr) minmax(0, 2.28fr);
+      gap: 20px;
+    }
+    h1, h2, h3, p, dl, dd { margin: 0; }
+    h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); }
+    h2 { font-size: 1.15rem; }
+    h3 { font-size: .95rem; }
+    .intro { color: var(--muted); max-width: 78ch; }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(220px, .72fr) minmax(0, 2.28fr);
       gap: 20px;
       align-items: start;
     }
-    #xduwlan-file-architecture .fa-tree {
-      display: grid;
-      gap: 10px;
+    .tree, .detail {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
     }
-    #xduwlan-file-architecture .fa-tree details {
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
-    }
-    #xduwlan-file-architecture .fa-tree summary {
-      font-weight: 500;
-      padding-block: 6px;
-    }
-    #xduwlan-file-architecture .fa-files {
-      display: grid;
-      gap: 4px;
-      padding-top: 4px;
-    }
-    #xduwlan-file-architecture .fa-main {
-      display: grid;
-      gap: 16px;
-      min-width: 0;
-    }
-    #xduwlan-file-architecture .fa-file-heading {
-      display: grid;
-      gap: 6px;
-    }
-    #xduwlan-file-architecture .fa-meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    #xduwlan-file-architecture .fa-graph {
-      display: grid;
-      grid-template-columns: minmax(0, 0.9fr) 24px minmax(0, 1.35fr) 24px minmax(0, 0.9fr);
-      gap: 10px;
-      align-items: start;
-    }
-    #xduwlan-file-architecture .fa-column {
-      display: grid;
-      gap: 10px;
-      min-width: 0;
-    }
-    #xduwlan-file-architecture .fa-column h3 {
-      margin: 0;
-    }
-    #xduwlan-file-architecture .fa-node-list {
-      display: grid;
-      gap: 10px;
-    }
-    #xduwlan-file-architecture .fa-node {
-      display: grid;
-      gap: 4px;
-      padding: 8px 10px;
-      border-left: 3px solid var(--viz-series-1);
-      background: color-mix(in srgb, var(--viz-series-1) 7%, transparent);
-    }
-    #xduwlan-file-architecture .fa-column[data-kind=&quot;inside&quot;] .fa-node {
-      border-left-color: var(--viz-series-2);
-      background: color-mix(in srgb, var(--viz-series-2) 8%, transparent);
-    }
-    #xduwlan-file-architecture .fa-column[data-kind=&quot;output&quot;] .fa-node {
-      border-left-color: var(--viz-series-3);
-      background: color-mix(in srgb, var(--viz-series-3) 7%, transparent);
-    }
-    #xduwlan-file-architecture .fa-node strong {
-      font-weight: 500;
+    .tree { padding: 12px; display: grid; gap: 6px; }
+    details { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    details:last-child { border-bottom: 0; }
+    summary { padding: 7px 4px; font-weight: 600; }
+    .files { display: grid; gap: 3px; }
+    button {
+      appearance: none;
+      width: 100%;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text);
+      padding: 7px 9px;
+      text-align: left;
+      font: inherit;
       overflow-wrap: anywhere;
     }
-    #xduwlan-file-architecture .fa-node code {
+    button[aria-pressed="true"] {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+    .detail { padding: 18px; display: grid; gap: 18px; min-width: 0; }
+    .heading { display: grid; gap: 8px; }
+    .path {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       overflow-wrap: anywhere;
     }
-    #xduwlan-file-architecture .fa-arrow {
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+    .tag {
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--muted);
+      font-size: .86rem;
+    }
+    .purpose {
+      padding: 12px 14px;
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+    }
+    .graph {
       display: grid;
-      place-items: center;
-      min-height: 120px;
-      color: var(--muted-foreground);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
     }
-    #xduwlan-file-architecture .fa-notes {
+    .column { display: grid; align-content: start; gap: 9px; min-width: 0; }
+    .items { display: grid; gap: 8px; }
+    .item {
+      padding: 9px 10px;
+      border-left: 3px solid var(--border);
+      background: color-mix(in srgb, var(--soft) 72%, transparent);
+    }
+    .item strong { display: block; overflow-wrap: anywhere; }
+    .item p { color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+    .notes {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px 12px;
-      margin: 0;
+      grid-template-columns: auto 1fr;
+      gap: 8px 14px;
     }
-    #xduwlan-file-architecture .fa-notes dt {
-      font-weight: 500;
+    dt { font-weight: 600; }
+    dd { color: var(--muted); }
+    @media (max-width: 820px) {
+      main { width: min(100% - 20px, 1180px); margin: 20px auto; }
+      .layout { grid-template-columns: 1fr; }
+      .tree { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
-    #xduwlan-file-architecture .fa-notes dd {
-      min-width: 0;
+    @media (max-width: 600px) {
+      .tree, .graph { grid-template-columns: 1fr; }
+      .notes { grid-template-columns: 1fr; gap: 3px; }
+      dd + dt { margin-top: 8px; }
     }
-    @media (max-width: 760px) {
-      #xduwlan-file-architecture .fa-layout {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      #xduwlan-file-architecture .fa-tree {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-    }
-    @media (max-width: 560px) {
-      #xduwlan-file-architecture .fa-tree,
-      #xduwlan-file-architecture .fa-graph {
-        grid-template-columns: minmax(0, 1fr);
-      }
-      #xduwlan-file-architecture .fa-arrow {
-        min-height: auto;
-        padding-block: 2px;
-      }
-      #xduwlan-file-architecture .fa-arrow span {
-        transform: rotate(90deg);
-      }
-      #xduwlan-file-architecture .fa-notes {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 4px;
-      }
-      #xduwlan-file-architecture .fa-notes dd + dt {
-        margin-top: 8px;
-      }
-    }
-  &lt;/style&gt;
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>XDUWlan 文件职责与依赖</h1>
+      <p class="intro">左侧只列出仓库当前存在的文件。选择文件后，右侧用“依赖什么、内部负责什么、影响谁”说明边界；不再展示开发流水、任务编号或不断变化的测试计数。</p>
+    </header>
 
-  &lt;div class=&quot;fa-heading&quot;&gt;
-    &lt;h2&gt;XDUWlan 当前文件框架&lt;/h2&gt;
-    &lt;p class=&quot;text-muted&quot;&gt;从文件树选择任意文件，查看它接收什么、内部包含什么、又影响谁；内容随后续讲解与实现持续更新。&lt;/p&gt;
-  &lt;/div&gt;
+    <div class="layout">
+      <nav class="tree" aria-label="当前项目文件" data-tree></nav>
 
-  &lt;div class=&quot;fa-layout&quot;&gt;
-    &lt;nav class=&quot;fa-tree&quot; aria-label=&quot;项目文件树&quot;&gt;
-      &lt;details open&gt;
-        &lt;summary&gt;根目录 · 3&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;AGENTS.md&quot;&gt;AGENTS.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;README.md&quot;&gt;README.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;pyproject.toml&quot;&gt;pyproject.toml&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-      &lt;details open&gt;
-        &lt;summary&gt;src/xduwlan · 5&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/__init__.py&quot;&gt;__init__.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-primary btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/cli.py&quot; aria-pressed=&quot;true&quot;&gt;cli.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/config.py&quot;&gt;config.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/errors.py&quot;&gt;errors.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/models.py&quot;&gt;models.py&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-      &lt;details open&gt;
-        &lt;summary&gt;src/xduwlan/probe · 7&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/__init__.py&quot;&gt;__init__.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/interfaces.py&quot;&gt;interfaces.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/dns.py&quot;&gt;dns.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/tcp.py&quot;&gt;tcp.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/http.py&quot;&gt;http.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/classifier.py&quot;&gt;classifier.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/service.py&quot;&gt;service.py&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-      &lt;details open&gt;
-        &lt;summary&gt;tests · 3&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/test_cli.py&quot;&gt;test_cli.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/test_config.py&quot;&gt;test_config.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/test_models.py&quot;&gt;test_models.py&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-      &lt;details open&gt;
-        &lt;summary&gt;tests/probe · 6&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_dns.py&quot;&gt;test_dns.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_tcp.py&quot;&gt;test_tcp.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_http.py&quot;&gt;test_http.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_classifier.py&quot;&gt;test_classifier.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_integration_server.py&quot;&gt;test_integration_server.py&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_service.py&quot;&gt;test_service.py&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-      &lt;details&gt;
-        &lt;summary&gt;docs · 19&lt;/summary&gt;
-        &lt;div class=&quot;fa-files&quot;&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/architecture.md&quot;&gt;architecture.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/progress.md&quot;&gt;progress.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/security.md&quot;&gt;security.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/session-handoff.md&quot;&gt;session-handoff.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/decisions/0001-python-first.md&quot;&gt;0001-python-first.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/decisions/0002-modular-cli.md&quot;&gt;0002-modular-cli.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/decisions/0003-system-keyring.md&quot;&gt;0003-system-keyring.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/README.md&quot;&gt;learning/README.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/00-python-cli.md&quot;&gt;00-python-cli.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/01-models-and-config.md&quot;&gt;01-models-and-config.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/02-dns.md&quot;&gt;02-dns.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/03-tcp.md&quot;&gt;03-tcp.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/04-http.md&quot;&gt;04-http.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/05-status-cli.md&quot;&gt;05-status-cli.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/protocol/README.md&quot;&gt;protocol/README.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/protocol/connectivity-detection.md&quot;&gt;connectivity-detection.md&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/superpowers/plans/2026-09-19-xduwlan-mvp.md&quot;&gt;MVP 实施计划&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/superpowers/specs/2026-09-19-xduwlan-design.md&quot;&gt;项目设计规格&lt;/button&gt;
-          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/visualizations/xduwlan-architecture.html&quot;&gt;命令架构图&lt;/button&gt;
-        &lt;/div&gt;
-      &lt;/details&gt;
-    &lt;/nav&gt;
+      <article class="detail" aria-live="polite">
+        <header class="heading">
+          <h2 data-title></h2>
+          <p class="path" data-path></p>
+          <div class="meta">
+            <span class="tag" data-type></span>
+            <span class="tag" data-state></span>
+          </div>
+        </header>
 
-    &lt;section class=&quot;fa-main&quot; aria-live=&quot;polite&quot;&gt;
-      &lt;header class=&quot;fa-file-heading&quot;&gt;
-        &lt;h2 data-title&gt;&lt;/h2&gt;
-        &lt;code data-path-label&gt;&lt;/code&gt;
-        &lt;div class=&quot;fa-meta&quot;&gt;
-          &lt;span class=&quot;viz-badge&quot; data-type&gt;&lt;/span&gt;
-          &lt;span class=&quot;viz-badge&quot; data-status&gt;&lt;/span&gt;
-          &lt;span class=&quot;text-small text-muted&quot; data-owner&gt;&lt;/span&gt;
-        &lt;/div&gt;
-      &lt;/header&gt;
+        <section class="purpose">
+          <h3>核心职责</h3>
+          <p data-role></p>
+        </section>
 
-      &lt;div class=&quot;fa-graph&quot; role=&quot;img&quot; aria-label=&quot;所选文件的输入、内部结构和输出关系&quot;&gt;
-        &lt;section class=&quot;fa-column&quot; data-kind=&quot;input&quot;&gt;
-          &lt;h3&gt;输入 / 依据&lt;/h3&gt;
-          &lt;div class=&quot;fa-node-list&quot; data-inputs&gt;&lt;/div&gt;
-        &lt;/section&gt;
-        &lt;div class=&quot;fa-arrow&quot; aria-hidden=&quot;true&quot;&gt;&lt;span&gt;→&lt;/span&gt;&lt;/div&gt;
-        &lt;section class=&quot;fa-column&quot; data-kind=&quot;inside&quot;&gt;
-          &lt;h3&gt;文件内部&lt;/h3&gt;
-          &lt;div class=&quot;fa-node-list&quot; data-internals&gt;&lt;/div&gt;
-        &lt;/section&gt;
-        &lt;div class=&quot;fa-arrow&quot; aria-hidden=&quot;true&quot;&gt;&lt;span&gt;→&lt;/span&gt;&lt;/div&gt;
-        &lt;section class=&quot;fa-column&quot; data-kind=&quot;output&quot;&gt;
-          &lt;h3&gt;输出 / 影响&lt;/h3&gt;
-          &lt;div class=&quot;fa-node-list&quot; data-outputs&gt;&lt;/div&gt;
-        &lt;/section&gt;
-      &lt;/div&gt;
+        <section class="graph">
+          <div class="column">
+            <h3>依赖 / 输入</h3>
+            <div class="items" data-depends></div>
+          </div>
+          <div class="column">
+            <h3>内部内容</h3>
+            <div class="items" data-contains></div>
+          </div>
+          <div class="column">
+            <h3>输出 / 使用方</h3>
+            <div class="items" data-affects></div>
+          </div>
+        </section>
 
-      &lt;hr&gt;
-      &lt;dl class=&quot;fa-notes&quot;&gt;
-        &lt;dt&gt;为什么存在&lt;/dt&gt;&lt;dd data-purpose&gt;&lt;/dd&gt;
-        &lt;dt&gt;当前边界&lt;/dt&gt;&lt;dd data-boundary&gt;&lt;/dd&gt;
-      &lt;/dl&gt;
-    &lt;/section&gt;
-  &lt;/div&gt;
+        <dl class="notes">
+          <dt>边界</dt><dd data-boundary></dd>
+          <dt>维护条件</dt><dd data-maintenance></dd>
+        </dl>
+      </article>
+    </div>
+  </main>
 
-  &lt;script&gt;
-    (() =&gt; {
-      const root = document.getElementById(&quot;xduwlan-file-architecture&quot;);
-      const node = (name, detail) =&gt; ({ name, detail });
-      const files = {
-        &quot;AGENTS.md&quot;: {
-          title: &quot;开发协作规则&quot;, type: &quot;协作规则&quot;, status: &quot;持续生效&quot;, owner: &quot;指导者与学习者共同遵守&quot;,
-          purpose: &quot;保证跨会话开发仍按同一种教学、安全和工程方式进行。&quot;,
-          boundary: &quot;它规定怎样工作，但不定义具体网络协议或生产代码实现。&quot;,
-          inputs: [node(&quot;项目目标&quot;, &quot;以学习校园网协议和跨平台设计为首要目标。&quot;), node(&quot;用户约定&quot;, &quot;结对教学、中文文档、学习者实现生产逻辑。&quot;)],
-          internals: [node(&quot;开始工作前&quot;, &quot;规定每次会话的阅读顺序。&quot;), node(&quot;教学协作方式&quot;, &quot;要求先讲文件、符号、调用和测试，再小步实现。&quot;), node(&quot;安全规则&quot;, &quot;限制敏感数据、验证码和危险操作。&quot;), node(&quot;开发规则&quot;, &quot;要求标准库优先、测试先行、及时更新文档。&quot;)],
-          outputs: [node(&quot;所有开发任务&quot;, &quot;约束指导、实现、测试和提交过程。&quot;), node(&quot;会话恢复&quot;, &quot;让新会话知道先读哪些文档。&quot;)]
-        },
-        &quot;README.md&quot;: {
-          title: &quot;项目入口说明&quot;, type: &quot;用户文档&quot;, status: &quot;随功能更新&quot;, owner: &quot;面向新读者&quot;,
-          purpose: &quot;用最短路径说明项目是什么、能做什么、怎样安装以及从哪里继续阅读。&quot;,
-          boundary: &quot;只提供入口和概览，设计细节交给规格、架构和学习文档。&quot;,
-          inputs: [node(&quot;当前实现状态&quot;, &quot;任务一、二以及 DNS、TCP 基础探测已完成，下一步进入 HTTP。&quot;), node(&quot;设计与文档&quot;, &quot;引用规格、架构、安全、进度和交接记录。&quot;)],
-          internals: [node(&quot;当前状态&quot;, &quot;说明项目已经做到哪里。&quot;), node(&quot;第一版目标&quot;, &quot;列出 status、login、watch、account、configure。&quot;), node(&quot;学习方式&quot;, &quot;说明测试与生产代码分工。&quot;), node(&quot;开发安装&quot;, &quot;提供 editable 安装和 pytest 命令。&quot;), node(&quot;文档&quot;, &quot;给出详细资料入口。&quot;)],
-          outputs: [node(&quot;新贡献者&quot;, &quot;建立对范围和工作方式的第一印象。&quot;), node(&quot;开发环境&quot;, &quot;引导安装包并运行测试。&quot;)]
-        },
-        &quot;pyproject.toml&quot;: {
-          title: &quot;Python 项目配置&quot;, type: &quot;构建配置&quot;, status: &quot;任务一已完成&quot;, owner: &quot;工具链读取&quot;,
-          purpose: &quot;让 XDUWlan 可安装、可测试，并生成 xduwlan 命令。&quot;,
-          boundary: &quot;只声明构建和工具配置，不保存运行期账号、密码或校园网设置。&quot;,
-          inputs: [node(&quot;setuptools&quot;, &quot;作为 Python 包构建后端。&quot;), node(&quot;Python 3.11+&quot;, &quot;项目最低解释器版本。&quot;)],
-          internals: [node(&quot;build-system&quot;, &quot;声明 setuptools.build_meta。&quot;), node(&quot;project&quot;, &quot;名称、版本、描述和 Python 版本。&quot;), node(&quot;optional-dependencies&quot;, &quot;test 组安装 pytest。&quot;), node(&quot;project.scripts&quot;, &quot;把 xduwlan 映射到 xduwlan.cli:main。&quot;), node(&quot;setuptools / pytest&quot;, &quot;指定 src 包布局和测试目录。&quot;)],
-          outputs: [node(&quot;pip install -e&quot;, &quot;建立开发安装。&quot;), node(&quot;xduwlan 命令&quot;, &quot;调用 cli.main。&quot;), node(&quot;pytest&quot;, &quot;自动发现 tests 并导入 src。&quot;)]
-        },
-        &quot;src/xduwlan/__init__.py&quot;: {
-          title: &quot;Python 包入口&quot;, type: &quot;生产代码&quot;, status: &quot;已完成&quot;, owner: &quot;包导入时执行&quot;,
-          purpose: &quot;把 src/xduwlan 识别为 Python 包，并暴露当前版本。&quot;,
-          boundary: &quot;不导入 CLI、模型或网络模块，避免包导入产生副作用。&quot;,
-          inputs: [node(&quot;Python 导入系统&quot;, &quot;加载 xduwlan 包时执行。&quot;)],
-          internals: [node(&quot;模块 docstring&quot;, &quot;说明这是 XDUWlan Python 包。&quot;), node(&quot;__version__&quot;, &quot;当前固定为 0.1.0。&quot;)],
-          outputs: [node(&quot;xduwlan.__version__&quot;, &quot;供打包、诊断或未来 --version 使用。&quot;)]
-        },
-        &quot;src/xduwlan/cli.py&quot;: {
-          title: &quot;命令行入口&quot;, type: &quot;生产代码&quot;, status: &quot;status CLI 18 GREEN&quot;, owner: &quot;任务四已完成，后续切片继续扩展&quot;,
-          purpose: &quot;把终端参数转换成具体命令处理调用，并返回进程退出码。&quot;,
-          boundary: &quot;负责参数解析、status 探测调用、中文摘要、JSON/debug 输出和退出码；其他四个命令仍占位。&quot;,
-          inputs: [node(&quot;console script&quot;, &quot;pyproject 把 xduwlan 命令指向 main。&quot;), node(&quot;argv&quot;, &quot;用户输入的命令及参数。&quot;), node(&quot;argparse&quot;, &quot;标准库负责解析与帮助文本。&quot;)],
-          internals: [node(&quot;COMMANDS&quot;, &quot;五个稳定命令名。&quot;), node(&quot;_handle_placeholder(args)&quot;, &quot;其余四个命令共用占位处理器。&quot;), node(&quot;build_network_probe(config)&quot;, &quot;装配三个系统阶段适配器。&quot;), node(&quot;_handle_status(args)&quot;, &quot;读取配置、调用探测器，并处理中文、JSON 和 debug 输出。&quot;), node(&quot;build_parser()&quot;, &quot;status 选项和四个占位子命令。&quot;), node(&quot;main(argv)&quot;, &quot;解析后调用对应处理器。&quot;)],
-          outputs: [node(&quot;终端帮助&quot;, &quot;包含 status 的 --config、--json、--debug 选项。&quot;), node(&quot;退出码与输出&quot;, &quot;五类状态、配置错误和两种输出模式均已实现。&quot;), node(&quot;tests/test_cli.py&quot;, &quot;18 个 status 与入口行为测试全部 GREEN。&quot;)]
-        },
-        &quot;src/xduwlan/config.py&quot;: {
-          title: &quot;非敏感配置入口&quot;, type: &quot;生产代码&quot;, status: &quot;任务二已完成&quot;, owner: &quot;任务三探测器将读取&quot;,
-          purpose: &quot;把默认值和 TOML 文件合并成完整、已校验的 AppConfig。&quot;,
-          boundary: &quot;只处理地址、周期、超时、后缀和日志等级；绝不保存密码、Cookie 或验证码。&quot;,
-          inputs: [node(&quot;Path&quot;, &quot;指出 TOML 配置文件位置。&quot;), node(&quot;tomllib&quot;, &quot;实现时解析 TOML。&quot;), node(&quot;ConfigurationError&quot;, &quot;实现时统一报告配置错误。&quot;)],
-          internals: [node(&quot;AppConfig 字段 · GREEN&quot;, &quot;六个非敏感字段已使用 frozen 数据类保存。&quot;), node(&quot;defaults() · GREEN&quot;, &quot;完整默认配置和不可变性已通过测试。&quot;), node(&quot;load(path) · GREEN&quot;, &quot;TOML 读取、默认值合并和未知字段忽略已通过。&quot;), node(&quot;数值校验 · GREEN&quot;, &quot;错误类型、零和负数均转换为配置错误。&quot;), node(&quot;解析异常链 · GREEN&quot;, &quot;TOMLDecodeError 已包装成 ConfigurationError，并用 from 保留原因。&quot;)],
-          outputs: [node(&quot;AppConfig&quot;, &quot;供探测器、watch 和 CLI 使用。&quot;), node(&quot;ConfigurationError&quot;, &quot;已覆盖的非法数值和 TOML 解析错误转换为项目错误。&quot;), node(&quot;tests/test_config.py&quot;, &quot;14 个用例约束当前实现。&quot;)]
-        },
-        &quot;src/xduwlan/errors.py&quot;: {
-          title: &quot;项目异常层次&quot;, type: &quot;生产代码&quot;, status: &quot;任务二骨架已完整&quot;, owner: &quot;后续切片按需扩展&quot;,
-          purpose: &quot;给可预期失败稳定名称，使上层不依赖底层库的异常细节。&quot;,
-          boundary: &quot;这里只分类错误；发现错误由具体模块负责，展示错误由 CLI 负责。&quot;,
-          inputs: [node(&quot;Exception&quot;, &quot;Python 内置异常基类。&quot;)],
-          internals: [node(&quot;XDUWlanError&quot;, &quot;所有可预期项目异常的共同父类。&quot;), node(&quot;ConfigurationError&quot;, &quot;表示配置缺失、类型错误或取值非法。&quot;)],
-          outputs: [node(&quot;config.py&quot;, &quot;加载失败时抛出 ConfigurationError。&quot;), node(&quot;未来 CLI&quot;, &quot;捕获项目错误并转换为中文提示与退出码。&quot;)]
-        },
-        &quot;src/xduwlan/models.py&quot;: {
-          title: &quot;网络领域模型&quot;, type: &quot;生产代码&quot;, status: &quot;任务二模型已完成&quot;, owner: &quot;任务三探测器将使用&quot;,
-          purpose: &quot;让探测器、CLI 和测试使用同一套稳定的网络状态与结果结构。&quot;,
-          boundary: &quot;只描述数据，不读配置、不执行网络请求、不输出终端文本。&quot;,
-          inputs: [node(&quot;Enum&quot;, &quot;提供固定字符串状态。&quot;), node(&quot;dataclass(frozen=True)&quot;, &quot;实现时生成不可变数据对象。&quot;)],
-          internals: [node(&quot;NetworkState · GREEN&quot;, &quot;五个成员名称和值已通过稳定契约测试。&quot;), node(&quot;ProbeStage · GREEN&quot;, &quot;DNS、TCP、HTTP 三个阶段已通过稳定契约测试。&quot;), node(&quot;ProbeObservation · GREEN&quot;, &quot;四个字段与 frozen 不可变行为已通过测试。&quot;), node(&quot;NetworkProbeResult · GREEN&quot;, &quot;状态、tuple 观察集合、可选 Portal 地址和不可变性已通过测试。&quot;)],
-          outputs: [node(&quot;任务三 probe&quot;, &quot;构造观察和完整结果。&quot;), node(&quot;任务四 CLI&quot;, &quot;读取状态并展示。&quot;), node(&quot;tests/test_models.py&quot;, &quot;4 个测试固定当前模型契约。&quot;)]
-        },
-        &quot;src/xduwlan/probe/__init__.py&quot;: {
-          title: &quot;网络探测包入口&quot;, type: &quot;生产代码&quot;, status: &quot;任务三骨架&quot;, owner: &quot;probe 子包&quot;,
-          purpose: &quot;把 DNS、TCP、HTTP 和分类相关模块组织在独立的网络探测包中。&quot;,
-          boundary: &quot;当前只声明包的用途，不导出符号，也不在导入时执行网络请求。&quot;,
-          inputs: [node(&quot;Python 导入系统&quot;, &quot;加载 xduwlan.probe 子包时执行。&quot;)],
-          internals: [node(&quot;模块 docstring&quot;, &quot;说明该包保存网络探测适配器与端口接口。&quot;)],
-          outputs: [node(&quot;xduwlan.probe&quot;, &quot;为后续 DNS、TCP、HTTP 模块提供命名空间。&quot;)]
-        },
-        &quot;src/xduwlan/probe/interfaces.py&quot;: {
-          title: &quot;探测端口接口与观察记录&quot;, type: &quot;核心契约&quot;, status: &quot;阶段与完整探测契约已就位&quot;, owner: &quot;调用方与适配器共同依赖&quot;,
-          purpose: &quot;用项目自己的稳定类型隔离调用方与 DNS、TCP、HTTP 的具体库结构。&quot;,
-          boundary: &quot;只定义数据和能力契约，不调用 DNS、不建立 TCP 连接，也不依赖具体 HTTP 库。&quot;,
-          inputs: [node(&quot;dataclass(frozen=True)&quot;, &quot;生成不可变地址和观察记录。&quot;), node(&quot;Protocol&quot;, &quot;用结构化类型声明解析与连接能力。&quot;)],
-          internals: [node(&quot;ResolvedAddress&quot;, &quot;保存数值 host、port 和地址族 family。&quot;), node(&quot;TcpObservation&quot;, &quot;保存连接目标、成功状态、耗时和安全说明。&quot;), node(&quot;HttpObservation&quot;, &quot;保存状态码、Location、正文、耗时和安全说明。&quot;), node(&quot;DnsResolver / TcpConnector&quot;, &quot;声明 DNS 与 TCP 能力。&quot;), node(&quot;HttpConnectivityChecker.request(url, timeout)&quot;, &quot;声明 HTTP URL 到结构化观察的转换。&quot;), node(&quot;NetworkProbe.probe()&quot;, &quot;声明上层需要的完整探测结果能力。&quot;)],
-          outputs: [node(&quot;系统阶段适配器&quot;, &quot;依照端口接口提供 DNS、TCP、HTTP 观察。&quot;), node(&quot;DefaultNetworkProbe&quot;, &quot;接收可替换的阶段依赖并实现完整探测契约。&quot;), node(&quot;probe 测试&quot;, &quot;使用稳定领域类型断言适配器与服务行为。&quot;)]
-        },
-        &quot;src/xduwlan/probe/dns.py&quot;: {
-          title: &quot;系统 DNS 解析适配器&quot;, type: &quot;生产代码&quot;, status: &quot;DNS 地址转换 GREEN&quot;, owner: &quot;任务三 TCP 阶段将使用&quot;,
-          purpose: &quot;调用操作系统名称解析能力，并把 socket 地址记录转换为项目领域地址。&quot;,
-          boundary: &quot;当前已实现系统记录到领域地址的最小转换；尚未处理解析失败分类、地址去重或完整网络探测编排。&quot;,
-          inputs: [node(&quot;host / port&quot;, &quot;调用方提供 URL 中的主机名和目标端口。&quot;), node(&quot;socket.getaddrinfo&quot;, &quot;将主机名解析为适合 TCP 的系统地址候选。&quot;), node(&quot;ResolvedAddress&quot;, &quot;规定适配器的稳定输出结构。&quot;)],
-          internals: [node(&quot;SystemDnsResolver&quot;, &quot;提供 DnsResolver 所需的同名 resolve 能力。&quot;), node(&quot;getaddrinfo(..., SOCK_STREAM)&quot;, &quot;请求适合流式套接字的地址候选。&quot;), node(&quot;五元组转换 · GREEN&quot;, &quot;提取 family、sockaddr 中的 host 和 port，构造 ResolvedAddress。&quot;), node(&quot;tuple 返回 · GREEN&quot;, &quot;把收集的候选地址转换为不可变元组。&quot;)],
-          outputs: [node(&quot;tuple[ResolvedAddress, ...]&quot;, &quot;交给 TCP 阶段依次尝试连接。&quot;), node(&quot;tests/probe/test_dns.py&quot;, &quot;1 个地址转换测试已经 GREEN。&quot;)]
-        },
-        &quot;src/xduwlan/probe/tcp.py&quot;: {
-          title: &quot;系统 TCP 连接适配器&quot;, type: &quot;生产代码&quot;, status: &quot;TCP 小步 GREEN&quot;, owner: &quot;后续探测服务复用&quot;,
-          purpose: &quot;调用操作系统 TCP 连接能力，把一次连接尝试转换为结构化观察。&quot;,
-          boundary: &quot;当前覆盖成功、超时和其他 OSError 分类；不细分每一种 errno，也不负责 DNS、HTTP 或最终网络状态分类。&quot;,
-          inputs: [node(&quot;ResolvedAddress&quot;, &quot;DNS 阶段产生的数值 IP、端口和地址族。&quot;), node(&quot;timeout&quot;, &quot;限制连接握手的最长等待时间。&quot;), node(&quot;socket.create_connection&quot;, &quot;交给操作系统建立并返回 TCP 连接。&quot;), node(&quot;perf_counter&quot;, &quot;计算不受系统墙上时钟调整影响的连接耗时。&quot;)],
-          internals: [node(&quot;SystemTcpConnector&quot;, &quot;提供 TcpConnector 所需的 connect 能力。&quot;), node(&quot;perf_counter()&quot;, &quot;连接前后取值并换算为毫秒。&quot;), node(&quot;with create_connection(...)&quot;, &quot;向 host/port 端点建立连接，并在退出时自动关闭。&quot;), node(&quot;成功观察 · GREEN&quot;, &quot;返回原地址、成功状态、耗时和安全中文说明。&quot;), node(&quot;失败观察 · GREEN&quot;, &quot;先捕获 timeout，再捕获一般 OSError，不泄漏底层正文。&quot;)],
-          outputs: [node(&quot;TcpObservation&quot;, &quot;记录连接地址、成功状态、毫秒耗时与安全中文说明。&quot;), node(&quot;tests/probe/test_tcp.py&quot;, &quot;成功、超时和其他系统错误 3 个用例全部 GREEN。&quot;)]
-        },
-        &quot;src/xduwlan/probe/http.py&quot;: {
-          title: &quot;标准库 HTTP 连通性适配器&quot;, type: &quot;生产代码&quot;, status: &quot;HTTP 观察 GREEN&quot;, owner: &quot;后续分类器与探测服务复用&quot;,
-          purpose: &quot;发送不自动跟随重定向的 HTTP 请求，并把响应或网络失败转换为结构化观察。&quot;,
-          boundary: &quot;当前已实现响应与网络错误观察；不负责判断 ONLINE 或 PORTAL_REQUIRED，也不执行真实网络实验。&quot;,
-          inputs: [node(&quot;url / timeout&quot;, &quot;调用方提供探测 URL 和最长等待时间。&quot;), node(&quot;urllib Request / opener&quot;, &quot;构造 GET 请求并执行 HTTP 或 HTTPS 交换。&quot;), node(&quot;HTTPRedirectHandler&quot;, &quot;阻止客户端隐藏原始 3xx 响应。&quot;), node(&quot;perf_counter&quot;, &quot;计算请求持续时间。&quot;)],
-          internals: [node(&quot;MAX_BODY_BYTES&quot;, &quot;正文最多读取 65,536 字节。&quot;), node(&quot;NoRedirectHandler · GREEN&quot;, &quot;返回 None，拒绝创建访问 Location 的后续请求。&quot;), node(&quot;默认 opener · GREEN&quot;, &quot;安装 NoRedirectHandler，同时允许注入测试 opener。&quot;), node(&quot;普通响应与 HTTPError · GREEN&quot;, &quot;统一保存状态码、Location、字符集正文和耗时并关闭资源。&quot;), node(&quot;网络错误 · GREEN&quot;, &quot;具体超时先于 URLError 和 OSError，返回安全失败观察。&quot;)],
-          outputs: [node(&quot;HttpObservation&quot;, &quot;响应时保留状态码、Location、有限正文和耗时；失败时返回安全分类。&quot;), node(&quot;tests/probe/test_http.py&quot;, &quot;8 个 HTTP 观察用例全部 GREEN。&quot;)]
-        },
-        &quot;src/xduwlan/probe/classifier.py&quot;: {
-          title: &quot;HTTP 观察状态分类器&quot;, type: &quot;纯逻辑生产代码&quot;, status: &quot;分类器 GREEN&quot;, owner: &quot;后续探测服务复用&quot;,
-          purpose: &quot;组合 HTTP 状态码、重定向主机和正文特征，得到稳定的网络状态。&quot;,
-          boundary: &quot;当前只根据 HTTP 观察返回 ONLINE、PORTAL_REQUIRED 或 UNKNOWN；不访问网络、不读取配置，也不区分本地网络故障与互联网不可达。&quot;,
-          inputs: [node(&quot;HttpObservation&quot;, &quot;HTTP 适配器产生的状态码、Location、正文和失败信息。&quot;), node(&quot;portal_hosts&quot;, &quot;调用方明确允许的 Portal 主机名集合。&quot;), node(&quot;urlparse&quot;, &quot;实现时结构化提取 Location 的 hostname。&quot;)],
-          internals: [node(&quot;204 · GREEN&quot;, &quot;明确映射为 ONLINE。&quot;), node(&quot;已知 Portal 3xx · GREEN&quot;, &quot;使用 urlparse().hostname 精确匹配主机集合。&quot;), node(&quot;200 深澜正文 · GREEN&quot;, &quot;大小写无关查找 srun_portal 特征。&quot;), node(&quot;UNKNOWN 与畸形 URL · GREEN&quot;, &quot;其他响应或解析失败均安全回退。&quot;)],
-          outputs: [node(&quot;NetworkState&quot;, &quot;本函数只返回 ONLINE、PORTAL_REQUIRED 或 UNKNOWN。&quot;), node(&quot;tests/probe/test_classifier.py&quot;, &quot;8 个分类行为测试全部 GREEN。&quot;)]
-        },
-        &quot;src/xduwlan/probe/service.py&quot;: {
-          title: &quot;完整网络探测服务&quot;, type: &quot;生产代码&quot;, status: &quot;服务测试 7 GREEN&quot;, owner: &quot;学习者实现逻辑&quot;,
-          purpose: &quot;编排 URL 分解、DNS、TCP、HTTP 和分类，返回统一的 NetworkProbeResult。&quot;,
-          boundary: &quot;DNS 与 TCP 阶段失败已转换，HTTP 分类已接线；不负责 CLI 输出或真实认证。&quot;,
-          inputs: [node(&quot;AppConfig&quot;, &quot;提供探测 URL、Portal URL 和请求超时。&quot;), node(&quot;阶段 Protocol&quot;, &quot;注入 DNS、TCP、HTTP 能力，测试时使用替代对象。&quot;), node(&quot;classify_http_observation&quot;, &quot;将 HTTP 证据转换为领域状态。&quot;)],
-          internals: [node(&quot;DefaultNetworkProbe.__init__()&quot;, &quot;保存配置和三个阶段依赖。&quot;), node(&quot;DNS 失败 · GREEN&quot;, &quot;解析错误或空候选安全返回 UNKNOWN。&quot;), node(&quot;TCP 多地址/全失败 · GREEN&quot;, &quot;成功时继续 HTTP，全部失败时提前返回不可达。&quot;), node(&quot;HTTP 结果 · GREEN&quot;, &quot;分类 Portal 或未知，不传播原始 Location。&quot;)],
-          outputs: [node(&quot;NetworkProbeResult&quot;, &quot;后续交给 status CLI 和 login/watch 使用。&quot;), node(&quot;tests/probe/test_service.py&quot;, &quot;7 GREEN。&quot;)]
-        },
-        &quot;tests/test_cli.py&quot;: {
-          title: &quot;CLI 自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;18 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;把任务一 CLI 的外部可观察行为固定成可重复执行的规格。&quot;,
-          boundary: &quot;旧命令仍验证骨架；status 使用替代探测器，不访问真实网络。&quot;,
-          inputs: [node(&quot;xduwlan.cli.main&quot;, &quot;被测试入口。&quot;), node(&quot;pytest&quot;, &quot;提供参数化和输出捕获 fixture。&quot;)],
-          internals: [node(&quot;入口与占位命令 · GREEN&quot;, &quot;入口、帮助、未知命令和四个占位命令。&quot;), node(&quot;状态映射 · GREEN&quot;, &quot;五类 NetworkState 的摘要和退出码。&quot;), node(&quot;配置与错误 · GREEN&quot;, &quot;Path 加载、默认值和安全配置错误。&quot;), node(&quot;JSON/debug · GREEN&quot;, &quot;结构化脱敏输出和文本阶段信息。&quot;), node(&quot;装配 · GREEN&quot;, &quot;DefaultNetworkProbe 与三个系统适配器。&quot;)],
-          outputs: [node(&quot;cli.py 回归保护&quot;, &quot;固定完整 status 输入输出与装配边界。&quot;), node(&quot;任务四验收&quot;, &quot;18 个 CLI 测试全部 GREEN。&quot;)]
-        },
-        &quot;tests/test_config.py&quot;: {
-          title: &quot;配置自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;14 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;定义 AppConfig 的默认值、不可变性、文件合并和错误边界。&quot;,
-          boundary: &quot;只使用 tmp_path 中的虚构 TOML，不读写真实用户配置或凭据。&quot;,
-          inputs: [node(&quot;AppConfig&quot;, &quot;被测试配置对象。&quot;), node(&quot;ConfigurationError&quot;, &quot;预期错误类型。&quot;), node(&quot;pytest / tmp_path&quot;, &quot;提供异常断言、参数化和临时文件。&quot;)],
-          internals: [node(&quot;默认与不可变 · GREEN&quot;, &quot;六个默认字段和 frozen 行为已通过。&quot;), node(&quot;加载正常路径 · GREEN&quot;, &quot;空文件、部分覆盖和未知字段忽略已通过。&quot;), node(&quot;数值校验 · GREEN&quot;, &quot;字符串、bool、零和负数均已拒绝。&quot;), node(&quot;畸形 TOML · GREEN&quot;, &quot;已转换为 ConfigurationError 并保留 TOMLDecodeError 原因。&quot;)],
-          outputs: [node(&quot;config.py 实现要求&quot;, &quot;共 14 个用例覆盖任务二的配置契约。&quot;), node(&quot;errors.py 契约&quot;, &quot;错误必须统一为 ConfigurationError。&quot;)]
-        },
-        &quot;tests/test_models.py&quot;: {
-          title: &quot;模型自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;4 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;定义网络枚举和不可变探测结果必须满足的稳定契约。&quot;,
-          boundary: &quot;只覆盖 status 切片需要的模型，不提前测试认证或账户模型。&quot;,
-          inputs: [node(&quot;models.py&quot;, &quot;导入四个待实现符号。&quot;), node(&quot;pytest / FrozenInstanceError&quot;, &quot;验证不可变对象拒绝赋值。&quot;)],
-          internals: [node(&quot;NetworkState 测试 · GREEN&quot;, &quot;固定五个成员名称及其字符串值。&quot;), node(&quot;ProbeStage 测试 · GREEN&quot;, &quot;固定 DNS、TCP、HTTP 名称和值。&quot;), node(&quot;ProbeObservation 测试 · GREEN&quot;, &quot;验证四个字段和 frozen 行为。&quot;), node(&quot;NetworkProbeResult 测试 · GREEN&quot;, &quot;验证 state、tuple、portal_url 默认值和 frozen 行为。&quot;)],
-          outputs: [node(&quot;小步 2A&quot;, &quot;两个枚举测试已经 GREEN。&quot;), node(&quot;小步 2B&quot;, &quot;两个不可变数据类各有独立测试。&quot;)]
-        },
-        &quot;tests/probe/test_dns.py&quot;: {
-          title: &quot;DNS 地址转换测试&quot;, type: &quot;测试代码&quot;, status: &quot;1 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;先固定 SystemDnsResolver 对系统 API 的调用方式和领域地址转换结果。&quot;,
-          boundary: &quot;使用 monkeypatch 和虚构保留地址，不访问真实 DNS，也暂不覆盖解析失败或多地址候选。&quot;,
-          inputs: [node(&quot;SystemDnsResolver&quot;, &quot;被测试的系统 DNS 适配器。&quot;), node(&quot;socket.getaddrinfo&quot;, &quot;被 fake_getaddrinfo 替换，测试不访问网络。&quot;), node(&quot;ResolvedAddress&quot;, &quot;作为期望的稳定输出类型。&quot;)],
-          internals: [node(&quot;fake_getaddrinfo&quot;, &quot;记录调用参数并返回一条虚构 IPv4/TCP 地址。&quot;), node(&quot;monkeypatch&quot;, &quot;在测试期间替换 socket.getaddrinfo。&quot;), node(&quot;调用断言&quot;, &quot;要求使用 host、port 和 type=SOCK_STREAM。&quot;), node(&quot;结果断言&quot;, &quot;要求返回只含一个 ResolvedAddress 的 tuple。&quot;)],
-          outputs: [node(&quot;dns.py 回归保护&quot;, &quot;固定 getaddrinfo 调用与领域地址转换契约。&quot;), node(&quot;后续 TCP 小步&quot;, &quot;复用 ResolvedAddress 作为连接输入。&quot;)]
-        },
-        &quot;tests/probe/test_tcp.py&quot;: {
-          title: &quot;TCP 连接观察测试&quot;, type: &quot;测试代码&quot;, status: &quot;3 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;固定 TCP 成功路径与超时、其他系统错误的连接参数、耗时和观察结果。&quot;,
-          boundary: &quot;使用替代连接和可控时钟，不访问真实网络；当前不区分每一种具体 errno。&quot;,
-          inputs: [node(&quot;SystemTcpConnector&quot;, &quot;被测试的系统 TCP 适配器。&quot;), node(&quot;ResolvedAddress&quot;, &quot;使用虚构保留 IP 作为连接目标。&quot;), node(&quot;socket.create_connection&quot;, &quot;被 fake_create_connection 替换，不建立真实连接。&quot;), node(&quot;perf_counter&quot;, &quot;被两个固定时刻替换，得到 500 毫秒。&quot;)],
-          internals: [node(&quot;FakeConnection&quot;, &quot;支持 close 和上下文管理，记录成功连接是否关闭。&quot;), node(&quot;成功用例 · GREEN&quot;, &quot;固定连接参数、资源关闭、500 毫秒和成功说明。&quot;), node(&quot;参数化失败用例 · GREEN&quot;, &quot;分别注入 socket.timeout 和 OSError。&quot;), node(&quot;安全断言 · GREEN&quot;, &quot;返回分类后的中文说明，且不包含底层错误正文。&quot;)],
-          outputs: [node(&quot;tcp.py 回归保护&quot;, &quot;固定异常顺序、失败耗时、中文分类和成功行为。&quot;), node(&quot;HTTP 小步&quot;, &quot;后续网络请求可复用已经验证的 TCP 心智模型。&quot;)]
-        },
-        &quot;tests/probe/test_http.py&quot;: {
-          title: &quot;HTTP 连通性观察测试&quot;, type: &quot;测试代码&quot;, status: &quot;8 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;固定 HTTP 请求、响应、重定向保留、正文边界、资源关闭与网络错误分类。&quot;,
-          boundary: &quot;使用 fake opener、虚构 URL 和内存响应，不访问真实网络；Portal 状态分类与本地服务器集成留到后续步骤。&quot;,
-          inputs: [node(&quot;NoRedirectHandler&quot;, &quot;被测试的重定向阻止器。&quot;), node(&quot;SystemHttpConnectivityChecker&quot;, &quot;被测试的标准库 HTTP 适配器。&quot;), node(&quot;FakeResponse / FakeOpener&quot;, &quot;模拟完整响应结构和外部 I/O 边界。&quot;), node(&quot;HTTPError / 网络异常&quot;, &quot;模拟原始 302、超时、URLError 与 OSError。&quot;)],
-          internals: [node(&quot;重定向与默认 opener · GREEN&quot;, &quot;不创建后续请求并安装 NoRedirectHandler。&quot;), node(&quot;普通响应 · GREEN&quot;, &quot;覆盖 204、资源关闭、GET 参数和耗时。&quot;), node(&quot;正文边界 · GREEN&quot;, &quot;覆盖 gb18030 解码和 65,536 字节读取上限。&quot;), node(&quot;原始 302 · GREEN&quot;, &quot;把 HTTPError 当作响应并保留 Location。&quot;), node(&quot;网络错误 · GREEN&quot;, &quot;三类异常转换为不泄漏正文的安全观察。&quot;)],
-          outputs: [node(&quot;http.py 回归保护&quot;, &quot;固定 handler、opener、响应、正文与错误转换契约。&quot;), node(&quot;分类器输入&quot;, &quot;提供 204、302、200 正文与失败观察供纯逻辑分类。&quot;)]
-        },
-        &quot;tests/probe/test_classifier.py&quot;: {
-          title: &quot;HTTP 状态分类测试&quot;, type: &quot;测试代码&quot;, status: &quot;8 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;固定 HTTP 观察到 ONLINE、PORTAL_REQUIRED 和 UNKNOWN 的分类契约。&quot;,
-          boundary: &quot;只构造不可变观察并调用纯函数，不访问网络；DNS/TCP 故障的最终分类留给完整探测服务。&quot;,
-          inputs: [node(&quot;HttpObservation&quot;, &quot;构造 204、302、200、失败和畸形 Header 场景。&quot;), node(&quot;PORTAL_HOSTS&quot;, &quot;只允许虚构测试中的明确 Portal 主机。&quot;), node(&quot;classify_http_observation&quot;, &quot;被测试的纯分类函数。&quot;)],
-          internals: [node(&quot;ONLINE · GREEN&quot;, &quot;204 映射到 ONLINE。&quot;), node(&quot;Portal 重定向 · GREEN&quot;, &quot;只接受已知 hostname，拒绝未知主机和查询参数伪装。&quot;), node(&quot;正文特征 · GREEN&quot;, &quot;200 正文中的 srun_portal 大小写不敏感。&quot;), node(&quot;UNKNOWN · GREEN&quot;, &quot;覆盖普通 200、网络失败、缺失和畸形 Location。&quot;)],
-          outputs: [node(&quot;classifier.py 回归保护&quot;, &quot;固定优先级、精确 hostname、正文特征和安全回退。&quot;), node(&quot;集成测试&quot;, &quot;后续用真实本地 HTTP 响应验证适配器与分类器协作。&quot;)]
-        },
-        &quot;tests/probe/test_integration_server.py&quot;: {
-          title: &quot;本地 HTTP 服务器集成测试&quot;, type: &quot;集成测试&quot;, status: &quot;3 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;通过真实 loopback TCP/HTTP 验证 urllib 适配器与分类器的协作行为。&quot;,
-          boundary: &quot;只访问 127.0.0.1 的系统分配端口，不访问校园网或互联网，也不验证 HTTPS。&quot;,
-          inputs: [node(&quot;ThreadingHTTPServer&quot;, &quot;在测试线程监听 loopback 临时端口。&quot;), node(&quot;ConnectivityHandler&quot;, &quot;提供 /online、/portal 和 /login 三条受控路径。&quot;), node(&quot;SystemHttpConnectivityChecker&quot;, &quot;使用真实默认 opener 发起请求。&quot;), node(&quot;classify_http_observation&quot;, &quot;把真实响应观察转换为网络状态。&quot;)],
-          internals: [node(&quot;/online · GREEN&quot;, &quot;204 观察并分类为 ONLINE。&quot;), node(&quot;/portal · GREEN&quot;, &quot;保留 302 和 Location，只收到 /portal，证明未自动跟随。&quot;), node(&quot;/login · GREEN&quot;, &quot;200 UTF-8 正文含 srun_portal，分类为 PORTAL_REQUIRED。&quot;), node(&quot;fixture 清理 · GREEN&quot;, &quot;finally 中停止服务、关闭 socket 并等待线程退出。&quot;)],
-          outputs: [node(&quot;真实标准库证据&quot;, &quot;证明单元测试假设与 Python urllib 实际行为一致。&quot;), node(&quot;任务三完成条件&quot;, &quot;为学习与协议文档提供受控实验结果。&quot;)]
-        },
-        &quot;tests/probe/test_service.py&quot;: {
-          title: &quot;完整探测服务测试&quot;, type: &quot;测试代码&quot;, status: &quot;7 GREEN&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;固定 HTTPS、DNS/TCP 失败、HTTP 分类与脱敏的服务层行为。&quot;,
-          boundary: &quot;只使用虚构 URL、保留示例地址和替代阶段依赖，不访问真实网络。&quot;,
-          inputs: [node(&quot;DefaultNetworkProbe&quot;, &quot;被测试的真实服务入口。&quot;), node(&quot;FakeResolver / FakeConnector / FakeChecker&quot;, &quot;记录跨阶段调用并提供固定观察。&quot;)],
-          internals: [node(&quot;成功与 DNS 失败 · GREEN&quot;, &quot;204 在线与两类 DNS 失败分类。&quot;), node(&quot;TCP 候选 · GREEN&quot;, &quot;先败后成与全失败的处理。&quot;), node(&quot;HTTP 分类 · GREEN&quot;, &quot;自定义 Portal、网络错误和敏感 Location 不进入结果。&quot;)],
-          outputs: [node(&quot;service.py 的回归保护&quot;, &quot;当前 7 个用例全部 GREEN。&quot;)]
-        },
-        &quot;docs/architecture.md&quot;: {
-          title: &quot;架构说明&quot;, type: &quot;架构文档&quot;, status: &quot;持续更新&quot;, owner: &quot;开发共同依据&quot;,
-          purpose: &quot;用较短篇幅固定模块边界、依赖方向和纵向切片方式。&quot;,
-          boundary: &quot;解释结构和原则，不展开每个协议字段或逐步实现细节。&quot;,
-          inputs: [node(&quot;正式设计规格&quot;, &quot;提供完整范围与架构决策。&quot;), node(&quot;当前实现路线&quot;, &quot;按 status 到 account 纵向推进。&quot;)],
-          internals: [node(&quot;目标与依赖方向&quot;, &quot;核心与具体库、操作系统解耦。&quot;), node(&quot;交互架构图&quot;, &quot;链接命令架构图和当前文件框架图。&quot;), node(&quot;主要组件&quot;, &quot;models、probe、portal、watcher 等职责。&quot;), node(&quot;纵向切片&quot;, &quot;说明开发顺序与分层架构并不冲突。&quot;), node(&quot;关键隔离与迁移&quot;, &quot;Portal、自服务和跨语言边界。&quot;)],
-          outputs: [node(&quot;实施判断&quot;, &quot;新增代码应放在哪一层。&quot;), node(&quot;读者导航&quot;, &quot;连接两张交互式架构图。&quot;)]
-        },
-        &quot;docs/progress.md&quot;: {
-          title: &quot;项目进度&quot;, type: &quot;状态文档&quot;, status: &quot;每个小目标后更新&quot;, owner: &quot;指导者维护&quot;,
-          purpose: &quot;回答项目目前完成了什么、卡在哪里、下一步是什么。&quot;,
-          boundary: &quot;只记录当前事实，不替代长期规格或完整会话背景。&quot;,
-          inputs: [node(&quot;测试结果&quot;, &quot;通过和预期失败的最新数量。&quot;), node(&quot;完成记录&quot;, &quot;已验证的小目标。&quot;)],
-          internals: [node(&quot;当前阶段&quot;, &quot;任务一至四已完成，下一步进入任务五 configure。&quot;), node(&quot;已完成&quot;, &quot;探测服务、status CLI、学习记录和项目文档全部完成。&quot;), node(&quot;当前阻塞&quot;, &quot;无；服务 7 个、CLI 18 个、全仓库 66 个测试通过。&quot;), node(&quot;下一步&quot;, &quot;对齐 configure 的凭据输入、Protocol 和 keyring 边界。&quot;), node(&quot;最近验证&quot;, &quot;记录全量测试、差异检查、编译和安全扫描。&quot;)],
-          outputs: [node(&quot;当前会话&quot;, &quot;决定下一步工作。&quot;), node(&quot;session-handoff&quot;, &quot;提供更完整的跨会话背景。&quot;)]
-        },
-        &quot;docs/security.md&quot;: {
-          title: &quot;安全与隐私规则&quot;, type: &quot;安全文档&quot;, status: &quot;持续生效&quot;, owner: &quot;所有模块遵守&quot;,
-          purpose: &quot;明确哪些数据敏感，以及存储、日志、验证码和测试应怎样处理。&quot;,
-          boundary: &quot;制定安全底线，不包含真实凭据、真实页面或完整认证 URL。&quot;,
-          inputs: [node(&quot;校园网数据类型&quot;, &quot;账号、密码、Cookie、Token、MAC、IP 等。&quot;), node(&quot;项目威胁边界&quot;, &quot;本地配置、日志、Git 和测试 fixture。&quot;)],
-          internals: [node(&quot;敏感信息&quot;, &quot;列举必须保护的数据。&quot;), node(&quot;存储&quot;, &quot;密码进 keyring，会话不进 Git。&quot;), node(&quot;日志&quot;, &quot;只记录脱敏状态和耗时。&quot;), node(&quot;验证码&quot;, &quot;坚持人工输入，不识别、不绕过。&quot;), node(&quot;测试和文档&quot;, &quot;只使用虚构或已脱敏材料。&quot;)],
-          outputs: [node(&quot;config / credentials&quot;, &quot;决定数据应该存在哪里。&quot;), node(&quot;日志与测试&quot;, &quot;决定哪些内容禁止出现。&quot;), node(&quot;协议实验&quot;, &quot;决定真实观察如何脱敏。&quot;)]
-        },
-        &quot;docs/session-handoff.md&quot;: {
-          title: &quot;会话交接&quot;, type: &quot;状态文档&quot;, status: &quot;每次会话后更新&quot;, owner: &quot;下一次会话首先读取&quot;,
-          purpose: &quot;让新的开发会话不依赖聊天历史也能恢复目标、代码状态和下一步。&quot;,
-          boundary: &quot;是当前上下文快照；长期原因仍以规格、ADR 和架构文档为准。&quot;,
-          inputs: [node(&quot;progress.md&quot;, &quot;提供当前阶段和验证结果。&quot;), node(&quot;本次会话决策&quot;, &quot;补充教学分工、风险和必读入口。&quot;)],
-          internals: [node(&quot;当前目标&quot;, &quot;说明任务四已完成，下一步进入任务五 configure。&quot;), node(&quot;已完成&quot;, &quot;列出服务 7 个、CLI 18 个和全仓库 66 个测试通过，以及 status 学习文档。&quot;), node(&quot;当前代码状态&quot;, &quot;完整 status 切片已接通；其他四个命令仍为占位。&quot;), node(&quot;下一步任务&quot;, &quot;先按职责提交任务四，再对齐 configure 架构。&quot;), node(&quot;必须先阅读 / 风险&quot;, &quot;提供上下文入口与真实协议风险。&quot;)],
-          outputs: [node(&quot;新会话&quot;, &quot;快速恢复工作位置。&quot;), node(&quot;开发连续性&quot;, &quot;防止遗忘测试状态和安全边界。&quot;)]
-        },
-        &quot;docs/decisions/0001-python-first.md&quot;: {
-          title: &quot;ADR 0001：第一版使用 Python&quot;, type: &quot;架构决策记录&quot;, status: &quot;已接受&quot;, owner: &quot;约束第一版技术路线&quot;,
-          purpose: &quot;记录为什么先用 Python 3.11+ 和标准库，而不是直接做最终桌面应用。&quot;,
-          boundary: &quot;只固定第一版语言选择，不排除未来 Java、Go、Rust 或桌面界面。&quot;,
-          inputs: [node(&quot;学习目标&quot;, &quot;需要快速观察 DNS、TCP、HTTP 和协议。&quot;), node(&quot;跨平台目标&quot;, &quot;未来仍要保留迁移能力。&quot;)],
-          internals: [node(&quot;状态&quot;, &quot;已接受。&quot;), node(&quot;背景&quot;, &quot;学习与验证优先。&quot;), node(&quot;决策&quot;, &quot;Python 3.11+、模块化 CLI、标准库优先。&quot;), node(&quot;理由&quot;, &quot;反馈快、黑盒依赖少。&quot;), node(&quot;后果&quot;, &quot;以后仍需打包、平台验证和界面。&quot;)],
-          outputs: [node(&quot;pyproject.toml&quot;, &quot;最低 Python 版本和包结构。&quot;), node(&quot;实现选择&quot;, &quot;网络基础阶段优先标准库。&quot;)]
-        },
-        &quot;docs/decisions/0002-modular-cli.md&quot;: {
-          title: &quot;ADR 0002：模块化 CLI&quot;, type: &quot;架构决策记录&quot;, status: &quot;已接受&quot;, owner: &quot;约束模块划分&quot;,
-          purpose: &quot;记录为什么使用分层模块和核心领域模型，而不是堆叠脚本。&quot;,
-          boundary: &quot;固定职责边界，但不提前规定每个适配器的全部实现细节。&quot;,
-          inputs: [node(&quot;五类功能&quot;, &quot;探测、认证、自服务、凭据和重连。&quot;), node(&quot;耦合风险&quot;, &quot;脚本集合会复制流程和错误处理。&quot;)],
-          internals: [node(&quot;状态 / 背景&quot;, &quot;说明决策已接受及耦合问题。&quot;), node(&quot;决策&quot;, &quot;CLI、应用服务、核心模型/端口、适配器四层。&quot;), node(&quot;理由&quot;, &quot;可单独学习、测试和替换。&quot;), node(&quot;后果&quot;, &quot;前期模型与接口代码略多。&quot;)],
-          outputs: [node(&quot;architecture.md&quot;, &quot;形成单向依赖结构。&quot;), node(&quot;Portal / 自服务&quot;, &quot;明确保持两条独立链路。&quot;)]
-        },
-        &quot;docs/decisions/0003-system-keyring.md&quot;: {
-          title: &quot;ADR 0003：系统凭据库&quot;, type: &quot;架构决策记录&quot;, status: &quot;已接受&quot;, owner: &quot;约束密码存储&quot;,
-          purpose: &quot;记录为什么长期密码必须进入系统凭据库而不是普通文件。&quot;,
-          boundary: &quot;只决定密码存储策略；普通非敏感配置仍由 AppConfig/TOML 管理。&quot;,
-          inputs: [node(&quot;自动认证需求&quot;, &quot;程序需要在用户授权后读取密码。&quot;), node(&quot;安全规则&quot;, &quot;明文配置和日志不适合保存凭据。&quot;)],
-          internals: [node(&quot;状态 / 背景&quot;, &quot;说明密码持久化问题。&quot;), node(&quot;决策&quot;, &quot;通过 keyring 调用各平台凭据库。&quot;), node(&quot;理由&quot;, &quot;保护长期密码并隔离平台差异。&quot;), node(&quot;后果&quot;, &quot;无桌面后端时必须明确报错。&quot;)],
-          outputs: [node(&quot;configure&quot;, &quot;交互写入凭据。&quot;), node(&quot;login&quot;, &quot;认证时读取凭据。&quot;), node(&quot;禁止回退&quot;, &quot;不得静默保存明文密码。&quot;)]
-        },
-        &quot;docs/learning/README.md&quot;: {
-          title: &quot;学习文档目录&quot;, type: &quot;学习索引&quot;, status: &quot;按切片逐步扩展&quot;, owner: &quot;学习路线入口&quot;,
-          purpose: &quot;规定学习记录的统一结构和按实际使用顺序排列的主题。&quot;,
-          boundary: &quot;未来主题不提前写结论，等相应代码通过测试后再记录。&quot;,
-          inputs: [node(&quot;纵向切片顺序&quot;, &quot;status、configure、login、watch、account。&quot;), node(&quot;实际实现经验&quot;, &quot;测试、失败现象和复盘。&quot;)],
-          internals: [node(&quot;文章模板&quot;, &quot;问题、概念、数据流、API、实验、结果、易错点。&quot;), node(&quot;00-05&quot;, &quot;CLI、模型配置、DNS、TCP、HTTP 和 status。&quot;), node(&quot;06-10&quot;, &quot;凭据、Portal、状态机、会话、打包。&quot;)],
-          outputs: [node(&quot;docs/learning/*.md&quot;, &quot;每个主题完成后生成学习记录。&quot;), node(&quot;初学者路线&quot;, &quot;决定先学哪些语法和网络概念。&quot;)]
-        },
-        &quot;docs/learning/00-python-cli.md&quot;: {
-          title: &quot;学习记录 00：Python CLI&quot;, type: &quot;学习文档&quot;, status: &quot;任务一已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;把任务一中真实使用的 argparse、入口点和测试方法沉淀下来。&quot;,
-          boundary: &quot;只讲 CLI 骨架；五个命令的业务逻辑留给后续切片。&quot;,
-          inputs: [node(&quot;任务一实现&quot;, &quot;pyproject、__init__、cli.py 和 test_cli.py。&quot;), node(&quot;验证环境&quot;, &quot;Python 3.11.16 与 pytest 9.1.1。&quot;)],
-          internals: [node(&quot;问题与目标&quot;, &quot;建立可安装、可测试的子命令 CLI。&quot;), node(&quot;文件与符号&quot;, &quot;逐一解释四个任务一文件。&quot;), node(&quot;调用流程&quot;, &quot;console script 到 main、parser 和 handler。&quot;), node(&quot;API 检索&quot;, &quot;argparse、project.scripts 和 capsys。&quot;), node(&quot;测试与边界&quot;, &quot;7 个通过，命令仍是占位。&quot;)],
-          outputs: [node(&quot;任务一复盘&quot;, &quot;新会话可恢复 CLI 设计。&quot;), node(&quot;后续 CLI 修改&quot;, &quot;保留 main 和 parser 的边界。&quot;)]
-        },
-        &quot;docs/learning/01-models-and-config.md&quot;: {
-          title: &quot;学习记录 01：网络模型与配置&quot;, type: &quot;学习文档&quot;, status: &quot;任务二已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;沉淀任务二实际使用的 Enum、不可变数据类、TOML、校验和异常链。&quot;,
-          boundary: &quot;只记录模型与非敏感配置；真实 DNS、TCP、HTTP 留给任务三。&quot;,
-          inputs: [node(&quot;任务二实现&quot;, &quot;models.py、config.py、errors.py 和对应测试。&quot;), node(&quot;实际调试&quot;, &quot;枚举名称漏测、bool 类型边界和 TOML 异常链。&quot;)],
-          internals: [node(&quot;文件与符号&quot;, &quot;说明四个模型、AppConfig 和异常层次。&quot;), node(&quot;调用流程&quot;, &quot;TOML 到 AppConfig，探测观察到完整结果。&quot;), node(&quot;关键语法&quot;, &quot;Enum、dataclass、tuple、classmethod、tomllib、异常链。&quot;), node(&quot;测试结果&quot;, &quot;任务二 18 个测试和全仓库 25 个测试通过。&quot;), node(&quot;易错点&quot;, &quot;记录本轮真实出现或补充发现的边界。&quot;)],
-          outputs: [node(&quot;任务二复盘&quot;, &quot;为后续任务提供已验证知识。&quot;), node(&quot;任务三入口&quot;, &quot;明确下一步进入 DNS/TCP/HTTP 探测。&quot;)]
-        },
-        &quot;docs/learning/02-dns.md&quot;: {
-          title: &quot;学习记录 02：DNS 与地址解析&quot;, type: &quot;学习文档&quot;, status: &quot;任务三已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;解释主机名、IP 地址、端口、系统名称解析器和项目 DNS 抽象之间的关系。&quot;,
-          boundary: &quot;不手工构造 DNS 报文，不讨论 DNSSEC、缓存策略或多地址重试编排。&quot;,
-          inputs: [node(&quot;DNS 实现与测试&quot;, &quot;interfaces.py、dns.py 和 test_dns.py。&quot;), node(&quot;实际教学过程&quot;, &quot;记录五元组解包、SOCK_STREAM 和不可变候选集合。&quot;)],
-          internals: [node(&quot;网络位置&quot;, &quot;URL → 主机名 → 地址候选 → TCP。&quot;), node(&quot;三个层次&quot;, &quot;概念模型、操作系统 getaddrinfo 和项目 Protocol。&quot;), node(&quot;数据流与语法&quot;, &quot;五元组转换、列表收集和 tuple 返回。&quot;), node(&quot;测试与边界&quot;, &quot;1 GREEN，并记录解析失败和多候选留待编排。&quot;)],
-          outputs: [node(&quot;DNS 复盘&quot;, &quot;为任务四的 URL 分解和多地址尝试提供基础。&quot;), node(&quot;API 检索问题&quot;, &quot;记录 getaddrinfo、地址族和 sockaddr 的官方资料入口。&quot;)]
-        },
-        &quot;docs/learning/03-tcp.md&quot;: {
-          title: &quot;学习记录 03：TCP 连接与超时&quot;, type: &quot;学习文档&quot;, status: &quot;任务三已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;解释 TCP 端点、三次握手、超时、系统错误、计时和资源关闭。&quot;,
-          boundary: &quot;不发送 HTTP 数据、不细分 errno，也不编排多个 DNS 地址候选。&quot;,
-          inputs: [node(&quot;TCP 实现与测试&quot;, &quot;interfaces.py、tcp.py 和 test_tcp.py。&quot;), node(&quot;实际调试&quot;, &quot;记录异常继承顺序、with 资源关闭和安全错误说明。&quot;)],
-          internals: [node(&quot;网络位置&quot;, &quot;DNS 地址 → TCP → TLS/HTTP。&quot;), node(&quot;成功与失败流&quot;, &quot;create_connection、timeout 和 OSError 转换。&quot;), node(&quot;Python 语法&quot;, &quot;try/except、上下文管理器、perf_counter 和参数化测试。&quot;), node(&quot;测试与边界&quot;, &quot;3 GREEN，后续由服务编排多地址和最终状态。&quot;)],
-          outputs: [node(&quot;TCP 复盘&quot;, &quot;为 HTTP 和完整探测服务提供连接层心智模型。&quot;), node(&quot;安全约束&quot;, &quot;底层异常正文不得进入上层说明。&quot;)]
-        },
-        &quot;docs/learning/04-http.md&quot;: {
-          title: &quot;学习记录 04：HTTP 与 Captive Portal&quot;, type: &quot;学习文档&quot;, status: &quot;任务三已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;解释 HTTP 请求/响应、状态码、Header、正文、重定向、Portal 分类和本地集成测试。&quot;,
-          boundary: &quot;不验证真实校园网、HTTPS 细节或 Portal 认证，只记录任务三已实现的观察与分类。&quot;,
-          inputs: [node(&quot;HTTP 实现与测试&quot;, &quot;http.py、classifier.py 和 19 个 HTTP/分类/集成测试。&quot;), node(&quot;本地受控实验&quot;, &quot;ThreadingHTTPServer 的 204、302 和 200 路径。&quot;)],
-          internals: [node(&quot;协议结构&quot;, &quot;GET、状态码、Location、Content-Type 和正文。&quot;), node(&quot;适配器数据流&quot;, &quot;禁止重定向、HTTPError、字符集、读取上限和异常顺序。&quot;), node(&quot;分类规则&quot;, &quot;204、已知 Portal hostname、srun_portal 和 UNKNOWN。&quot;), node(&quot;集成与清理&quot;, &quot;loopback、临时端口、服务线程和 fixture 清理。&quot;)],
-          outputs: [node(&quot;HTTP 复盘&quot;, &quot;为任务四完整状态编排提供已验证组件。&quot;), node(&quot;测试结果&quot;, &quot;任务三 23 GREEN，全仓库 48 GREEN。&quot;)]
-        },
-        &quot;docs/learning/05-status-cli.md&quot;: {
-          title: &quot;学习记录 05：status CLI 与完整探测&quot;, type: &quot;学习文档&quot;, status: &quot;任务四已完成&quot;, owner: &quot;记录已验证知识&quot;,
-          purpose: &quot;说明完整探测服务如何编排 DNS、TCP、HTTP，并由 status CLI 输出稳定、脱敏的状态结果。&quot;,
-          boundary: &quot;只覆盖 status 切片；认证、凭据、watch 和 account 留给后续任务。&quot;,
-          inputs: [node(&quot;任务四实现&quot;, &quot;service.py、interfaces.py、cli.py 及对应测试。&quot;), node(&quot;任务三组件&quot;, &quot;DNS、TCP、HTTP 适配器和分类器。&quot;)],
-          internals: [node(&quot;调用路径&quot;, &quot;status → 配置 → DefaultNetworkProbe → DNS/TCP/HTTP → NetworkProbeResult。&quot;), node(&quot;状态与退出码&quot;, &quot;在线返回 0，认证返回 4，网络失败返回 5，未知返回 1。&quot;), node(&quot;输出模式&quot;, &quot;中文摘要、脱敏 JSON 和阶段 debug 观察。&quot;), node(&quot;测试结果&quot;, &quot;服务 7 个、CLI 18 个、全仓库 66 个测试通过。&quot;)],
-          outputs: [node(&quot;任务四复盘&quot;, &quot;为 configure 和后续 watch 提供完整探测入口。&quot;), node(&quot;安全边界&quot;, &quot;JSON 和 debug 不输出 Location、正文或底层错误正文。&quot;)]
-        },
-        &quot;docs/protocol/README.md&quot;: {
-          title: &quot;协议记录目录&quot;, type: &quot;协议索引&quot;, status: &quot;等待真实脱敏证据&quot;, owner: &quot;协议实验入口&quot;,
-          purpose: &quot;规定协议事实怎样分类、命名和保存，避免把推测写成事实。&quot;,
-          boundary: &quot;当前只有目录规则，不包含真实请求、账号、Cookie 或原始页面。&quot;,
-          inputs: [node(&quot;受控实验&quot;, &quot;浏览器观察、本地模拟和真实校园网验证。&quot;), node(&quot;安全规则&quot;, &quot;所有证据必须先脱敏。&quot;)],
-          internals: [node(&quot;证据等级&quot;, &quot;已观察、已验证、推断。&quot;), node(&quot;connectivity-detection&quot;, &quot;计划记录连通性和 Portal 识别。&quot;), node(&quot;srun-authentication&quot;, &quot;计划记录深澜请求顺序和字段。&quot;), node(&quot;self-service&quot;, &quot;计划记录会话、验证码和 HTML 字段。&quot;)],
-          outputs: [node(&quot;未来协议文档&quot;, &quot;为每条结论标记证据类型。&quot;), node(&quot;实现依据&quot;, &quot;协议代码只能依赖脱敏且可追溯的事实。&quot;)]
-        },
-        &quot;docs/protocol/connectivity-detection.md&quot;: {
-          title: &quot;连通性检测协议记录&quot;, type: &quot;协议文档&quot;, status: &quot;本地证据已记录&quot;, owner: &quot;任务四真实实验继续更新&quot;,
-          purpose: &quot;区分已验证的标准库与项目行为，以及尚待校园网实验确认的实现假设。&quot;,
-          boundary: &quot;不包含真实账号、Cookie、认证参数、完整认证 URL 或原始校园网页面。&quot;,
-          inputs: [node(&quot;23 个探测测试&quot;, &quot;提供 DNS、TCP、HTTP、分类和本地集成证据。&quot;), node(&quot;安全规则&quot;, &quot;限制真实实验可记录的字段。&quot;)],
-          internals: [node(&quot;已验证基础路径&quot;, &quot;名称解析、TCP、禁止重定向 HTTP 和结构化观察。&quot;), node(&quot;已验证分类契约&quot;, &quot;204、已知 Portal 3xx、srun_portal 和 UNKNOWN。&quot;), node(&quot;推断&quot;, &quot;真实探测端点、Portal 行为、IPv4/IPv6 和多目标策略待实测。&quot;), node(&quot;后续验证问题&quot;, &quot;为任务四 status 受控实验列出问题。&quot;)],
-          outputs: [node(&quot;实现依据&quot;, &quot;明确哪些规则已有本地证据，哪些只是可测试假设。&quot;), node(&quot;真实实验边界&quot;, &quot;只记录脱敏状态码、主机类别、耗时和结论。&quot;)]
-        },
-        &quot;docs/superpowers/plans/2026-09-19-xduwlan-mvp.md&quot;: {
-          title: &quot;MVP 实施计划&quot;, type: &quot;实施计划&quot;, status: &quot;任务四已完成并分批提交&quot;, owner: &quot;逐任务执行依据&quot;,
-          purpose: &quot;把正式规格拆成可测试、可提交、可教学的小任务。&quot;,
-          boundary: &quot;描述计划和验收；真实协议参数仍需后续脱敏实验确认。&quot;,
-          inputs: [node(&quot;正式设计规格&quot;, &quot;提供目标、架构、数据流和里程碑。&quot;), node(&quot;教学协作规则&quot;, &quot;要求测试先行和学习者实现逻辑。&quot;)],
-          internals: [node(&quot;全局约束&quot;, &quot;标准库优先、安全、测试和文档要求。&quot;), node(&quot;文件结构总览&quot;, &quot;预计创建的代码、测试和文档。&quot;), node(&quot;纵向切片顺序&quot;, &quot;status 到 account，再交付。&quot;), node(&quot;任务 3 完成&quot;, &quot;适配器、分类、集成、学习和协议文档全部 GREEN。&quot;), node(&quot;任务 4 完成&quot;, &quot;完整探测服务、status CLI、测试和文档全部 GREEN。&quot;), node(&quot;计划自审&quot;, &quot;检查规格覆盖、一致性和完整性。&quot;)],
-          outputs: [node(&quot;当前任务&quot;, &quot;任务四已完成，下一步进入 configure。&quot;), node(&quot;未来文件&quot;, &quot;portal、credentials、watcher、monitor 等。&quot;), node(&quot;提交边界&quot;, &quot;任务四已按生产代码/测试和文档职责分批提交。&quot;)]
-        },
-        &quot;docs/superpowers/specs/2026-09-19-xduwlan-design.md&quot;: {
-          title: &quot;项目设计规格&quot;, type: &quot;正式规格&quot;, status: &quot;已批准&quot;, owner: &quot;范围与验收的最高项目文档&quot;,
-          purpose: &quot;固定第一版为什么做、做什么、不做什么，以及模块怎样协作。&quot;,
-          boundary: &quot;是设计契约，不替代逐行代码说明或真实协议证据。&quot;,
-          inputs: [node(&quot;用户目标&quot;, &quot;学习网络探测、认证、监测与跨平台设计。&quot;), node(&quot;安全与产品约束&quot;, &quot;人工验证码、系统凭据库、前台 watch。&quot;)],
-          internals: [node(&quot;目标与范围&quot;, &quot;必须包含和明确不包含。&quot;), node(&quot;总体架构&quot;, &quot;分层结构和预计目录。&quot;), node(&quot;核心数据模型&quot;, &quot;网络、认证和账户结果。&quot;), node(&quot;模块接口&quot;, &quot;CLI、探测、Portal、watch、自服务、凭据。&quot;), node(&quot;数据流与错误&quot;, &quot;四个命令流程和异常分类。&quot;), node(&quot;测试、安全、教学&quot;, &quot;验收方法和纵向切片规则。&quot;), node(&quot;M1-M5&quot;, &quot;五个里程碑的完成标准。&quot;)],
-          outputs: [node(&quot;architecture.md&quot;, &quot;提炼依赖和模块边界。&quot;), node(&quot;MVP plan&quot;, &quot;拆解成 10 个实施任务。&quot;), node(&quot;所有实现&quot;, &quot;功能范围和验收必须与规格一致。&quot;)]
-        },
-        &quot;docs/visualizations/xduwlan-architecture.html&quot;: {
-          title: &quot;五个命令交互架构图&quot;, type: &quot;生成式交互文档&quot;, status: &quot;已完成&quot;, owner: &quot;帮助理解总体调用链&quot;,
-          purpose: &quot;让初学者切换五个命令，直观看到 CLI 到外部世界的分层流动。&quot;,
-          boundary: &quot;展示总体分层，不展开每个文件的内部符号；详细文件结构由当前浏览图承担。&quot;,
-          inputs: [node(&quot;architecture.md&quot;, &quot;提供分层和依赖方向。&quot;), node(&quot;五个命令设计&quot;, &quot;status、login、watch、account、configure。&quot;)],
-          internals: [node(&quot;命令选择控件&quot;, &quot;切换五条不同调用链。&quot;), node(&quot;五层流水线&quot;, &quot;CLI、应用服务、核心契约、适配器、外部世界。&quot;), node(&quot;动态结果区&quot;, &quot;说明每条命令最终得到的数据。&quot;), node(&quot;独立包装&quot;, &quot;可在浏览器直接打开。&quot;)],
-          outputs: [node(&quot;architecture.md 入口&quot;, &quot;文档链接到该图。&quot;), node(&quot;总体心智模型&quot;, &quot;帮助理解分层与纵向切片。&quot;)]
-        }
-      };
-
-      const renderNodes = (container, values) =&gt; {
-        container.replaceChildren();
-        values.forEach((value) =&gt; {
-          const item = document.createElement(&quot;div&quot;);
-          item.className = &quot;fa-node&quot;;
-          const name = document.createElement(&quot;strong&quot;);
-          name.textContent = value.name;
-          const detail = document.createElement(&quot;p&quot;);
-          detail.className = &quot;text-small&quot;;
-          detail.textContent = value.detail;
-          item.append(name, detail);
-          container.append(item);
-        });
-      };
-
-      const render = (path) =&gt; {
-        const file = files[path];
-        root.querySelector(&quot;[data-title]&quot;).textContent = file.title;
-        root.querySelector(&quot;[data-path-label]&quot;).textContent = path;
-        root.querySelector(&quot;[data-type]&quot;).textContent = file.type;
-        root.querySelector(&quot;[data-status]&quot;).textContent = file.status;
-        root.querySelector(&quot;[data-owner]&quot;).textContent = file.owner;
-        root.querySelector(&quot;[data-purpose]&quot;).textContent = file.purpose;
-        root.querySelector(&quot;[data-boundary]&quot;).textContent = file.boundary;
-        renderNodes(root.querySelector(&quot;[data-inputs]&quot;), file.inputs);
-        renderNodes(root.querySelector(&quot;[data-internals]&quot;), file.internals);
-        renderNodes(root.querySelector(&quot;[data-outputs]&quot;), file.outputs);
-        root.querySelectorAll(&quot;[data-path]&quot;).forEach((button) =&gt; {
-          const selected = button.dataset.path === path;
-          button.classList.toggle(&quot;btn-primary&quot;, selected);
-          button.classList.toggle(&quot;btn-ghost&quot;, !selected);
-          button.setAttribute(&quot;aria-pressed&quot;, String(selected));
-        });
-      };
-
-      root.querySelectorAll(&quot;[data-path]&quot;).forEach((button) =&gt; {
-        button.addEventListener(&quot;click&quot;, () =&gt; render(button.dataset.path));
-      });
-      render(&quot;src/xduwlan/cli.py&quot;);
-    })();
-  &lt;/script&gt;
-&lt;/div&gt;
-
-&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
-&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
-&lt;script&gt;
-(() =&gt; {
-  if (window.FloatingUIDOM == null) {
-    return;
-  }
-  const { autoUpdate, computePosition, flip, offset, shift, size } =
-    window.FloatingUIDOM;
-  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
-  const tooltipId = `codex-visualization-tooltip-${
-    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
-  }`;
-  const tooltipGap = 5;
-  const hoverDelay = 700;
-  const skipDelay = 300;
-  let activeTrigger = null;
-  let pendingTrigger = null;
-  let tooltip = null;
-  let openTimeout = null;
-  let autoUpdateCleanup = null;
-  let positionRequest = 0;
-  let skipDelayUntil = 0;
-  let lastPointerWasTouch = false;
-  let pinnedByTouch = false;
-
-  const getTrigger = (target) =&gt;
-    target?.nodeType === Node.ELEMENT_NODE
-      ? target.closest(&quot;[data-tooltip]&quot;)
-      : null;
-  const containsTarget = (trigger, target) =&gt;
-    target?.nodeType != null &amp;&amp; trigger.contains(target);
-  const getContent = (trigger) =&gt;
-    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
-  const getPlacement = (trigger) =&gt; {
-    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
-    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
-  };
-  const getTooltip = () =&gt; {
-    if (tooltip == null) {
-      tooltip = document.createElement(&quot;div&quot;);
-      tooltip.id = tooltipId;
-      tooltip.className = &quot;tooltip&quot;;
-      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
-    }
-    return tooltip;
-  };
-  const setDescribedBy = (trigger, described) =&gt; {
-    const ids = new Set(
-      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
-        .split(/\s+/)
-        .filter(Boolean),
-    );
-    if (described) {
-      ids.add(tooltipId);
-    } else {
-      ids.delete(tooltipId);
-    }
-    if (ids.size === 0) {
-      trigger.removeAttribute(&quot;aria-describedby&quot;);
-    } else {
-      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
-    }
-  };
-  const clearOpenTimeout = () =&gt; {
-    if (openTimeout != null) {
-      window.clearTimeout(openTimeout);
-      openTimeout = null;
-    }
-    pendingTrigger = null;
-  };
-  const closeTooltip = (activateSkipDelay = true) =&gt; {
-    clearOpenTimeout();
-    pinnedByTouch = false;
-    positionRequest += 1;
-    autoUpdateCleanup?.();
-    autoUpdateCleanup = null;
-    if (activeTrigger == null) {
-      return;
-    }
-    setDescribedBy(activeTrigger, false);
-    activeTrigger = null;
-    tooltip?.remove();
-    if (activateSkipDelay) {
-      skipDelayUntil = Date.now() + skipDelay;
-    }
-  };
-  const updatePosition = (trigger, floating) =&gt; {
-    const request = ++positionRequest;
-    void computePosition(trigger, floating, {
-      middleware: [
-        offset(tooltipGap),
-        flip({ padding: tooltipGap }),
-        shift({ padding: tooltipGap }),
-        size({
-          padding: tooltipGap,
-          apply({ availableHeight, availableWidth, elements }) {
-            elements.floating.style.setProperty(
-              &quot;--tooltip-available-width&quot;,
-              `${Math.max(0, availableWidth)}px`,
-            );
-            elements.floating.style.setProperty(
-              &quot;--tooltip-available-height&quot;,
-              `${Math.max(0, availableHeight)}px`,
-            );
-          },
-        }),
-      ],
-      placement: getPlacement(trigger),
-      strategy: &quot;fixed&quot;,
-    })
-      .then(({ x, y }) =&gt; {
-        if (activeTrigger !== trigger || request !== positionRequest) {
-          return;
-        }
-        const scale = window.devicePixelRatio || 1;
-        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
-        floating.style.visibility = &quot;visible&quot;;
-      })
-      .catch(() =&gt; {
-        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
-          closeTooltip(false);
-        }
-      });
-  };
-  const openTooltip = (trigger) =&gt; {
-    const content = getContent(trigger);
-    if (!trigger.isConnected || content.length === 0) {
-      return;
-    }
-    clearOpenTimeout();
-    if (activeTrigger === trigger) {
-      return;
-    }
-    closeTooltip();
-    const floating = getTooltip();
-    floating.textContent = content;
-    floating.style.visibility = &quot;hidden&quot;;
-    floating.style.transform = &quot;translate(0, 0)&quot;;
-    document.body.appendChild(floating);
-    activeTrigger = trigger;
-    setDescribedBy(trigger, true);
-    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
-      updatePosition(trigger, floating);
+  <script>
+    const item = (name, detail) => [name, detail];
+    const file = (title, type, state, role, depends, contains, affects, boundary, maintenance) => ({
+      title, type, state, role, depends, contains, affects, boundary, maintenance
     });
-  };
-  const requestOpen = (trigger, immediate = false) =&gt; {
-    if (
-      getContent(trigger).length === 0 ||
-      activeTrigger === trigger ||
-      pendingTrigger === trigger
-    ) {
-      return;
-    }
-    clearOpenTimeout();
-    pendingTrigger = trigger;
-    const delay =
-      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
-        ? 0
-        : hoverDelay;
-    if (delay === 0) {
-      openTooltip(trigger);
-      return;
-    }
-    openTimeout = window.setTimeout(() =&gt; {
-      openTimeout = null;
-      pendingTrigger = null;
-      openTooltip(trigger);
-    }, delay);
-  };
-  const handlePointerOpen = (event) =&gt; {
-    if (event.pointerType === &quot;touch&quot;) {
-      return;
-    }
-    const trigger = getTrigger(event.target);
-    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
-      return;
-    }
-    requestOpen(trigger);
-  };
-  const handlePointer = (event) =&gt; {
-    lastPointerWasTouch =
-      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
-  };
-  const handleTouchClick = (event) =&gt; {
-    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
-    lastPointerWasTouch = false;
-    if (!isTouch || event.detail === 0) {
-      return;
-    }
-    const trigger = getTrigger(event.target);
-    if (
-      trigger == null ||
-      !trigger.isConnected ||
-      getContent(trigger).length === 0 ||
-      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
-    ) {
-      if (pinnedByTouch) {
-        closeTooltip();
-      }
-      return;
-    }
-    openTooltip(trigger);
-    pinnedByTouch = activeTrigger === trigger;
-    window.setTimeout(() =&gt; {
-      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
-        closeTooltip(false);
-      }
-    }, 0);
-  };
-  const handleLeave = (event) =&gt; {
-    if (pinnedByTouch) {
-      return;
-    }
-    const trigger = getTrigger(event.target);
-    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
-      return;
-    }
-    if (activeTrigger === trigger || pendingTrigger === trigger) {
-      closeTooltip();
-    }
-  };
-  const handleFocusIn = (event) =&gt; {
-    const trigger = getTrigger(event.target);
-    if (trigger?.matches(&quot;:focus-visible&quot;)) {
-      requestOpen(trigger, true);
-    }
-  };
-  const handleKeyDown = (event) =&gt; {
-    if (event.key === &quot;Escape&quot;) {
-      closeTooltip();
-    }
-  };
-  const handleContextMenu = (event) =&gt; {
-    lastPointerWasTouch = false;
-    const trigger = getTrigger(event.target);
-    if (activeTrigger === trigger || pendingTrigger === trigger) {
-      closeTooltip();
-    }
-  };
-  const destroy = () =&gt; {
-    closeTooltip(false);
-    lastPointerWasTouch = false;
-    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
-    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
-    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
-    document.removeEventListener(&quot;click&quot;, handleTouchClick);
-    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
-    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
-    document.removeEventListener(&quot;focusout&quot;, handleLeave);
-    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
-    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
-    tooltip = null;
-  };
 
-  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
-  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
-  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
-  document.addEventListener(&quot;click&quot;, handleTouchClick);
-  document.addEventListener(&quot;pointerout&quot;, handleLeave);
-  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
-  document.addEventListener(&quot;focusout&quot;, handleLeave);
-  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
-  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
-  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
-})();
-&lt;/script&gt;
-&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
-(() =&gt; {
-  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
-  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
-  const selectTab = (selected) =&gt; {
-    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
-    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
-      const active = tab === selected;
-      tab.classList.toggle(&quot;active&quot;, active);
-      tab.setAttribute(&quot;aria-selected&quot;, String(active));
-      const id = tab.getAttribute(&quot;aria-controls&quot;);
-      const panel = id &amp;&amp; document.getElementById(id);
-      if (panel != null) {
-        panel.hidden = id !== panelId;
-        if (!panel.hidden &amp;&amp; selected.id) {
-          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
-        }
-      }
-    }
-  };
-  const interact = (event) =&gt; {
-    const tab = event.target?.closest?.(selector);
-    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
-      return;
-    }
-    if (event.type === &quot;click&quot;) {
-      selectTab(tab);
-      return;
-    }
-    const tabs = Array.from(
-      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
-    ).filter((candidate) =&gt; !candidate.matches(disabled));
-    const current = tabs.indexOf(tab);
-    let next;
-    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
-      next = (current + 1) % tabs.length;
-    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
-      next = (current + tabs.length - 1) % tabs.length;
-    } else if (event.key === &quot;Home&quot;) {
-      next = 0;
-    } else if (event.key === &quot;End&quot;) {
-      next = tabs.length - 1;
-    } else {
-      return;
-    }
-    event.preventDefault();
-    tabs[next].focus();
-    selectTab(tabs[next]);
-  };
+    const groups = {
+      "入口与配置": ["AGENTS.md", "README.md", "pyproject.toml"],
+      "生产代码": [
+        "src/xduwlan/__init__.py",
+        "src/xduwlan/cli.py",
+        "src/xduwlan/config.py",
+        "src/xduwlan/errors.py",
+        "src/xduwlan/models.py",
+        "src/xduwlan/probe/__init__.py",
+        "src/xduwlan/probe/interfaces.py",
+        "src/xduwlan/probe/dns.py",
+        "src/xduwlan/probe/tcp.py",
+        "src/xduwlan/probe/http.py",
+        "src/xduwlan/probe/classifier.py",
+        "src/xduwlan/probe/service.py"
+      ],
+      "自动化测试": [
+        "tests/test_cli.py",
+        "tests/test_config.py",
+        "tests/test_models.py",
+        "tests/probe/test_dns.py",
+        "tests/probe/test_tcp.py",
+        "tests/probe/test_http.py",
+        "tests/probe/test_classifier.py",
+        "tests/probe/test_integration_server.py",
+        "tests/probe/test_service.py"
+      ],
+      "项目文档": [
+        "docs/current.md",
+        "docs/roadmap.md",
+        "docs/architecture.md",
+        "docs/security.md",
+        "docs/decisions/0001-python-first.md",
+        "docs/decisions/0002-modular-cli.md",
+        "docs/decisions/0003-system-keyring.md",
+        "docs/decisions/0004-layered-project-memory.md",
+        "docs/protocol/README.md",
+        "docs/protocol/connectivity-detection.md",
+        "docs/visualizations/xduwlan-architecture.html",
+        "docs/visualizations/xduwlan-file-architecture.html"
+      ]
+    };
 
-  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
-    const selected =
-      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
-      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
-      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
-    if (selected != null) {
-      selectTab(selected);
-    }
-  }
-  document.addEventListener(&quot;click&quot;, interact);
-  document.addEventListener(&quot;keydown&quot;, interact);
-  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
-    document.removeEventListener(&quot;click&quot;, interact);
-    document.removeEventListener(&quot;keydown&quot;, interact);
-  }, { once: true });
-})();
-&lt;/script&gt;
-&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
-&lt;script&gt;
-(() =&gt; {
-  const initialize = () =&gt; {
-    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
-  };
-  if (globalThis.lucide != null) {
-    initialize();
-    return;
-  }
-  document
-    .getElementById(&quot;codex-visualization-lucide&quot;)
-    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
-})();
-&lt;/script&gt;
+    const files = {
+      "AGENTS.md": file(
+        "开发协作规则", "协作入口", "稳定规则",
+        "规定跨会话恢复、教学方式、子任务粒度、实现分工和验证节奏。",
+        [item("用户需求", "决定默认协作方式和允许的例外。"), item("记忆架构决策", "规定默认只加载工作记忆。")],
+        [item("恢复顺序", "AGENTS → current → 任务索引。"), item("开发节奏", "按认知边界拆子任务，每个子任务一次完整 RED/GREEN。")],
+        [item("所有开发会话", "开始工作前先遵守这里的稳定约束。"), item("docs/current.md", "按这里定义的生命周期维护工作记忆。")],
+        "不保存项目进度、详细架构或协议事实。",
+        "只有稳定协作方式、记忆规则或安全入口变化时更新。"
+      ),
+      "README.md": file(
+        "项目说明", "用户入口", "当前可用",
+        "向使用者说明项目用途、已实现命令、安装方式和文档入口。",
+        [item("当前可用功能", "只描述已经实现并可运行的用户行为。"), item("文档结构", "链接到各类权威文档。")],
+        [item("status 用法", "展示普通、JSON、debug 和配置路径示例。"), item("安全提醒", "提示敏感数据不能进入普通配置。")],
+        [item("新使用者", "提供最短安装和使用路径。"), item("专项文档", "把开发者引导到 current、roadmap、architecture 和 security。")],
+        "不承担开发交接、完整产品规格或教学记录。",
+        "用户可见能力、安装命令或文档入口变化时更新。"
+      ),
+      "pyproject.toml": file(
+        "Python 项目配置", "构建配置", "当前生效",
+        "定义包元数据、Python 版本、测试依赖、源码目录和 CLI 入口。",
+        [item("setuptools", "提供构建后端。"), item("pytest", "作为 test 可选依赖。")],
+        [item("项目元数据", "包名、版本、描述和 Python 3.11+。"), item("console script", "xduwlan → xduwlan.cli:main。")],
+        [item("安装工具", "创建可编辑安装或构建发行包。"), item("pytest", "从 tests 目录发现测试并加载 src。")],
+        "当前没有运行时第三方依赖；keyring 尚未接入。",
+        "依赖、入口、版本或测试发现方式变化时更新。"
+      ),
 
-&lt;/body&gt;
-&lt;/html&gt;
-"></iframe>
-<script>(() => {
-  const frame = document.getElementById("codex-visualization");
-  if (!(frame instanceof HTMLIFrameElement)) {
-    return;
-  }
-  let viewportHeight = globalThis.innerHeight;
-  const storageKey = `codex:visualization-widget-state-v2:${JSON.stringify([
-    globalThis.location.pathname,
-    globalThis.location.search,
-  ])}`;
-  const parseState = (serializedState) => {
-    if (
-      typeof serializedState !== "string" ||
-      new TextEncoder().encode(serializedState).length > 16 * 1024
-    ) {
-      throw new TypeError(
-        "Widget state must be a JSON object of at most 16 KiB",
-      );
-    }
-    /** @type {unknown} */
-    const state = JSON.parse(serializedState);
-    if (
-      state == null ||
-      typeof state !== "object" ||
-      Array.isArray(state) ||
-      ("imageIds" in state &&
-        (!Array.isArray(state.imageIds) || state.imageIds.length > 0))
-    ) {
-      throw new TypeError("Widget state must be a JSON object");
-    }
-    const storedState = { modelContent: null, privateContent: null, ...state };
-    const canonicalState = JSON.stringify(
-      storedState,
-      (_key, /** @type {unknown} */ value) => {
-        if (typeof value === "number" && !Number.isFinite(value)) {
-          throw new TypeError("Widget state must contain finite numbers");
-        }
-        return value;
-      },
-    );
-    if (new TextEncoder().encode(canonicalState).length > 16 * 1024) {
-      throw new TypeError(
-        "Widget state must be a JSON object of at most 16 KiB",
-      );
-    }
-    return storedState;
-  };
-  let storage = null;
-  let state = null;
-  try {
-    const localStorage = globalThis.localStorage;
-    const probeKey = `${storageKey}:probe`;
-    localStorage.setItem(probeKey, "1");
-    localStorage.removeItem(probeKey);
-    storage = localStorage;
-    const savedState = storage.getItem(storageKey);
-    if (savedState != null) {
-      try {
-        state = parseState(savedState);
-      } catch {
-        // Invalid saved state does not disable future writes.
-      }
-    }
-  } catch {
-    storage = null;
-  }
-  const initialGlobals = {
-    widgetState: state,
-    statePersistence: storage == null ? "none" : "local",
-  };
+      "src/xduwlan/__init__.py": file(
+        "包入口", "生产代码", "已实现",
+        "声明 XDUWlan 为 Python 包并暴露当前版本。",
+        [item("pyproject.toml", "包版本与项目元数据应保持一致。")],
+        [item("__version__", "当前值为 0.1.0。")],
+        [item("Python 导入系统", "允许导入 xduwlan 包。")],
+        "不包含业务逻辑或依赖装配。",
+        "公共包元数据变化时更新。"
+      ),
+      "src/xduwlan/cli.py": file(
+        "命令行入口", "生产代码", "status 已实现",
+        "解析命令，装配探测服务，执行 status 并格式化安全输出。",
+        [item("AppConfig", "提供默认值或读取指定 TOML。"), item("NetworkProbe", "返回与具体网络库无关的探测结果。")],
+        [item("build_parser()", "注册五个命令和 status 选项。"), item("_handle_status()", "处理状态、输出模式和退出码。"), item("build_network_probe()", "装配三个系统网络适配器。")],
+        [item("终端用户", "接收中文、JSON 或 debug 输出。"), item("console script", "pyproject 将 xduwlan 命令指向 main()。")],
+        "configure、login、watch、account 仍使用占位处理器。",
+        "CLI 参数、装配关系、输出契约或命令实现状态变化时更新。"
+      ),
+      "src/xduwlan/config.py": file(
+        "非敏感配置", "生产代码", "已实现",
+        "提供运行配置的默认值、TOML 合并和数值字段校验。",
+        [item("pathlib.Path", "读取 UTF-8 配置文件。"), item("tomllib", "解析 TOML。"), item("ConfigurationError", "统一报告配置内容错误。")],
+        [item("AppConfig", "不可变的六字段配置。"), item("defaults()", "创建完整默认值。"), item("load()", "读取、合并、校验并保留解析异常链。")],
+        [item("status CLI", "取得探测 URL、Portal URL 和超时。"), item("DefaultNetworkProbe", "使用探测目标和请求超时。")],
+        "只处理非敏感配置，不读取或保存密码、Cookie 和会话。",
+        "配置字段、默认值或验证契约变化时更新。"
+      ),
+      "src/xduwlan/errors.py": file(
+        "项目异常", "生产代码", "部分实现",
+        "提供调用方可以稳定捕获的项目级异常层次。",
+        [item("Python Exception", "作为项目异常的语言基础。")],
+        [item("XDUWlanError", "项目可预期异常的共同父类。"), item("ConfigurationError", "表示配置格式、类型或数值错误。")],
+        [item("config.py", "将 TOML 解析错误转换为 ConfigurationError。"), item("CLI", "把配置错误转换为稳定退出码。")],
+        "凭据、协议和解析异常要在对应切片引入，不提前定义。",
+        "新增已进入实现范围的错误类别时更新。"
+      ),
+      "src/xduwlan/models.py": file(
+        "网络领域模型", "生产代码", "已实现",
+        "用稳定枚举和不可变数据类描述探测状态与观察结果。",
+        [item("dataclasses", "生成不可变数据对象。"), item("enum.Enum", "提供稳定名称和值。")],
+        [item("NetworkState", "完整探测的五类结果。"), item("ProbeStage", "DNS、TCP、HTTP 阶段。"), item("ProbeObservation / NetworkProbeResult", "保存阶段证据和最终状态。")],
+        [item("probe 服务", "创建阶段观察和完整结果。"), item("CLI", "根据状态映射消息、JSON 和退出码。")],
+        "不执行网络请求，也不依赖 CLI、操作系统或具体 HTTP 库。",
+        "领域状态或结果字段发生契约变化时更新。"
+      ),
+      "src/xduwlan/probe/__init__.py": file(
+        "探测包入口", "生产代码", "已实现",
+        "标识 probe 为网络探测包，并说明包的总体职责。",
+        [item("Python 包系统", "让 probe 子模块可以被导入。")],
+        [item("模块 docstring", "说明这里包含端口和适配器。")],
+        [item("probe 子模块", "形成一个清晰的网络探测命名空间。")],
+        "不聚合公共符号，也不执行初始化逻辑。",
+        "包级公共 API 或职责变化时更新。"
+      ),
+      "src/xduwlan/probe/interfaces.py": file(
+        "探测端口与记录", "生产代码", "已实现",
+        "定义阶段适配器和完整探测服务之间共享的数据与结构化接口。",
+        [item("Protocol", "用结构化类型描述调用方需要的方法。"), item("NetworkProbeResult", "作为完整探测返回值。")],
+        [item("ResolvedAddress", "TCP 可用的数值地址。"), item("TcpObservation / HttpObservation", "阶段适配器结果。"), item("DnsResolver / TcpConnector / HttpConnectivityChecker / NetworkProbe", "四个端口接口。")],
+        [item("系统适配器", "实现对应方法。"), item("DefaultNetworkProbe 与测试替身", "只依赖端口，不依赖具体类。")],
+        "只声明能力与数据，不执行 DNS、TCP 或 HTTP。",
+        "阶段输入输出或调用方契约变化时更新。"
+      ),
+      "src/xduwlan/probe/dns.py": file(
+        "系统 DNS 适配器", "生产代码", "已实现",
+        "把主机名和端口解析成 TCP 可以尝试的不可变地址候选。",
+        [item("socket.getaddrinfo()", "调用操作系统名称解析器。"), item("ResolvedAddress", "隔离系统五元组格式。")],
+        [item("SystemDnsResolver.resolve()", "请求 SOCK_STREAM 候选并转换 family、host、port。")],
+        [item("DefaultNetworkProbe", "取得一个或多个 TCP 连接目标。")],
+        "不手工发送 DNS 报文，不分类最终网络状态。",
+        "名称解析策略或地址记录契约变化时更新。"
+      ),
+      "src/xduwlan/probe/tcp.py": file(
+        "系统 TCP 适配器", "生产代码", "已实现",
+        "尝试连接一个地址候选，并把成功、超时或系统错误转换成安全观察。",
+        [item("socket.create_connection()", "建立并自动关闭 TCP 连接。"), item("perf_counter()", "测量持续时间。")],
+        [item("SystemTcpConnector.connect()", "返回 TcpObservation。"), item("异常顺序", "先处理 timeout，再处理一般 OSError。")],
+        [item("DefaultNetworkProbe", "决定继续尝试下一个候选或进入 HTTP。")],
+        "不发送 HTTP 数据，不把底层异常正文传给上层。",
+        "连接参数、错误分类或观察字段变化时更新。"
+      ),
+      "src/xduwlan/probe/http.py": file(
+        "系统 HTTP 适配器", "生产代码", "已实现",
+        "发送不自动跟随重定向的 GET，并保留有限、可分类的响应证据。",
+        [item("urllib", "构建 Request、opener 和 HTTPError 响应。"), item("MAX_BODY_BYTES", "把正文读取限制为 65,536 字节。")],
+        [item("NoRedirectHandler", "拒绝创建重定向后续请求。"), item("SystemHttpConnectivityChecker", "转换普通响应、HTTPError 和网络异常。")],
+        [item("DefaultNetworkProbe", "取得 HTTP 观察。"), item("classifier.py", "使用状态码、Location 和正文特征分类。")],
+        "不决定最终状态，不记录完整请求或底层错误正文。",
+        "HTTP 证据范围、读取限制或异常转换变化时更新。"
+      ),
+      "src/xduwlan/probe/classifier.py": file(
+        "HTTP 状态分类器", "生产代码", "已实现",
+        "把结构化 HTTP 观察映射成 ONLINE、PORTAL_REQUIRED 或 UNKNOWN。",
+        [item("HttpObservation", "提供状态码、Location 和正文。"), item("Portal 主机集合", "限制可信重定向目标。")],
+        [item("classify_http_observation()", "按 204、已知 3xx、srun_portal 200 的优先级分类。"), item("urlparse().hostname", "避免字符串伪装主机名。")],
+        [item("DefaultNetworkProbe", "取得最终 NetworkState。")],
+        "纯函数不访问网络、不读取配置；真实校园网规则仍需脱敏证据。",
+        "分类契约或协议证据变化时更新。"
+      ),
+      "src/xduwlan/probe/service.py": file(
+        "完整网络探测服务", "生产代码", "已实现",
+        "编排 URL 端口、DNS、TCP 多候选、HTTP 请求和状态分类。",
+        [item("AppConfig", "提供目标 URL、Portal URL 和超时。"), item("三个阶段端口", "通过依赖注入执行外部操作。"), item("分类器", "把 HTTP 证据变成领域状态。")],
+        [item("DefaultNetworkProbe", "保存四个依赖。"), item("probe()", "汇总 ProbeObservation，并在 DNS/TCP 失败时提前返回。")],
+        [item("status CLI", "通过 NetworkProbe 端口调用。"), item("未来 watch", "可以复用同一完整探测能力。")],
+        "不格式化 CLI 输出，不执行 Portal 认证。",
+        "阶段顺序、失败状态或依赖接口变化时更新。"
+      ),
 
-  const channel = new MessageChannel();
-  channel.port1.addEventListener("message", (event) => {
-    const data = event.data;
-    if (typeof data !== "object" || data == null) {
-      return;
-    }
-    if (data.type === "widget-state-write") {
-      if (!Number.isSafeInteger(data.id) || data.id <= 0) {
-        return;
-      }
-      let ok = false;
-      try {
-        if (storage != null) {
-          const state = parseState(data.state);
-          storage.setItem(storageKey, JSON.stringify(state));
-          ok = true;
-        }
-      } catch {
-        // Storage denial, quota limits, and invalid state return a failed receipt.
-      }
-      channel.port1.postMessage({
-        type: "widget-state-result",
-        id: data.id,
-        ok,
+      "tests/test_cli.py": file(
+        "CLI 契约测试", "自动化测试", "当前通过",
+        "验证命令注册、status 输出、退出码、配置处理、JSON 脱敏、debug 和依赖装配。",
+        [item("pytest", "提供参数化、monkeypatch 和输出捕获。"), item("替代探测器", "避免访问真实网络。")],
+        [item("命令骨架", "验证四个未实现命令仍可解析。"), item("status 行为", "覆盖五类状态和三种输出路径。")],
+        [item("cli.py", "保护用户可见契约和装配边界。")],
+        "只使用虚构结果；不验证真实终端或校园网。",
+        "CLI 参数、输出、退出码或装配行为变化时更新。"
+      ),
+      "tests/test_config.py": file(
+        "配置契约测试", "自动化测试", "当前通过",
+        "验证默认值、不可变性、TOML 合并、未知字段、数值边界和异常链。",
+        [item("tmp_path", "创建隔离的虚构 TOML。"), item("pytest 参数化", "覆盖多个非法类型和值。")],
+        [item("正常路径", "默认、空文件和部分覆盖。"), item("错误路径", "畸形 TOML、非正数、字符串和布尔值。")],
+        [item("config.py", "保护 AppConfig.load() 的稳定行为。")],
+        "不读取真实用户配置，不测试凭据。",
+        "配置字段或校验规则变化时更新。"
+      ),
+      "tests/test_models.py": file(
+        "模型契约测试", "自动化测试", "当前通过",
+        "保护网络枚举名称和值、结果字段和不可变性。",
+        [item("领域模型", "直接构造 Enum 和 dataclass。")],
+        [item("枚举契约", "同时检查成员名称和值。"), item("不可变结果", "检查观察与完整结果不能重新赋值。")],
+        [item("models.py", "防止跨层稳定值和字段意外变化。")],
+        "只覆盖 status 已使用的模型，不提前定义未来模型。",
+        "网络领域模型契约变化时更新。"
+      ),
+      "tests/probe/test_dns.py": file(
+        "DNS 适配器测试", "自动化测试", "当前通过",
+        "验证 getaddrinfo 调用参数和系统记录到 ResolvedAddress 的转换。",
+        [item("monkeypatch", "替换 socket.getaddrinfo。"), item("虚构保留地址", "避免真实 DNS。")],
+        [item("地址转换", "覆盖多个 family 和 sockaddr。")],
+        [item("dns.py", "保护标准库边界。")],
+        "不访问网络；解析失败由服务层测试覆盖。",
+        "DNS 适配器调用或返回结构变化时更新。"
+      ),
+      "tests/probe/test_tcp.py": file(
+        "TCP 适配器测试", "自动化测试", "当前通过",
+        "验证成功连接、资源关闭、耗时、超时和一般系统错误。",
+        [item("替代连接", "不创建真实 socket。"), item("可控时钟", "得到确定的毫秒耗时。")],
+        [item("完整连接行为", "成功路径和相关错误路径同属一个适配器契约。")],
+        [item("tcp.py", "保护错误脱敏和观察构造。")],
+        "不区分每一种 errno，不访问真实网络。",
+        "TCP 连接或错误观察契约变化时更新。"
+      ),
+      "tests/probe/test_http.py": file(
+        "HTTP 适配器测试", "自动化测试", "当前通过",
+        "验证禁止重定向、普通响应、字符集、读取上限、原始 302 和网络错误转换。",
+        [item("fake opener / response", "在内存中模拟 urllib 行为。"), item("可控时钟", "验证耗时。")],
+        [item("响应契约", "同时覆盖正常与相关异常路径。"), item("安全边界", "底层错误正文不会进入观察。")],
+        [item("http.py", "保护请求参数、读取行为和异常顺序。")],
+        "不访问校园网，不证明真实 Portal 行为。",
+        "HTTP 适配器行为或证据范围变化时更新。"
+      ),
+      "tests/probe/test_classifier.py": file(
+        "HTTP 分类测试", "自动化测试", "当前通过",
+        "穷举当前分类优先级和 UNKNOWN 回退。",
+        [item("虚构 HttpObservation", "直接提供状态码、Location 和正文。")],
+        [item("在线与 Portal", "覆盖 204、可信 3xx 和 srun_portal 200。"), item("防误判", "覆盖未知主机、查询参数伪装和畸形 URL。")],
+        [item("classifier.py", "保护纯函数分类契约。")],
+        "只验证项目规则，不声明西电线上行为。",
+        "分类规则或协议证据变化时更新。"
+      ),
+      "tests/probe/test_integration_server.py": file(
+        "本地 HTTP 集成测试", "集成测试", "当前通过",
+        "用真实 loopback TCP/HTTP 验证 urllib 与分类器可以协作。",
+        [item("ThreadingHTTPServer", "在 127.0.0.1 临时端口提供受控响应。")],
+        [item("/online", "返回 204。"), item("/portal", "返回不应被跟随的 302。"), item("/login", "返回带 srun_portal 特征的 200。")],
+        [item("HTTP 适配器与分类器", "验证真实标准库交互。")],
+        "不访问互联网，不验证 HTTPS 或真实校园网。",
+        "标准库集成路径或分类证据变化时更新。"
+      ),
+      "tests/probe/test_service.py": file(
+        "探测服务测试", "自动化测试", "当前通过",
+        "验证阶段顺序、默认端口、DNS 失败、TCP 多候选、HTTP 分类和信息脱敏。",
+        [item("替代阶段依赖", "精确控制每个端口的输入输出。"), item("虚构 URL 与保留地址", "避免真实网络。")],
+        [item("完整编排", "覆盖成功路径和同一服务中的相关失败分支。")],
+        [item("service.py", "保护 NetworkProbe 应用服务契约。")],
+        "不测试 CLI 展示，不发送任何网络请求。",
+        "探测阶段编排或状态映射变化时更新。"
+      ),
+
+      "docs/current.md": file(
+        "当前工作记忆", "工作记忆", "持续更新",
+        "让新会话用最少上下文恢复当前切片、下一子任务、验证基线和下一动作。",
+        [item("当前代码与测试", "事实冲突时以实现为准。"), item("已批准协作规则", "决定记录粒度和生命周期。")],
+        [item("当前状态", "已完成能力、下一子任务和非目标。"), item("学习上下文", "记录已接触知识，避免重复教学。"), item("任务索引", "列出下一步按需读取内容。")],
+        [item("下一次开发会话", "直接恢复到 configure 的凭据子任务对齐。")],
+        "不保存完整项目规格、逐轮对话或累计历史。",
+        "当前事实、RED/GREEN、责任人、阻塞或下一动作变化时更新。"
+      ),
+      "docs/roadmap.md": file(
+        "产品路线图", "长期文档", "当前有效",
+        "保存 MVP 范围、明确非目标、五个纵向切片和验收条件。",
+        [item("产品目标", "决定第一版需要交付的用户结果。"), item("长期架构边界", "限制切片之间的职责。")],
+        [item("能力表", "区分已完成、下一步和计划中。"), item("切片验收", "描述结果，不固化易过期的逐步实现。")],
+        [item("current.md", "提供当前切片方向。"), item("未来子任务对齐", "只在开始时展开文件和测试。")],
+        "不保存开发流水、具体测试代码或教学规则。",
+        "产品范围、切片状态或验收条件变化时更新。"
+      ),
+      "docs/architecture.md": file(
+        "架构说明", "长期文档", "当前有效",
+        "描述依赖方向、已实现模块、status 调用链和计划模块边界。",
+        [item("当前源码", "决定实际模块和符号。"), item("ADR", "提供 Python、模块化 CLI 和凭据策略。")],
+        [item("当前实现", "只列仓库真实存在的模块。"), item("计划边界", "明确未实现，但不提前固定接口。")],
+        [item("开发对齐", "判断新增代码应该依赖哪个层。"), item("两份可视化", "提供交互式入口。")],
+        "不记录动态文件数量、进度或文档维护流程。",
+        "模块职责、依赖方向或实际调用链变化时更新。"
+      ),
+      "docs/security.md": file(
+        "安全与隐私规则", "长期文档", "持续生效",
+        "集中管理敏感数据分类、存储、输出、测试证据和真实实验边界。",
+        [item("项目风险", "凭据、认证、会话和个人网络信息。")],
+        [item("数据分类", "区分敏感凭据与个人信息。"), item("处理规则", "覆盖输入、存储、日志、测试、验证码和泄漏处置。")],
+        [item("configure / login / account", "相关子任务开始前必须读取。"), item("协议文档", "引用统一证据和脱敏门槛。")],
+        "不保存真实凭据、真实页面或具体会话数据。",
+        "敏感数据类型、存储方式、输出行为或协议风险变化时更新。"
+      ),
+      "docs/decisions/0001-python-first.md": file(
+        "ADR 0001：第一版使用 Python", "决策记录", "已接受",
+        "固定第一版语言和网络基础阶段的依赖策略。",
+        [item("学习目标", "需要快速观察网络行为并亲手实现。"), item("跨语言方向", "未来仍需可迁移契约。")],
+        [item("决策", "Python 3.11+ 模块化 CLI，基础网络优先标准库。"), item("后果", "协议核心避免依赖 Python 特有行为。")],
+        [item("pyproject.toml", "声明 Python 版本和包入口。"), item("当前实现", "DNS、TCP、HTTP 使用标准库。")],
+        "不决定未来桌面产品的语言。",
+        "第一版技术栈发生根本变化时更新或替代。"
+      ),
+      "docs/decisions/0002-modular-cli.md": file(
+        "ADR 0002：模块化 CLI 与领域核心", "决策记录", "已接受",
+        "固定 CLI、应用服务、端口和适配器的依赖结构。",
+        [item("多业务链路", "探测、认证、自服务、凭据和重连需要隔离。")],
+        [item("决策", "采用四层结构，Portal 与自服务保持独立。"), item("后果", "前期接口更多，但模块可单独测试和迁移。")],
+        [item("architecture.md", "展开当前结构。"), item("所有新模块", "必须遵守依赖方向。")],
+        "不规定每个未来适配器的具体文件和全部方法。",
+        "核心依赖结构或业务隔离原则变化时更新或替代。"
+      ),
+      "docs/decisions/0003-system-keyring.md": file(
+        "ADR 0003：系统凭据库", "决策记录", "已接受",
+        "决定长期密码通过 keyring 进入操作系统凭据库。",
+        [item("自动认证需求", "程序需要在用户授权后读取密码。"), item("安全规则", "普通配置和日志不适合保存凭据。")],
+        [item("决策", "configure 写入，认证时读取。"), item("后果", "无可用后端时明确报错，不回退明文。")],
+        [item("configure", "约束下一切片的存储方向。"), item("login", "提供后续凭据读取来源。")],
+        "只决定密码存储策略；账号和非敏感配置另行设计。",
+        "凭据存储策略或平台支持方向变化时更新或替代。"
+      ),
+      "docs/decisions/0004-layered-project-memory.md": file(
+        "ADR 0004：分层项目记忆", "决策记录", "已接受",
+        "决定如何在减少默认上下文的同时保留跨会话开发记忆。",
+        [item("文档审计", "旧文档重复、冲突并包含大量流水。"), item("交互需求", "需要少轮次、按需加载和稳定教学连续性。")],
+        [item("分层记忆", "AGENTS、current、长期知识和 Git 各负其责。"), item("生命周期", "进行中详细，完成后压缩。"), item("验证节奏", "目标测试跟随小步，完整回归跟随阶段。")],
+        [item("所有文档", "禁止重复职责。"), item("新会话", "默认只读 AGENTS 和 current。")],
+        "不保存某次会话的临时工作状态。",
+        "记忆结构、默认读取方式或协作节奏变化时更新或替代。"
+      ),
+      "docs/protocol/README.md": file(
+        "协议证据目录", "协议索引", "当前有效",
+        "定义协议事实的证据等级、记录范围和安全门槛。",
+        [item("安全规则", "限制可记录的数据。"), item("实现与实验", "提供项目测试或真实脱敏观察。")],
+        [item("证据等级", "项目已验证、真实已观察、推断、待验证。"), item("记录规则", "结论必须脱敏且可追溯。")],
+        [item("协议文档", "统一使用相同证据语言。"), item("实现修改", "认证改动前先补证据与失败测试。")],
+        "不承担教学、进度或交接职责。",
+        "证据分类、记录安全边界或协议文档清单变化时更新。"
+      ),
+      "docs/protocol/connectivity-detection.md": file(
+        "连通性检测证据", "协议文档", "项目契约已验证",
+        "记录探测路径、分类契约、真实证据状态和待验证问题。",
+        [item("自动化测试", "提供标准库、服务和分类契约证据。"), item("本地 loopback", "验证真实 TCP/HTTP 交互。")],
+        [item("项目已验证", "DNS、TCP、HTTP 和状态分类。"), item("真实证据", "目前没有已提交的真实校园网结论。"), item("待验证", "列出线上行为问题。")],
+        [item("classifier.py / service.py", "说明当前实现依据。"), item("真实实验", "规定需要回答的问题和可记录字段。")],
+        "项目测试通过不等于西电真实网络行为已经验证。",
+        "探测实现契约或脱敏真实证据变化时更新。"
+      ),
+      "docs/visualizations/xduwlan-architecture.html": file(
+        "命令分层图", "交互文档", "当前同步",
+        "用五层调用链比较 status 与四个计划切片的职责和实现状态。",
+        [item("architecture.md", "提供分层、当前实现和计划边界。"), item("roadmap.md", "提供切片顺序与状态。")],
+        [item("命令切换", "status、configure、login、watch、account。"), item("五层说明", "CLI、应用服务、核心契约、适配器、外部系统。")],
+        [item("架构读者", "快速理解每条命令经过哪些边界。")],
+        "不展开每个文件内部符号，不把计划接口写成已实现事实。",
+        "命令状态、分层职责或切片调用方向变化时更新。"
+      ),
+      "docs/visualizations/xduwlan-file-architecture.html": file(
+        "文件职责图", "交互文档", "当前同步",
+        "展示仓库当前文件，并用依赖、内部内容、使用方和边界解释职责。",
+        [item("当前仓库文件", "树中不保留已删除或未来文件。"), item("源码与长期文档", "提供每个文件的事实。")],
+        [item("分组文件树", "入口、生产代码、测试和文档。"), item("详情面板", "只展示稳定职责，不展示任务流水和测试计数。")],
+        [item("开发与审查", "帮助定位修改入口和依赖方向。")],
+        "不是进度日志，也不替代源码、测试或权威 Markdown。",
+        "文件新增删除、主要符号、依赖、状态或边界变化时更新。"
+      )
+    };
+
+    const tree = document.querySelector("[data-tree]");
+    const allPaths = Object.values(groups).flat();
+
+    Object.entries(groups).forEach(([groupName, paths]) => {
+      const details = document.createElement("details");
+      details.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = groupName + " · " + paths.length;
+      const list = document.createElement("div");
+      list.className = "files";
+      paths.forEach((path) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.path = path;
+        button.textContent = path.split("/").at(-1);
+        button.setAttribute("aria-pressed", "false");
+        list.append(button);
       });
-      return;
+      details.append(summary, list);
+      tree.append(details);
+    });
+
+    function renderItems(selector, values) {
+      const container = document.querySelector(selector);
+      container.replaceChildren();
+      values.forEach(([name, detail]) => {
+        const block = document.createElement("div");
+        block.className = "item";
+        const strong = document.createElement("strong");
+        strong.textContent = name;
+        const paragraph = document.createElement("p");
+        paragraph.textContent = detail;
+        block.append(strong, paragraph);
+        container.append(block);
+      });
     }
-    if (data.type === "height") {
-      const height = data.height;
-      if (
-        typeof height === "number" &&
-        Number.isFinite(height) &&
-        height >= 0 &&
-        height <= 10_000
-      ) {
-        frame.style.height = Math.ceil(height) + "px";
-      }
-      return;
+
+    function render(path) {
+      const value = files[path];
+      document.querySelector("[data-title]").textContent = value.title;
+      document.querySelector("[data-path]").textContent = path;
+      document.querySelector("[data-type]").textContent = value.type;
+      document.querySelector("[data-state]").textContent = value.state;
+      document.querySelector("[data-role]").textContent = value.role;
+      document.querySelector("[data-boundary]").textContent = value.boundary;
+      document.querySelector("[data-maintenance]").textContent = value.maintenance;
+      renderItems("[data-depends]", value.depends);
+      renderItems("[data-contains]", value.contains);
+      renderItems("[data-affects]", value.affects);
+      document.querySelectorAll("[data-path]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.path === path));
+      });
     }
-    if (data.type === "scroll-to") {
-      const top = data.top;
-      if (
-        typeof top === "number" &&
-        Number.isFinite(top) &&
-        top >= 0 &&
-        globalThis.navigator.userActivation?.isActive === true
-      ) {
-        globalThis.scrollTo({
-          top: Math.ceil(
-            globalThis.scrollY + frame.getBoundingClientRect().top + top,
-          ),
-        });
-      }
-      return;
+
+    document.querySelectorAll("[data-path]").forEach((button) => {
+      button.addEventListener("click", () => render(button.dataset.path));
+    });
+
+    if (allPaths.some((path) => files[path] === undefined) || Object.keys(files).length !== allPaths.length) {
+      throw new Error("文件树与详情数据不一致");
     }
-    if (data.type === "open-external") {
-      const rawHref = data.href;
-      if (typeof rawHref !== "string") {
-        return;
-      }
-      let href;
-      try {
-        const url = new URL(rawHref, document.baseURI);
-        if (url.protocol !== "https:") {
-          return;
-        }
-        href = url.href;
-      } catch {
-        return;
-      }
-      if (globalThis.navigator.userActivation?.isActive === true) {
-        const anchor = document.createElement("a");
-        anchor.href = href;
-        anchor.rel = "noopener noreferrer";
-        anchor.target = "_blank";
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-      }
-      return;
-    }
-    if (data.type === "follow-up") {
-      const prompt = data.prompt;
-      if (
-        typeof prompt !== "string" ||
-        globalThis.navigator.userActivation?.isActive !== true
-      ) {
-        return;
-      }
-      const title = data.title;
-      globalThis.prompt(typeof title === "string" ? title : prompt, prompt);
-    }
-  });
-  channel.port1.start();
-  const srcdoc = frame.dataset.srcdoc;
-  if (srcdoc == null) {
-    return;
-  }
-  globalThis.addEventListener("resize", () => {
-    const height = Number.parseFloat(frame.style.height);
-    if (!Number.isFinite(height) || height <= viewportHeight) {
-      frame.style.removeProperty("height");
-    }
-    viewportHeight = globalThis.innerHeight;
-    channel.port1.postMessage({ type: "measure" });
-  });
-  frame.addEventListener(
-    "load",
-    () => {
-      frame.contentWindow?.postMessage(
-        { type: "codex-visualization-initialize" },
-        "*",
-        [channel.port2],
-      );
-    },
-    { once: true },
-  );
-  // Match the trusted bootstrap element, not the same text in an authored title.
-  frame.srcdoc = srcdoc.replace(
-    '<script type="application/json" id="codex-visualization-widget-state">__CODEX_VISUALIZATION_WIDGET_STATE__<\/script>',
-    () =>
-      '<script type="application/json" id="codex-visualization-widget-state">' +
-      JSON.stringify(initialGlobals).replaceAll("<", "\\u003c") +
-      "<\/script>",
-  );
-  delete frame.dataset.srcdoc;
-})();
-</script>
+    render("docs/current.md");
+  </script>
 </body>
 </html>
