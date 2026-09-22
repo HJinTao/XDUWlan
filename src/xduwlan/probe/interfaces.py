@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from xduwlan.models import NetworkProbeResult
+
 
 @dataclass(frozen=True)
 class ResolvedAddress:
@@ -61,4 +63,12 @@ class HttpConnectivityChecker(Protocol):
 
     def request(self, url: str, timeout: float) -> HttpObservation:
         """请求连通性地址并返回结构化观察。"""
+        ...
+
+
+class NetworkProbe(Protocol):
+    """声明上层调用方需要的完整网络探测能力。"""
+
+    def probe(self) -> NetworkProbeResult:
+        """汇总阶段观察并返回网络状态。"""
         ...
