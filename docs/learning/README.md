@@ -24,10 +24,11 @@
 3. `02-dns.md`：DNS 与地址解析；
 4. `03-tcp.md`：TCP 连接和超时；
 5. `04-http.md`：HTTP 状态码、重定向和 Captive Portal；
-6. `05-credentials.md`：Protocol、凭据边界和 keyring；
-7. `06-portal-authentication.md`：深澜认证字段、纯函数和 HTTP 客户端；
-8. `07-state-machine-and-retry.md`：状态机、退避和可观测性；
-9. `08-session-cookie-csrf.md`：会话、验证码、CSRF 和 HTML 解析；
-10. `09-packaging.md`：跨平台测试和程序打包。
+6. `05-status-cli.md`：完整探测服务、状态分类和 CLI 脱敏输出；
+7. `06-credentials.md`：Protocol、凭据边界和 keyring；
+8. `07-portal-authentication.md`：深澜认证字段、纯函数和 HTTP 客户端；
+9. `08-state-machine-and-retry.md`：状态机、退避和可观测性；
+10. `09-session-cookie-csrf.md`：会话、验证码、CSRF 和 HTML 解析；
+11. `10-packaging.md`：跨平台测试和程序打包。
 
 未来切片的学习文档不提前撰写。实现前先完成当前小步所需的口头网络原理讲解；文档正文在对应代码完成并通过测试后记录实际实现、失败现象和复盘。

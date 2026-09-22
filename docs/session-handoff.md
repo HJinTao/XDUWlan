@@ -2,7 +2,7 @@
 
 ## 当前目标
 
-任务 3 已完成：`status` 切片已具备 DNS、TCP、HTTP 基础探测、HTTP 状态分类、本地服务器集成证据和中文学习/协议文档。下一步进入任务 4，把完整探测服务接入 `status` CLI。
+任务 4 已完成：探测服务、`status` CLI、配置读取、脱敏 JSON、debug 输出和系统适配器装配均已验证。下一步进入任务五 `configure`。
 
 ## 已完成
 
@@ -104,16 +104,33 @@
 - 已创建 DNS、TCP、HTTP 三份学习文档和连通性协议记录，真实校园网结论均明确标记为待脱敏实测。
 - 已验证本地集成测试 `3 passed`，任务 3 探测测试 `23 passed`，全仓库 `48 passed`。
 - 当前文件框架图已更新为 40 个文件；任务 3 的代码、测试和文档状态均为 GREEN。
+- 任务 4 已对齐服务、端口契约与 CLI 的具体文件、符号、调用关系和失败分类边界；第一轮仅实现 HTTPS 成功路径。
+- 已新增 `NetworkProbe` Protocol、`DefaultNetworkProbe` 的依赖注入骨架和 `tests/probe/test_service.py`；测试因 `probe()` 抛出 `NotImplementedError` 准确 RED。
+- 新测试使用虚构 HTTPS URL、保留示例地址和三个替代对象，断言默认 443 端口、DNS → TCP → HTTP 顺序、超时传递、原始 URL、ONLINE 和三条成功观察。
+- 当前文件框架图已更新为 42 个节点；本轮无网络回归 `45 passed`。全量回归在沙箱中因 loopback 监听权限产生 3 个 fixture 错误，提权自动审批服务出错，未能重试集成测试。
+- 学习者实现 HTTPS 成功路径后，首个服务测试通过；权限变化后全量回归 `49 passed`，包含本地 loopback 集成测试。
+- 指导者只整理 `service.py` 导入、空白、长行、引号与尾随逗号，未改变控制流。
+- 新增 DNS 失败组的 2 个参数化测试：空地址复现 `AttributeError`，`socket.gaierror` 原样外泄；成功路径 `1 passed`，旧测试 `48 passed`。
+- 学习者已处理 DNS 无候选和 `socket.gaierror`，服务层 3 个测试与全仓库 51 个测试通过。
+- 新增 TCP 多候选与全失败测试：先失败后成功路径 GREEN；全部失败时仍请求 HTTP，服务层当前 `4 passed, 1 failed`；旧测试 48 个通过。
+- 学习者完成 TCP 全失败提前返回，服务测试 5 个与全仓库 53 个通过。
+- 指导者增加服务层 Portal 重定向和 HTTP 失败的参数化测试：自定义 Portal 主机得到 `PORTAL_REQUIRED`，原始 `Location` 不进入结果，请求失败为 `UNKNOWN`；服务测试 7 个，全量 55 个通过。
+- CLI 为 `status` 注册三个选项与两个空符号；首个在线输出测试在 `_handle_status()` 占位处准确 RED，未访问真实网络。
+- 学习者完成默认配置、探测器调用和 ONLINE 输出；全仓库 55 个测试通过。
+- 指导者新增四个非在线状态映射用例：Portal 返回 4，两类网络不可用返回 5，UNKNOWN 返回 1；当前因实际返回 `None` 而 4 RED，CLI 其余 7 个测试 GREEN。
+- 根据学习者希望后续加快节奏的反馈，指导者把配置路径与错误、JSON 脱敏、debug 阶段信息和系统适配器装配测试合并到当前单元；CLI 当前 7 GREEN、11 RED，服务测试仍 7 GREEN。
+- 学习者新增 `_STATUS_RESULTS` 字典并用 tuple 解包统一输出与退出码，五类状态全部 GREEN；指导者仅清理一处尾随空格，CLI 当前 11 GREEN、7 RED。
+- 学习者完成 `status` 的配置路径、配置错误、JSON 脱敏、debug 阶段信息和真实适配器装配；CLI 18 个、服务 7 个、全仓库 66 个测试通过。
+- 已创建 `docs/learning/05-status-cli.md`，并更新 README、实施计划和文件框架图；任务四文档状态已从 RED 更新为 GREEN。
 
 ## 当前代码状态
 
-仓库已有任务 1 的 Python CLI 骨架、任务 2 的网络模型与配置，以及任务 3 已验证的 DNS、TCP、HTTP 适配器和 HTTP 分类器。完整 `NetworkProbeResult` 编排与 `status` CLI 尚未实现，五个 CLI 命令仍是占位实现。任务 3 功能与文档已分批提交。
+仓库已有任务 1 至任务 4 的完整 `status` 切片；`login`、`watch`、`account`、`configure` 仍为占位命令。任务四相关生产代码与测试、学习与项目文档已按职责分两批提交。
 
 ## 下一步任务
 
-1. 进入任务 4，讲解 URL 分解、默认端口、阶段编排和多阶段结果分类在完整 `status` 路径中的位置。
-2. 对齐 `src/xduwlan/probe/service.py` 的 `DefaultNetworkProbe`、依赖注入、观察转换和 `tests/probe/test_service.py`。
-3. 指导者建立服务与 CLI 失败测试和骨架，学习者实现 `status` 的完整可运行链路。
+1. 下一次会话先阅读本交接、`docs/progress.md` 和 `docs/learning/05-status-cli.md`。
+2. 进入任务五 `configure`，先对齐凭据输入、`CredentialStore` Protocol 和系统凭据库边界。
 
 ## 必须先阅读
 

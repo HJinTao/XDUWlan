@@ -4,7 +4,7 @@ XDUWlan 是一个面向学习的校园网自动认证与校园网状态监测项
 
 ## 当前状态
 
-项目已完成可安装的 Python CLI 骨架、网络领域模型、非敏感配置，以及 DNS、TCP、HTTP 基础探测、状态分类和本地服务器集成验证。下一步进入任务 4，把完整探测服务接入 `status` CLI；其他四个命令仍使用占位处理器。
+项目已完成可安装的 Python CLI 骨架、网络领域模型、非敏感配置，以及 DNS、TCP、HTTP 基础探测、完整探测服务和 `status` CLI。`login`、`watch`、`account`、`configure` 仍使用占位处理器。
 
 ## 第一版目标
 
@@ -28,6 +28,18 @@ XDUWlan 是一个面向学习的校园网自动认证与校园网状态监测项
 python -m pip install -e ".[test]"
 python -m pytest -q
 ```
+
+## `status` 命令
+
+安装开发版本后可以运行一次网络状态探测：
+
+```bash
+xduwlan status
+xduwlan status --json
+xduwlan status --debug
+```
+
+`--json` 只输出状态、阶段成功标记和耗时；`--debug` 在中文摘要后追加脱敏的阶段观察。也可以用 `--config PATH` 指定非敏感 TOML 配置文件。
 
 ## 文档
 

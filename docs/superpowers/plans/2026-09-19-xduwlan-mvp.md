@@ -293,7 +293,7 @@ def test_redirect_to_portal_requires_authentication():
 - `DefaultNetworkProbe(config: AppConfig).probe() -> NetworkProbeResult`。
 - CLI `status` 接受 `--config PATH`、`--json` 和 `--debug`，默认输出中文摘要；`--json` 输出不含敏感字段的 JSON。
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 ```python
 def test_status_online_returns_zero_and_prints_state(monkeypatch, capsys):
@@ -302,22 +302,22 @@ def test_status_online_returns_zero_and_prints_state(monkeypatch, capsys):
     assert "已联网" in capsys.readouterr().out
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [x] **Step 2: 运行测试确认失败**
 
 运行：`python -m pytest tests/test_cli.py::test_status_online_returns_zero_and_prints_state -q`。
 预期：命令尚未连接应用服务而失败。
 
-- [ ] **Step 3: 实现应用服务和输出**
+- [x] **Step 3: 实现应用服务和输出**
 
 让 CLI 读取配置、创建探测器、调用 `probe()`，根据 `NetworkState` 映射中文说明和退出码；`--json` 使用 `json.dumps`，只输出状态、阶段成功与耗时。
 
-- [ ] **Step 4: 增加状态分支测试**
+- [x] **Step 4: 增加状态分支测试**
 
 覆盖 `ONLINE` 返回 0、`PORTAL_REQUIRED` 返回 4、网络不可用返回 5、配置错误返回 2。运行：`python -m pytest tests/test_cli.py tests/probe/test_service.py -q`。
 
-- [ ] **Step 5: 完成 M1 文档和提交**
+- [x] **Step 5: 完成 M1 文档和提交**
 
-README 增加 `python -m xduwlan status` 示例；更新 M1 进度和交接；提交 `feat: 增加 status 命令`。
+README 增加 `xduwlan status` 示例；更新 M1 进度、交接和学习文档；提交 `feat: 增加 status 命令`。
 
 ## 任务 5：贯通 `configure` 凭据保存切片
 

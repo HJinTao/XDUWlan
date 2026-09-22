@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-设计规格已获用户批准，实施路线已调整为纵向切片。任务 1 至任务 3 已完成；切片一 `status` 已具备 DNS、TCP、HTTP 基础探测、状态分类和本地服务器集成证据，下一步进入任务 4 的完整探测服务与 CLI 接入。
+设计规格已获用户批准，实施路线已调整为纵向切片。任务 1 至任务 4 已完成；`status` 已具备完整探测服务、配置读取、中文摘要、脱敏 JSON 和 debug 输出，下一步进入 `configure` 切片。
 
 ## 已完成
 
@@ -79,10 +79,28 @@
 - [x] 创建 `docs/learning/02-dns.md`、`03-tcp.md`、`04-http.md` 和 `docs/protocol/connectivity-detection.md`，记录实际实现、测试证据、网络原理和待实测假设。
 - [x] 完成任务 3 的 23 个探测测试；全仓库 48 个测试全部通过。
 - [x] 将当前文件框架图更新为 40 个文件，纳入本地集成测试和任务三学习/协议文档。
+- [x] 对齐任务四 `DefaultNetworkProbe`、阶段依赖注入、URL 端口和 CLI 后续调用边界。
+- [x] 新增 `NetworkProbe` 契约、`DefaultNetworkProbe` 骨架与无网络成功路径测试；测试因 `probe()` 的 `NotImplementedError` 准确 RED。
+- [x] 将文件框架图更新为 42 个节点，标记服务测试的 RED 状态。
+- [x] 学习者完成服务层 HTTPS 单地址成功路径；首个服务测试 GREEN，全量回归 49 个测试通过。
+- [x] 新增 DNS 空候选和 `socket.gaierror` 的参数化测试，分别复现 `AttributeError` 和解析异常外泄；服务测试当前 1 GREEN、2 RED。
+- [x] 指导者对服务文件做导入、换行、空白、引号及尾随逗号的无行为格式整理。
+- [x] 学习者将 DNS 解析异常和空候选转换为安全的 `UNKNOWN` 与单条失败观察；服务测试 3 个通过，全仓库 51 个通过。
+- [x] 新增 TCP 多候选与全失败测试；先失败后成功的候选重试已经 GREEN，全部失败时仍继续调用 HTTP 的用例准确 RED。
+- [x] 学习者完成 TCP 全失败后的提前返回；服务测试 5 个通过，全量回归 53 个通过。
+- [x] 新增 HTTP Portal 与请求失败的服务集成契约，保留安全结果；服务测试 7 个通过，全量回归 55 个通过。
+- [x] `status` 已注册 `--config`、`--json`、`--debug`，并建立 `build_network_probe()` 与 `_handle_status()` 骨架；首个 CLI 在线测试因处理器尚未实现准确 RED。
+- [x] 学习者完成默认配置、替代探测器调用和 ONLINE 中文输出；指定测试与全仓库 55 个测试通过。
+- [x] 新增四个非在线状态的中文摘要与退出码测试，均因 `_handle_status()` 隐式返回 `None` 准确 RED；ONLINE 与其他旧测试保持 GREEN。
+- [x] 根据学习者反馈扩大实现单元，一次建立配置路径与错误、JSON 脱敏、debug 阶段输出和系统适配器装配测试；CLI 当前 7 GREEN、11 RED。
+- [x] 学习者使用 `_STATUS_RESULTS` 字典一次完成五类状态的中文摘要与退出码；CLI 状态测试全部 GREEN，当前整体 11 GREEN、7 RED。
+- [x] 学习者完成 `status` 的 `--config`、配置错误、`--json`、`--debug` 和系统适配器装配；CLI 18 个测试全部通过。
+- [x] 创建 `docs/learning/05-status-cli.md`，记录完整调用路径、退出码、安全输出和后续连接点。
+- [x] 更新 README、架构、实施计划、进度、交接和文件框架图；任务四相关代码与测试已完成收尾。
 
 ## 当前阻塞
 
-- 无。任务 3 的 23 个探测测试和全仓库 48 个测试全部通过；任务 3 功能与文档已分批提交。
+- 无。任务四服务测试 7 个、CLI 测试 18 个，全仓库 66 个测试全部通过。
 
 ## 后续按需处理
 
@@ -90,9 +108,9 @@
 
 ## 下一步
 
-1. 进入任务 4，先对齐 `DefaultNetworkProbe` 如何从配置 URL 提取主机名和端口，并编排 DNS、TCP、HTTP 与最终 `NetworkProbeResult`。
-2. 指导者建立应用服务和 `status` CLI 的失败测试与骨架，学习者实现完整纵向调用链。
+1. 进入任务五 `configure`，先对齐凭据输入、`CredentialStore` Protocol 和系统凭据库边界。
+2. 真实校园网实验仍需用户明确执行，记录只保留脱敏状态和耗时。
 
 ## 最近验证
 
-已在 `xduwlan` Conda 环境中验证：`tests/probe/test_integration_server.py` 的 3 个用例全部通过；任务 3 的 23 个探测测试和全仓库 48 个测试全部通过；源码和测试可编译；差异与空白检查通过。
+已在 `xduwlan` Conda 环境中验证：`conda run -n xduwlan python -m pytest -q` 输出 `66 passed`；`git diff --check`、源码与测试编译均通过。

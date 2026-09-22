@@ -8,7 +8,7 @@
 
 [在浏览器中打开 XDUWlan 交互架构图](visualizations/xduwlan-architecture.html)。图中可以切换 `status`、`login`、`watch`、`account` 和 `configure`，观察每条命令经过的分层与数据流。
 
-[在浏览器中打开当前文件框架图](visualizations/xduwlan-file-architecture.html)。图中可以从项目文件树选择当前 40 个源码、测试、配置或文档文件，观察每个文件的输入依据、内部结构、输出影响和当前边界。
+[在浏览器中打开当前文件框架图](visualizations/xduwlan-file-architecture.html)。图中可以从项目文件树选择当前 43 个源码、测试、配置或文档文件，观察每个文件的输入依据、内部结构、输出影响和当前边界。
 
 当前文件框架图是随教学推进维护的活文档。文件结构、主要符号、调用关系或完成状态实际变化时，同步更新相关部分；单纯讲解不要求重绘。
 

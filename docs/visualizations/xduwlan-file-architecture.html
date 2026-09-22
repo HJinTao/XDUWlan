@@ -1494,7 +1494,7 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/div&gt;
       &lt;/details&gt;
       &lt;details open&gt;
-        &lt;summary&gt;src/xduwlan/probe · 6&lt;/summary&gt;
+        &lt;summary&gt;src/xduwlan/probe · 7&lt;/summary&gt;
         &lt;div class=&quot;fa-files&quot;&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/__init__.py&quot;&gt;__init__.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/interfaces.py&quot;&gt;interfaces.py&lt;/button&gt;
@@ -1502,6 +1502,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/tcp.py&quot;&gt;tcp.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/http.py&quot;&gt;http.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/classifier.py&quot;&gt;classifier.py&lt;/button&gt;
+          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;src/xduwlan/probe/service.py&quot;&gt;service.py&lt;/button&gt;
         &lt;/div&gt;
       &lt;/details&gt;
       &lt;details open&gt;
@@ -1513,17 +1514,18 @@ html&gt;body{padding:0}&lt;/style&gt;
         &lt;/div&gt;
       &lt;/details&gt;
       &lt;details open&gt;
-        &lt;summary&gt;tests/probe · 5&lt;/summary&gt;
+        &lt;summary&gt;tests/probe · 6&lt;/summary&gt;
         &lt;div class=&quot;fa-files&quot;&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_dns.py&quot;&gt;test_dns.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_tcp.py&quot;&gt;test_tcp.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_http.py&quot;&gt;test_http.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_classifier.py&quot;&gt;test_classifier.py&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_integration_server.py&quot;&gt;test_integration_server.py&lt;/button&gt;
+          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;tests/probe/test_service.py&quot;&gt;test_service.py&lt;/button&gt;
         &lt;/div&gt;
       &lt;/details&gt;
       &lt;details&gt;
-        &lt;summary&gt;docs · 18&lt;/summary&gt;
+        &lt;summary&gt;docs · 19&lt;/summary&gt;
         &lt;div class=&quot;fa-files&quot;&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/architecture.md&quot;&gt;architecture.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/progress.md&quot;&gt;progress.md&lt;/button&gt;
@@ -1538,6 +1540,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/02-dns.md&quot;&gt;02-dns.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/03-tcp.md&quot;&gt;03-tcp.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/04-http.md&quot;&gt;04-http.md&lt;/button&gt;
+          &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/learning/05-status-cli.md&quot;&gt;05-status-cli.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/protocol/README.md&quot;&gt;protocol/README.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/protocol/connectivity-detection.md&quot;&gt;connectivity-detection.md&lt;/button&gt;
           &lt;button class=&quot;btn btn-ghost btn-block&quot; type=&quot;button&quot; data-path=&quot;docs/superpowers/plans/2026-09-19-xduwlan-mvp.md&quot;&gt;MVP 实施计划&lt;/button&gt;
@@ -1621,12 +1624,12 @@ html&gt;body{padding:0}&lt;/style&gt;
           outputs: [node(&quot;xduwlan.__version__&quot;, &quot;供打包、诊断或未来 --version 使用。&quot;)]
         },
         &quot;src/xduwlan/cli.py&quot;: {
-          title: &quot;命令行入口&quot;, type: &quot;生产代码&quot;, status: &quot;任务一完成，处理器待接入&quot;, owner: &quot;任务四及以后继续修改&quot;,
+          title: &quot;命令行入口&quot;, type: &quot;生产代码&quot;, status: &quot;status CLI 18 GREEN&quot;, owner: &quot;任务四已完成，后续切片继续扩展&quot;,
           purpose: &quot;把终端参数转换成具体命令处理调用，并返回进程退出码。&quot;,
-          boundary: &quot;当前只注册命令和占位处理器；尚未读取配置、访问网络或读取凭据。&quot;,
+          boundary: &quot;负责参数解析、status 探测调用、中文摘要、JSON/debug 输出和退出码；其他四个命令仍占位。&quot;,
           inputs: [node(&quot;console script&quot;, &quot;pyproject 把 xduwlan 命令指向 main。&quot;), node(&quot;argv&quot;, &quot;用户输入的命令及参数。&quot;), node(&quot;argparse&quot;, &quot;标准库负责解析与帮助文本。&quot;)],
-          internals: [node(&quot;COMMANDS&quot;, &quot;五个稳定命令名。&quot;), node(&quot;_handle_placeholder(args)&quot;, &quot;当前所有命令共用的成功占位处理器。&quot;), node(&quot;build_parser()&quot;, &quot;创建解析器、子解析器并绑定 handler。&quot;), node(&quot;main(argv)&quot;, &quot;解析参数；无命令显示帮助；有命令调用 handler。&quot;)],
-          outputs: [node(&quot;终端帮助&quot;, &quot;无命令时打印可用命令。&quot;), node(&quot;退出码&quot;, &quot;当前有效命令返回 0，未知命令由 argparse 返回 2。&quot;), node(&quot;tests/test_cli.py&quot;, &quot;7 个测试固定当前行为。&quot;)]
+          internals: [node(&quot;COMMANDS&quot;, &quot;五个稳定命令名。&quot;), node(&quot;_handle_placeholder(args)&quot;, &quot;其余四个命令共用占位处理器。&quot;), node(&quot;build_network_probe(config)&quot;, &quot;装配三个系统阶段适配器。&quot;), node(&quot;_handle_status(args)&quot;, &quot;读取配置、调用探测器，并处理中文、JSON 和 debug 输出。&quot;), node(&quot;build_parser()&quot;, &quot;status 选项和四个占位子命令。&quot;), node(&quot;main(argv)&quot;, &quot;解析后调用对应处理器。&quot;)],
+          outputs: [node(&quot;终端帮助&quot;, &quot;包含 status 的 --config、--json、--debug 选项。&quot;), node(&quot;退出码与输出&quot;, &quot;五类状态、配置错误和两种输出模式均已实现。&quot;), node(&quot;tests/test_cli.py&quot;, &quot;18 个 status 与入口行为测试全部 GREEN。&quot;)]
         },
         &quot;src/xduwlan/config.py&quot;: {
           title: &quot;非敏感配置入口&quot;, type: &quot;生产代码&quot;, status: &quot;任务二已完成&quot;, owner: &quot;任务三探测器将读取&quot;,
@@ -1661,12 +1664,12 @@ html&gt;body{padding:0}&lt;/style&gt;
           outputs: [node(&quot;xduwlan.probe&quot;, &quot;为后续 DNS、TCP、HTTP 模块提供命名空间。&quot;)]
         },
         &quot;src/xduwlan/probe/interfaces.py&quot;: {
-          title: &quot;探测端口接口与观察记录&quot;, type: &quot;核心契约&quot;, status: &quot;DNS/TCP/HTTP 契约已就位&quot;, owner: &quot;调用方与适配器共同依赖&quot;,
+          title: &quot;探测端口接口与观察记录&quot;, type: &quot;核心契约&quot;, status: &quot;阶段与完整探测契约已就位&quot;, owner: &quot;调用方与适配器共同依赖&quot;,
           purpose: &quot;用项目自己的稳定类型隔离调用方与 DNS、TCP、HTTP 的具体库结构。&quot;,
           boundary: &quot;只定义数据和能力契约，不调用 DNS、不建立 TCP 连接，也不依赖具体 HTTP 库。&quot;,
           inputs: [node(&quot;dataclass(frozen=True)&quot;, &quot;生成不可变地址和观察记录。&quot;), node(&quot;Protocol&quot;, &quot;用结构化类型声明解析与连接能力。&quot;)],
-          internals: [node(&quot;ResolvedAddress&quot;, &quot;保存数值 host、port 和地址族 family。&quot;), node(&quot;TcpObservation&quot;, &quot;保存连接目标、成功状态、耗时和安全说明。&quot;), node(&quot;HttpObservation&quot;, &quot;保存状态码、Location、正文、耗时和安全说明。&quot;), node(&quot;DnsResolver / TcpConnector&quot;, &quot;声明 DNS 与 TCP 能力。&quot;), node(&quot;HttpConnectivityChecker.request(url, timeout)&quot;, &quot;声明 HTTP URL 到结构化观察的转换。&quot;)],
-          outputs: [node(&quot;SystemDnsResolver&quot;, &quot;按地址契约转换系统解析记录。&quot;), node(&quot;SystemTcpConnector&quot;, &quot;按连接契约返回 TcpObservation。&quot;), node(&quot;SystemHttpConnectivityChecker&quot;, &quot;按 HTTP 契约返回 HttpObservation。&quot;), node(&quot;probe 测试&quot;, &quot;使用稳定领域类型断言适配器行为。&quot;)]
+          internals: [node(&quot;ResolvedAddress&quot;, &quot;保存数值 host、port 和地址族 family。&quot;), node(&quot;TcpObservation&quot;, &quot;保存连接目标、成功状态、耗时和安全说明。&quot;), node(&quot;HttpObservation&quot;, &quot;保存状态码、Location、正文、耗时和安全说明。&quot;), node(&quot;DnsResolver / TcpConnector&quot;, &quot;声明 DNS 与 TCP 能力。&quot;), node(&quot;HttpConnectivityChecker.request(url, timeout)&quot;, &quot;声明 HTTP URL 到结构化观察的转换。&quot;), node(&quot;NetworkProbe.probe()&quot;, &quot;声明上层需要的完整探测结果能力。&quot;)],
+          outputs: [node(&quot;系统阶段适配器&quot;, &quot;依照端口接口提供 DNS、TCP、HTTP 观察。&quot;), node(&quot;DefaultNetworkProbe&quot;, &quot;接收可替换的阶段依赖并实现完整探测契约。&quot;), node(&quot;probe 测试&quot;, &quot;使用稳定领域类型断言适配器与服务行为。&quot;)]
         },
         &quot;src/xduwlan/probe/dns.py&quot;: {
           title: &quot;系统 DNS 解析适配器&quot;, type: &quot;生产代码&quot;, status: &quot;DNS 地址转换 GREEN&quot;, owner: &quot;任务三 TCP 阶段将使用&quot;,
@@ -1700,13 +1703,21 @@ html&gt;body{padding:0}&lt;/style&gt;
           internals: [node(&quot;204 · GREEN&quot;, &quot;明确映射为 ONLINE。&quot;), node(&quot;已知 Portal 3xx · GREEN&quot;, &quot;使用 urlparse().hostname 精确匹配主机集合。&quot;), node(&quot;200 深澜正文 · GREEN&quot;, &quot;大小写无关查找 srun_portal 特征。&quot;), node(&quot;UNKNOWN 与畸形 URL · GREEN&quot;, &quot;其他响应或解析失败均安全回退。&quot;)],
           outputs: [node(&quot;NetworkState&quot;, &quot;本函数只返回 ONLINE、PORTAL_REQUIRED 或 UNKNOWN。&quot;), node(&quot;tests/probe/test_classifier.py&quot;, &quot;8 个分类行为测试全部 GREEN。&quot;)]
         },
+        &quot;src/xduwlan/probe/service.py&quot;: {
+          title: &quot;完整网络探测服务&quot;, type: &quot;生产代码&quot;, status: &quot;服务测试 7 GREEN&quot;, owner: &quot;学习者实现逻辑&quot;,
+          purpose: &quot;编排 URL 分解、DNS、TCP、HTTP 和分类，返回统一的 NetworkProbeResult。&quot;,
+          boundary: &quot;DNS 与 TCP 阶段失败已转换，HTTP 分类已接线；不负责 CLI 输出或真实认证。&quot;,
+          inputs: [node(&quot;AppConfig&quot;, &quot;提供探测 URL、Portal URL 和请求超时。&quot;), node(&quot;阶段 Protocol&quot;, &quot;注入 DNS、TCP、HTTP 能力，测试时使用替代对象。&quot;), node(&quot;classify_http_observation&quot;, &quot;将 HTTP 证据转换为领域状态。&quot;)],
+          internals: [node(&quot;DefaultNetworkProbe.__init__()&quot;, &quot;保存配置和三个阶段依赖。&quot;), node(&quot;DNS 失败 · GREEN&quot;, &quot;解析错误或空候选安全返回 UNKNOWN。&quot;), node(&quot;TCP 多地址/全失败 · GREEN&quot;, &quot;成功时继续 HTTP，全部失败时提前返回不可达。&quot;), node(&quot;HTTP 结果 · GREEN&quot;, &quot;分类 Portal 或未知，不传播原始 Location。&quot;)],
+          outputs: [node(&quot;NetworkProbeResult&quot;, &quot;后续交给 status CLI 和 login/watch 使用。&quot;), node(&quot;tests/probe/test_service.py&quot;, &quot;7 GREEN。&quot;)]
+        },
         &quot;tests/test_cli.py&quot;: {
-          title: &quot;CLI 自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;7 个用例通过&quot;, owner: &quot;指导者维护&quot;,
+          title: &quot;CLI 自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;18 GREEN&quot;, owner: &quot;指导者维护&quot;,
           purpose: &quot;把任务一 CLI 的外部可观察行为固定成可重复执行的规格。&quot;,
-          boundary: &quot;当前只验证骨架，不要求五个命令完成真实业务。&quot;,
+          boundary: &quot;旧命令仍验证骨架；status 使用替代探测器，不访问真实网络。&quot;,
           inputs: [node(&quot;xduwlan.cli.main&quot;, &quot;被测试入口。&quot;), node(&quot;pytest&quot;, &quot;提供参数化和输出捕获 fixture。&quot;)],
-          internals: [node(&quot;无命令测试&quot;, &quot;断言返回 0 且帮助包含五个命令。&quot;), node(&quot;未知命令测试&quot;, &quot;断言 argparse 触发 SystemExit(2)。&quot;), node(&quot;命令参数化测试&quot;, &quot;五个已注册命令都能调用占位处理器并返回 0。&quot;)],
-          outputs: [node(&quot;cli.py 回归保护&quot;, &quot;后续替换处理器时保留入口约定。&quot;), node(&quot;任务一 GREEN&quot;, &quot;当前共 7 个通过用例。&quot;)]
+          internals: [node(&quot;入口与占位命令 · GREEN&quot;, &quot;入口、帮助、未知命令和四个占位命令。&quot;), node(&quot;状态映射 · GREEN&quot;, &quot;五类 NetworkState 的摘要和退出码。&quot;), node(&quot;配置与错误 · GREEN&quot;, &quot;Path 加载、默认值和安全配置错误。&quot;), node(&quot;JSON/debug · GREEN&quot;, &quot;结构化脱敏输出和文本阶段信息。&quot;), node(&quot;装配 · GREEN&quot;, &quot;DefaultNetworkProbe 与三个系统适配器。&quot;)],
+          outputs: [node(&quot;cli.py 回归保护&quot;, &quot;固定完整 status 输入输出与装配边界。&quot;), node(&quot;任务四验收&quot;, &quot;18 个 CLI 测试全部 GREEN。&quot;)]
         },
         &quot;tests/test_config.py&quot;: {
           title: &quot;配置自动化测试&quot;, type: &quot;测试代码&quot;, status: &quot;14 GREEN&quot;, owner: &quot;指导者维护&quot;,
@@ -1764,6 +1775,14 @@ html&gt;body{padding:0}&lt;/style&gt;
           internals: [node(&quot;/online · GREEN&quot;, &quot;204 观察并分类为 ONLINE。&quot;), node(&quot;/portal · GREEN&quot;, &quot;保留 302 和 Location，只收到 /portal，证明未自动跟随。&quot;), node(&quot;/login · GREEN&quot;, &quot;200 UTF-8 正文含 srun_portal，分类为 PORTAL_REQUIRED。&quot;), node(&quot;fixture 清理 · GREEN&quot;, &quot;finally 中停止服务、关闭 socket 并等待线程退出。&quot;)],
           outputs: [node(&quot;真实标准库证据&quot;, &quot;证明单元测试假设与 Python urllib 实际行为一致。&quot;), node(&quot;任务三完成条件&quot;, &quot;为学习与协议文档提供受控实验结果。&quot;)]
         },
+        &quot;tests/probe/test_service.py&quot;: {
+          title: &quot;完整探测服务测试&quot;, type: &quot;测试代码&quot;, status: &quot;7 GREEN&quot;, owner: &quot;指导者维护&quot;,
+          purpose: &quot;固定 HTTPS、DNS/TCP 失败、HTTP 分类与脱敏的服务层行为。&quot;,
+          boundary: &quot;只使用虚构 URL、保留示例地址和替代阶段依赖，不访问真实网络。&quot;,
+          inputs: [node(&quot;DefaultNetworkProbe&quot;, &quot;被测试的真实服务入口。&quot;), node(&quot;FakeResolver / FakeConnector / FakeChecker&quot;, &quot;记录跨阶段调用并提供固定观察。&quot;)],
+          internals: [node(&quot;成功与 DNS 失败 · GREEN&quot;, &quot;204 在线与两类 DNS 失败分类。&quot;), node(&quot;TCP 候选 · GREEN&quot;, &quot;先败后成与全失败的处理。&quot;), node(&quot;HTTP 分类 · GREEN&quot;, &quot;自定义 Portal、网络错误和敏感 Location 不进入结果。&quot;)],
+          outputs: [node(&quot;service.py 的回归保护&quot;, &quot;当前 7 个用例全部 GREEN。&quot;)]
+        },
         &quot;docs/architecture.md&quot;: {
           title: &quot;架构说明&quot;, type: &quot;架构文档&quot;, status: &quot;持续更新&quot;, owner: &quot;开发共同依据&quot;,
           purpose: &quot;用较短篇幅固定模块边界、依赖方向和纵向切片方式。&quot;,
@@ -1777,7 +1796,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           purpose: &quot;回答项目目前完成了什么、卡在哪里、下一步是什么。&quot;,
           boundary: &quot;只记录当前事实，不替代长期规格或完整会话背景。&quot;,
           inputs: [node(&quot;测试结果&quot;, &quot;通过和预期失败的最新数量。&quot;), node(&quot;完成记录&quot;, &quot;已验证的小目标。&quot;)],
-          internals: [node(&quot;当前阶段&quot;, &quot;任务一至三已完成，下一步进入任务四 status 接入。&quot;), node(&quot;已完成&quot;, &quot;DNS/TCP/HTTP、分类、本地集成和任务三文档全部完成。&quot;), node(&quot;当前阻塞&quot;, &quot;无；任务三 23 GREEN，全仓库 48 GREEN。&quot;), node(&quot;下一步&quot;, &quot;对齐 DefaultNetworkProbe、阶段编排和 status CLI。&quot;), node(&quot;最近验证&quot;, &quot;记录集成 3 passed 与全量 48 passed。&quot;)],
+          internals: [node(&quot;当前阶段&quot;, &quot;任务一至四已完成，下一步进入任务五 configure。&quot;), node(&quot;已完成&quot;, &quot;探测服务、status CLI、学习记录和项目文档全部完成。&quot;), node(&quot;当前阻塞&quot;, &quot;无；服务 7 个、CLI 18 个、全仓库 66 个测试通过。&quot;), node(&quot;下一步&quot;, &quot;对齐 configure 的凭据输入、Protocol 和 keyring 边界。&quot;), node(&quot;最近验证&quot;, &quot;记录全量测试、差异检查、编译和安全扫描。&quot;)],
           outputs: [node(&quot;当前会话&quot;, &quot;决定下一步工作。&quot;), node(&quot;session-handoff&quot;, &quot;提供更完整的跨会话背景。&quot;)]
         },
         &quot;docs/security.md&quot;: {
@@ -1793,7 +1812,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           purpose: &quot;让新的开发会话不依赖聊天历史也能恢复目标、代码状态和下一步。&quot;,
           boundary: &quot;是当前上下文快照；长期原因仍以规格、ADR 和架构文档为准。&quot;,
           inputs: [node(&quot;progress.md&quot;, &quot;提供当前阶段和验证结果。&quot;), node(&quot;本次会话决策&quot;, &quot;补充教学分工、风险和必读入口。&quot;)],
-          internals: [node(&quot;当前目标&quot;, &quot;说明任务三已完成，下一步进入任务四 status。&quot;), node(&quot;已完成&quot;, &quot;列出探测 23 GREEN、全仓库 48 GREEN 和四份新文档。&quot;), node(&quot;当前代码状态&quot;, &quot;区分已完成基础探测与尚未实现的完整编排和 CLI。&quot;), node(&quot;下一步任务&quot;, &quot;恢复到 DefaultNetworkProbe 与 status CLI 的架构对齐。&quot;), node(&quot;必须先阅读 / 风险&quot;, &quot;提供上下文入口与真实协议风险。&quot;)],
+          internals: [node(&quot;当前目标&quot;, &quot;说明任务四已完成，下一步进入任务五 configure。&quot;), node(&quot;已完成&quot;, &quot;列出服务 7 个、CLI 18 个和全仓库 66 个测试通过，以及 status 学习文档。&quot;), node(&quot;当前代码状态&quot;, &quot;完整 status 切片已接通；其他四个命令仍为占位。&quot;), node(&quot;下一步任务&quot;, &quot;先按职责提交任务四，再对齐 configure 架构。&quot;), node(&quot;必须先阅读 / 风险&quot;, &quot;提供上下文入口与真实协议风险。&quot;)],
           outputs: [node(&quot;新会话&quot;, &quot;快速恢复工作位置。&quot;), node(&quot;开发连续性&quot;, &quot;防止遗忘测试状态和安全边界。&quot;)]
         },
         &quot;docs/decisions/0001-python-first.md&quot;: {
@@ -1825,7 +1844,7 @@ html&gt;body{padding:0}&lt;/style&gt;
           purpose: &quot;规定学习记录的统一结构和按实际使用顺序排列的主题。&quot;,
           boundary: &quot;未来主题不提前写结论，等相应代码通过测试后再记录。&quot;,
           inputs: [node(&quot;纵向切片顺序&quot;, &quot;status、configure、login、watch、account。&quot;), node(&quot;实际实现经验&quot;, &quot;测试、失败现象和复盘。&quot;)],
-          internals: [node(&quot;文章模板&quot;, &quot;问题、概念、数据流、API、实验、结果、易错点。&quot;), node(&quot;00-04&quot;, &quot;CLI、模型配置、DNS、TCP、HTTP。&quot;), node(&quot;05-09&quot;, &quot;凭据、Portal、状态机、会话、打包。&quot;)],
+          internals: [node(&quot;文章模板&quot;, &quot;问题、概念、数据流、API、实验、结果、易错点。&quot;), node(&quot;00-05&quot;, &quot;CLI、模型配置、DNS、TCP、HTTP 和 status。&quot;), node(&quot;06-10&quot;, &quot;凭据、Portal、状态机、会话、打包。&quot;)],
           outputs: [node(&quot;docs/learning/*.md&quot;, &quot;每个主题完成后生成学习记录。&quot;), node(&quot;初学者路线&quot;, &quot;决定先学哪些语法和网络概念。&quot;)]
         },
         &quot;docs/learning/00-python-cli.md&quot;: {
@@ -1868,6 +1887,14 @@ html&gt;body{padding:0}&lt;/style&gt;
           internals: [node(&quot;协议结构&quot;, &quot;GET、状态码、Location、Content-Type 和正文。&quot;), node(&quot;适配器数据流&quot;, &quot;禁止重定向、HTTPError、字符集、读取上限和异常顺序。&quot;), node(&quot;分类规则&quot;, &quot;204、已知 Portal hostname、srun_portal 和 UNKNOWN。&quot;), node(&quot;集成与清理&quot;, &quot;loopback、临时端口、服务线程和 fixture 清理。&quot;)],
           outputs: [node(&quot;HTTP 复盘&quot;, &quot;为任务四完整状态编排提供已验证组件。&quot;), node(&quot;测试结果&quot;, &quot;任务三 23 GREEN，全仓库 48 GREEN。&quot;)]
         },
+        &quot;docs/learning/05-status-cli.md&quot;: {
+          title: &quot;学习记录 05：status CLI 与完整探测&quot;, type: &quot;学习文档&quot;, status: &quot;任务四已完成&quot;, owner: &quot;记录已验证知识&quot;,
+          purpose: &quot;说明完整探测服务如何编排 DNS、TCP、HTTP，并由 status CLI 输出稳定、脱敏的状态结果。&quot;,
+          boundary: &quot;只覆盖 status 切片；认证、凭据、watch 和 account 留给后续任务。&quot;,
+          inputs: [node(&quot;任务四实现&quot;, &quot;service.py、interfaces.py、cli.py 及对应测试。&quot;), node(&quot;任务三组件&quot;, &quot;DNS、TCP、HTTP 适配器和分类器。&quot;)],
+          internals: [node(&quot;调用路径&quot;, &quot;status → 配置 → DefaultNetworkProbe → DNS/TCP/HTTP → NetworkProbeResult。&quot;), node(&quot;状态与退出码&quot;, &quot;在线返回 0，认证返回 4，网络失败返回 5，未知返回 1。&quot;), node(&quot;输出模式&quot;, &quot;中文摘要、脱敏 JSON 和阶段 debug 观察。&quot;), node(&quot;测试结果&quot;, &quot;服务 7 个、CLI 18 个、全仓库 66 个测试通过。&quot;)],
+          outputs: [node(&quot;任务四复盘&quot;, &quot;为 configure 和后续 watch 提供完整探测入口。&quot;), node(&quot;安全边界&quot;, &quot;JSON 和 debug 不输出 Location、正文或底层错误正文。&quot;)]
+        },
         &quot;docs/protocol/README.md&quot;: {
           title: &quot;协议记录目录&quot;, type: &quot;协议索引&quot;, status: &quot;等待真实脱敏证据&quot;, owner: &quot;协议实验入口&quot;,
           purpose: &quot;规定协议事实怎样分类、命名和保存，避免把推测写成事实。&quot;,
@@ -1885,12 +1912,12 @@ html&gt;body{padding:0}&lt;/style&gt;
           outputs: [node(&quot;实现依据&quot;, &quot;明确哪些规则已有本地证据，哪些只是可测试假设。&quot;), node(&quot;真实实验边界&quot;, &quot;只记录脱敏状态码、主机类别、耗时和结论。&quot;)]
         },
         &quot;docs/superpowers/plans/2026-09-19-xduwlan-mvp.md&quot;: {
-          title: &quot;MVP 实施计划&quot;, type: &quot;实施计划&quot;, status: &quot;任务三已分批提交&quot;, owner: &quot;逐任务执行依据&quot;,
+          title: &quot;MVP 实施计划&quot;, type: &quot;实施计划&quot;, status: &quot;任务四已完成并分批提交&quot;, owner: &quot;逐任务执行依据&quot;,
           purpose: &quot;把正式规格拆成可测试、可提交、可教学的小任务。&quot;,
           boundary: &quot;描述计划和验收；真实协议参数仍需后续脱敏实验确认。&quot;,
           inputs: [node(&quot;正式设计规格&quot;, &quot;提供目标、架构、数据流和里程碑。&quot;), node(&quot;教学协作规则&quot;, &quot;要求测试先行和学习者实现逻辑。&quot;)],
-          internals: [node(&quot;全局约束&quot;, &quot;标准库优先、安全、测试和文档要求。&quot;), node(&quot;文件结构总览&quot;, &quot;预计创建的代码、测试和文档。&quot;), node(&quot;纵向切片顺序&quot;, &quot;status 到 account，再交付。&quot;), node(&quot;任务 3 完成&quot;, &quot;适配器、分类、集成、学习和协议文档全部 GREEN。&quot;), node(&quot;任务 4 下一步&quot;, &quot;完整探测服务与 status CLI 接入。&quot;), node(&quot;计划自审&quot;, &quot;检查规格覆盖、一致性和完整性。&quot;)],
-          outputs: [node(&quot;当前任务&quot;, &quot;任务三按 DNS、TCP、HTTP 和分类小步推进。&quot;), node(&quot;未来文件&quot;, &quot;probe、portal、credentials、watcher、monitor 等。&quot;), node(&quot;提交边界&quot;, &quot;每个可验证任务独立提交。&quot;)]
+          internals: [node(&quot;全局约束&quot;, &quot;标准库优先、安全、测试和文档要求。&quot;), node(&quot;文件结构总览&quot;, &quot;预计创建的代码、测试和文档。&quot;), node(&quot;纵向切片顺序&quot;, &quot;status 到 account，再交付。&quot;), node(&quot;任务 3 完成&quot;, &quot;适配器、分类、集成、学习和协议文档全部 GREEN。&quot;), node(&quot;任务 4 完成&quot;, &quot;完整探测服务、status CLI、测试和文档全部 GREEN。&quot;), node(&quot;计划自审&quot;, &quot;检查规格覆盖、一致性和完整性。&quot;)],
+          outputs: [node(&quot;当前任务&quot;, &quot;任务四已完成，下一步进入 configure。&quot;), node(&quot;未来文件&quot;, &quot;portal、credentials、watcher、monitor 等。&quot;), node(&quot;提交边界&quot;, &quot;任务四已按生产代码/测试和文档职责分批提交。&quot;)]
         },
         &quot;docs/superpowers/specs/2026-09-19-xduwlan-design.md&quot;: {
           title: &quot;项目设计规格&quot;, type: &quot;正式规格&quot;, status: &quot;已批准&quot;, owner: &quot;范围与验收的最高项目文档&quot;,
