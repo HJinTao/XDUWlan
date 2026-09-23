@@ -214,6 +214,7 @@
         "docs/decisions/0004-layered-project-memory.md",
         "docs/protocol/README.md",
         "docs/protocol/connectivity-detection.md",
+        "docs/superpowers/specs/2026-09-23-credential-store-design.md",
         "docs/visualizations/xduwlan-architecture.html",
         "docs/visualizations/xduwlan-file-architecture.html"
       ]
@@ -222,9 +223,9 @@
     const files = {
       "AGENTS.md": file(
         "开发协作规则", "协作入口", "稳定规则",
-        "规定跨会话恢复、教学方式、子任务粒度、实现分工和验证节奏。",
+        "规定跨会话恢复、技术设计责任、教学方式、子任务粒度、实现分工和验证节奏。",
         [item("用户需求", "决定默认协作方式和允许的例外。"), item("记忆架构决策", "规定默认只加载工作记忆。")],
-        [item("恢复顺序", "AGENTS → current → 任务索引。"), item("开发节奏", "按认知边界拆子任务，每个子任务一次完整 RED/GREEN。")],
+        [item("恢复顺序", "AGENTS → current → 任务索引。"), item("设计责任", "指导者决定技术设计并解释，学习者不承担接口取舍。"), item("开发节奏", "按认知边界拆子任务，每个子任务一次完整 RED/GREEN。")],
         [item("所有开发会话", "开始工作前先遵守这里的稳定约束。"), item("docs/current.md", "按这里定义的生命周期维护工作记忆。")],
         "不保存项目进度、详细架构或协议事实。",
         "只有稳定协作方式、记忆规则或安全入口变化时更新。"
@@ -444,7 +445,7 @@
         "让新会话用最少上下文恢复当前切片、下一子任务、验证基线和下一动作。",
         [item("当前代码与测试", "事实冲突时以实现为准。"), item("已批准协作规则", "决定记录粒度和生命周期。")],
         [item("当前状态", "已完成能力、下一子任务和非目标。"), item("学习上下文", "记录已接触知识，避免重复教学。"), item("任务索引", "列出下一步按需读取内容。")],
-        [item("下一次开发会话", "直接恢复到 configure 的凭据子任务对齐。")],
+        [item("下一次开发会话", "由指导者讲解已经决定的凭据设计，再建立完整 RED。")],
         "不保存完整项目规格、逐轮对话或累计历史。",
         "当前事实、RED/GREEN、责任人、阻塞或下一动作变化时更新。"
       ),
@@ -528,6 +529,15 @@
         [item("classifier.py / service.py", "说明当前实现依据。"), item("真实实验", "规定需要回答的问题和可记录字段。")],
         "项目测试通过不等于西电真实网络行为已经验证。",
         "探测实现契约或脱敏真实证据变化时更新。"
+      ),
+      "docs/superpowers/specs/2026-09-23-credential-store-design.md": file(
+        "configure 凭据存储设计", "设计文档", "指导者已决定",
+        "固定第一个 configure 子任务的接口、数据流、安全边界和一次性 RED 范围。",
+        [item("安全规则", "约束账号、密码、错误和测试数据。"), item("ADR 0003", "确定使用系统凭据库且不回退明文。"), item("keyring 官方 API", "提供稳定调用和异常层次证据。")],
+        [item("组件设计", "Credentials、CredentialStore、KeyringCredentialStore 和测试替身。"), item("存储决策", "账号与密码编码为一条 JSON 凭据记录。"), item("测试设计", "一次 RED 覆盖保存、读取、缺失、损坏和后端错误。")],
+        [item("实施计划", "指导者据此拆解可执行步骤。"), item("测试与骨架", "确定下一轮要创建的文件和符号。"), item("学习者", "获得已定设计的讲解，不承担接口审批。")],
+        "本子任务不接入 configure CLI、Portal 协议、删除操作或真实凭据库。",
+        "只有需求、安全证据或实现前发现的技术事实变化时更新；不等待学习者批准。"
       ),
       "docs/visualizations/xduwlan-architecture.html": file(
         "命令分层图", "交互文档", "当前同步",
