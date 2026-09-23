@@ -4,7 +4,7 @@
 
 `status` 已完成，下一切片是 `configure`。它的目标是安全收集校园网账号与密码，并通过系统凭据库保存密码。
 
-当前尚未为 `configure` 创建测试、模块或实现。第一个凭据存储子任务已经完成设计，等待学习者阅读规格后进入实施计划与 RED。
+当前尚未为 `configure` 创建测试、模块或实现。第一个凭据存储子任务的技术边界已经由指导者决定，并压缩保存在本文件；下一步先向学习者讲解已定设计，再建立 RED。
 
 ## 已完成能力
 
@@ -17,13 +17,17 @@
 
 ## 下一子任务
 
-实现 `configure` 的凭据存储边界。已确认账号与密码作为一条记录进入系统凭据库，普通 TOML 不保存学号；具体接口、数据流、错误边界和测试范围以设计规格为准：
+实现 `configure` 的凭据存储边界。已定设计为：
 
-- [`2026-09-23-credential-store-design.md`](superpowers/specs/2026-09-23-credential-store-design.md)
+- `Credentials` 使用不可变数据类保存账号和密码，并在 `repr` 中隐藏两个字段；
+- `CredentialStore` 只声明 `save(credentials)` 和 `load()`；尚未配置时返回 `None`；
+- `KeyringCredentialStore` 使用固定查询键，把账号与密码编码为一条 JSON 记录后一次写入系统凭据库；
+- 凭据库错误或损坏记录统一转换为不泄漏内容的 `CredentialStoreError`；
+- 自动化测试使用内存替身和虚构凭据，不访问真实系统凭据库。
 
 本子任务不接入 Portal 登录，不实现协议编码，不把密码写入 TOML，也不提供明文文件回退。
 
-## 候选调用关系
+## 已定调用关系
 
 ```text
 configure CLI
@@ -33,7 +37,7 @@ configure CLI
   → 操作系统凭据库
 ```
 
-调用关系已经确认；设计规格经学习者阅读后，指导者先编写实施计划，再建立完整 RED 和符号骨架。
+下一步向学习者讲解本子任务的文件、符号、数据流和测试，随后由指导者一次建立完整 RED 和符号骨架。
 
 ## 学习上下文
 
@@ -55,7 +59,7 @@ configure CLI
 
 ## 下一责任人和动作
 
-学习者先阅读凭据存储设计规格；确认后由指导者编写实施计划，并按计划建立测试与骨架。
+指导者先向学习者讲解已定设计，再建立完整 RED 与符号骨架；确认失败准确后，由学习者一次实现凭据存储行为到 GREEN。
 
 ## 本任务索引
 
@@ -65,7 +69,6 @@ configure CLI
 - `docs/architecture.md`
 - `docs/roadmap.md`
 - `docs/decisions/0003-system-keyring.md`
-- `docs/superpowers/specs/2026-09-23-credential-store-design.md`
 - `src/xduwlan/cli.py`
 - `src/xduwlan/config.py`
 - `src/xduwlan/errors.py`

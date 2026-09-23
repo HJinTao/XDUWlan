@@ -126,7 +126,7 @@
   <main>
     <header>
       <h1>XDUWlan 文件职责与依赖</h1>
-      <p class="intro">左侧只列出仓库当前存在的文件。选择文件后，右侧用“依赖什么、内部负责什么、影响谁”说明边界；不再展示开发流水、任务编号或不断变化的测试计数。</p>
+      <p class="intro">这里只展示入口与配置、生产代码和自动化测试。选择文件后，右侧用“依赖什么、内部负责什么、影响谁”说明可执行项目结构。</p>
     </header>
 
     <div class="layout">
@@ -202,21 +202,6 @@
         "tests/probe/test_classifier.py",
         "tests/probe/test_integration_server.py",
         "tests/probe/test_service.py"
-      ],
-      "项目文档": [
-        "docs/current.md",
-        "docs/roadmap.md",
-        "docs/architecture.md",
-        "docs/security.md",
-        "docs/decisions/0001-python-first.md",
-        "docs/decisions/0002-modular-cli.md",
-        "docs/decisions/0003-system-keyring.md",
-        "docs/decisions/0004-layered-project-memory.md",
-        "docs/protocol/README.md",
-        "docs/protocol/connectivity-detection.md",
-        "docs/superpowers/specs/2026-09-23-credential-store-design.md",
-        "docs/visualizations/xduwlan-architecture.html",
-        "docs/visualizations/xduwlan-file-architecture.html"
       ]
     };
 
@@ -440,123 +425,6 @@
         "探测阶段编排或状态映射变化时更新。"
       ),
 
-      "docs/current.md": file(
-        "当前工作记忆", "工作记忆", "持续更新",
-        "让新会话用最少上下文恢复当前切片、下一子任务、验证基线和下一动作。",
-        [item("当前代码与测试", "事实冲突时以实现为准。"), item("已批准协作规则", "决定记录粒度和生命周期。")],
-        [item("当前状态", "已完成能力、下一子任务和非目标。"), item("学习上下文", "记录已接触知识，避免重复教学。"), item("任务索引", "列出下一步按需读取内容。")],
-        [item("下一次开发会话", "由指导者讲解已经决定的凭据设计，再建立完整 RED。")],
-        "不保存完整项目规格、逐轮对话或累计历史。",
-        "当前事实、RED/GREEN、责任人、阻塞或下一动作变化时更新。"
-      ),
-      "docs/roadmap.md": file(
-        "产品路线图", "长期文档", "当前有效",
-        "保存 MVP 范围、明确非目标、五个纵向切片和验收条件。",
-        [item("产品目标", "决定第一版需要交付的用户结果。"), item("长期架构边界", "限制切片之间的职责。")],
-        [item("能力表", "区分已完成、下一步和计划中。"), item("切片验收", "描述结果，不固化易过期的逐步实现。")],
-        [item("current.md", "提供当前切片方向。"), item("未来子任务对齐", "只在开始时展开文件和测试。")],
-        "不保存开发流水、具体测试代码或教学规则。",
-        "产品范围、切片状态或验收条件变化时更新。"
-      ),
-      "docs/architecture.md": file(
-        "架构说明", "长期文档", "当前有效",
-        "描述依赖方向、已实现模块、status 调用链和计划模块边界。",
-        [item("当前源码", "决定实际模块和符号。"), item("ADR", "提供 Python、模块化 CLI 和凭据策略。")],
-        [item("当前实现", "只列仓库真实存在的模块。"), item("计划边界", "明确未实现，但不提前固定接口。")],
-        [item("开发对齐", "判断新增代码应该依赖哪个层。"), item("两份可视化", "提供交互式入口。")],
-        "不记录动态文件数量、进度或文档维护流程。",
-        "模块职责、依赖方向或实际调用链变化时更新。"
-      ),
-      "docs/security.md": file(
-        "安全与隐私规则", "长期文档", "持续生效",
-        "集中管理敏感数据分类、存储、输出、测试证据和真实实验边界。",
-        [item("项目风险", "凭据、认证、会话和个人网络信息。")],
-        [item("数据分类", "区分敏感凭据与个人信息。"), item("处理规则", "覆盖输入、存储、日志、测试、验证码和泄漏处置。")],
-        [item("configure / login / account", "相关子任务开始前必须读取。"), item("协议文档", "引用统一证据和脱敏门槛。")],
-        "不保存真实凭据、真实页面或具体会话数据。",
-        "敏感数据类型、存储方式、输出行为或协议风险变化时更新。"
-      ),
-      "docs/decisions/0001-python-first.md": file(
-        "ADR 0001：第一版使用 Python", "决策记录", "已接受",
-        "固定第一版语言和网络基础阶段的依赖策略。",
-        [item("学习目标", "需要快速观察网络行为并亲手实现。"), item("跨语言方向", "未来仍需可迁移契约。")],
-        [item("决策", "Python 3.11+ 模块化 CLI，基础网络优先标准库。"), item("后果", "协议核心避免依赖 Python 特有行为。")],
-        [item("pyproject.toml", "声明 Python 版本和包入口。"), item("当前实现", "DNS、TCP、HTTP 使用标准库。")],
-        "不决定未来桌面产品的语言。",
-        "第一版技术栈发生根本变化时更新或替代。"
-      ),
-      "docs/decisions/0002-modular-cli.md": file(
-        "ADR 0002：模块化 CLI 与领域核心", "决策记录", "已接受",
-        "固定 CLI、应用服务、端口和适配器的依赖结构。",
-        [item("多业务链路", "探测、认证、自服务、凭据和重连需要隔离。")],
-        [item("决策", "采用四层结构，Portal 与自服务保持独立。"), item("后果", "前期接口更多，但模块可单独测试和迁移。")],
-        [item("architecture.md", "展开当前结构。"), item("所有新模块", "必须遵守依赖方向。")],
-        "不规定每个未来适配器的具体文件和全部方法。",
-        "核心依赖结构或业务隔离原则变化时更新或替代。"
-      ),
-      "docs/decisions/0003-system-keyring.md": file(
-        "ADR 0003：系统凭据库", "决策记录", "已接受",
-        "决定长期密码通过 keyring 进入操作系统凭据库。",
-        [item("自动认证需求", "程序需要在用户授权后读取密码。"), item("安全规则", "普通配置和日志不适合保存凭据。")],
-        [item("决策", "configure 写入，认证时读取。"), item("后果", "无可用后端时明确报错，不回退明文。")],
-        [item("configure", "约束下一切片的存储方向。"), item("login", "提供后续凭据读取来源。")],
-        "只决定密码存储策略；账号和非敏感配置另行设计。",
-        "凭据存储策略或平台支持方向变化时更新或替代。"
-      ),
-      "docs/decisions/0004-layered-project-memory.md": file(
-        "ADR 0004：分层项目记忆", "决策记录", "已接受",
-        "决定如何在减少默认上下文的同时保留跨会话开发记忆。",
-        [item("文档审计", "旧文档重复、冲突并包含大量流水。"), item("交互需求", "需要少轮次、按需加载和稳定教学连续性。")],
-        [item("分层记忆", "AGENTS、current、长期知识和 Git 各负其责。"), item("生命周期", "进行中详细，完成后压缩。"), item("验证节奏", "目标测试跟随小步，完整回归跟随阶段。")],
-        [item("所有文档", "禁止重复职责。"), item("新会话", "默认只读 AGENTS 和 current。")],
-        "不保存某次会话的临时工作状态。",
-        "记忆结构、默认读取方式或协作节奏变化时更新或替代。"
-      ),
-      "docs/protocol/README.md": file(
-        "协议证据目录", "协议索引", "当前有效",
-        "定义协议事实的证据等级、记录范围和安全门槛。",
-        [item("安全规则", "限制可记录的数据。"), item("实现与实验", "提供项目测试或真实脱敏观察。")],
-        [item("证据等级", "项目已验证、真实已观察、推断、待验证。"), item("记录规则", "结论必须脱敏且可追溯。")],
-        [item("协议文档", "统一使用相同证据语言。"), item("实现修改", "认证改动前先补证据与失败测试。")],
-        "不承担教学、进度或交接职责。",
-        "证据分类、记录安全边界或协议文档清单变化时更新。"
-      ),
-      "docs/protocol/connectivity-detection.md": file(
-        "连通性检测证据", "协议文档", "项目契约已验证",
-        "记录探测路径、分类契约、真实证据状态和待验证问题。",
-        [item("自动化测试", "提供标准库、服务和分类契约证据。"), item("本地 loopback", "验证真实 TCP/HTTP 交互。")],
-        [item("项目已验证", "DNS、TCP、HTTP 和状态分类。"), item("真实证据", "目前没有已提交的真实校园网结论。"), item("待验证", "列出线上行为问题。")],
-        [item("classifier.py / service.py", "说明当前实现依据。"), item("真实实验", "规定需要回答的问题和可记录字段。")],
-        "项目测试通过不等于西电真实网络行为已经验证。",
-        "探测实现契约或脱敏真实证据变化时更新。"
-      ),
-      "docs/superpowers/specs/2026-09-23-credential-store-design.md": file(
-        "configure 凭据存储设计", "设计文档", "指导者已决定",
-        "固定第一个 configure 子任务的接口、数据流、安全边界和一次性 RED 范围。",
-        [item("安全规则", "约束账号、密码、错误和测试数据。"), item("ADR 0003", "确定使用系统凭据库且不回退明文。"), item("keyring 官方 API", "提供稳定调用和异常层次证据。")],
-        [item("组件设计", "Credentials、CredentialStore、KeyringCredentialStore 和测试替身。"), item("存储决策", "账号与密码编码为一条 JSON 凭据记录。"), item("测试设计", "一次 RED 覆盖保存、读取、缺失、损坏和后端错误。")],
-        [item("实施计划", "指导者据此拆解可执行步骤。"), item("测试与骨架", "确定下一轮要创建的文件和符号。"), item("学习者", "获得已定设计的讲解，不承担接口审批。")],
-        "本子任务不接入 configure CLI、Portal 协议、删除操作或真实凭据库。",
-        "只有需求、安全证据或实现前发现的技术事实变化时更新；不等待学习者批准。"
-      ),
-      "docs/visualizations/xduwlan-architecture.html": file(
-        "命令分层图", "交互文档", "当前同步",
-        "用五层调用链比较 status 与四个计划切片的职责和实现状态。",
-        [item("architecture.md", "提供分层、当前实现和计划边界。"), item("roadmap.md", "提供切片顺序与状态。")],
-        [item("命令切换", "status、configure、login、watch、account。"), item("五层说明", "CLI、应用服务、核心契约、适配器、外部系统。")],
-        [item("架构读者", "快速理解每条命令经过哪些边界。")],
-        "不展开每个文件内部符号，不把计划接口写成已实现事实。",
-        "命令状态、分层职责或切片调用方向变化时更新。"
-      ),
-      "docs/visualizations/xduwlan-file-architecture.html": file(
-        "文件职责图", "交互文档", "当前同步",
-        "展示仓库当前文件，并用依赖、内部内容、使用方和边界解释职责。",
-        [item("当前仓库文件", "树中不保留已删除或未来文件。"), item("源码与长期文档", "提供每个文件的事实。")],
-        [item("分组文件树", "入口、生产代码、测试和文档。"), item("详情面板", "只展示稳定职责，不展示任务流水和测试计数。")],
-        [item("开发与审查", "帮助定位修改入口和依赖方向。")],
-        "不是进度日志，也不替代源码、测试或权威 Markdown。",
-        "文件新增删除、主要符号、依赖、状态或边界变化时更新。"
-      )
     };
 
     const tree = document.querySelector("[data-tree]");
@@ -620,7 +488,7 @@
     if (allPaths.some((path) => files[path] === undefined) || Object.keys(files).length !== allPaths.length) {
       throw new Error("文件树与详情数据不一致");
     }
-    render("docs/current.md");
+    render("src/xduwlan/cli.py");
   </script>
 </body>
 </html>
