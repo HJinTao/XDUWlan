@@ -1,11 +1,19 @@
+import getpass
 import json
+import warnings
 from pathlib import Path
 
 import pytest
 
-from xduwlan.cli import build_network_probe, main
+from xduwlan.cli import build_credential_configurator, build_network_probe, main
 from xduwlan.config import AppConfig
-from xduwlan.errors import ConfigurationError
+from xduwlan.credential_service import DefaultCredentialConfigurator
+from xduwlan.errors import (
+    ConfigurationError,
+    CredentialStoreError,
+    CredentialValidationError,
+)
+from xduwlan.keyring_store import KeyringCredentialStore
 from xduwlan.models import NetworkProbeResult, NetworkState, ProbeObservation, ProbeStage
 from xduwlan.probe.dns import SystemDnsResolver
 from xduwlan.probe.http import SystemHttpConnectivityChecker
@@ -35,7 +43,7 @@ def test_unknown_command_uses_argparse_error_exit():
         raise AssertionError("未知命令必须触发 argparse 的 SystemExit(2)")
 
 
-@pytest.mark.parametrize("command", ["login", "watch", "account", "configure"])
+@pytest.mark.parametrize("command", ["login", "watch", "account"])
 def test_registered_command_returns_success(command):
     """未接入的命令仍使用任务一的最小处理器。"""
     assert main([command]) == 0
@@ -233,3 +241,136 @@ def test_build_network_probe_wires_system_adapters():
     assert isinstance(probe._dns_resolver, SystemDnsResolver)
     assert isinstance(probe._tcp_connector, SystemTcpConnector)
     assert isinstance(probe._http_checker, SystemHttpConnectivityChecker)
+
+
+def test_configure_collects_and_delegates_without_echoing_values(
+    monkeypatch,
+    capsys,
+):
+    """CLI 应收集原始输入、交给应用服务并只输出安全摘要。"""
+    prompts = []
+    calls = []
+
+    class RecordingConfigurator:
+        def configure(self, username, password):
+            calls.append((username, password))
+
+    def fake_input(prompt):
+        prompts.append(prompt)
+        return "  student@example.test  "
+
+    def fake_getpass(prompt):
+        prompts.append(prompt)
+        return " fictional-password "
+
+    monkeypatch.setattr("builtins.input", fake_input)
+    monkeypatch.setattr("xduwlan.cli.getpass.getpass", fake_getpass)
+    monkeypatch.setattr(
+        "xduwlan.cli.build_credential_configurator",
+        lambda: RecordingConfigurator(),
+    )
+
+    assert main(["configure"]) == 0
+    assert calls == [("  student@example.test  ", " fictional-password ")]
+    assert any("账号" in prompt for prompt in prompts)
+    assert any("密码" in prompt for prompt in prompts)
+
+    captured = capsys.readouterr()
+    assert "保存" in captured.out
+    assert "student@example.test" not in captured.out + captured.err
+    assert "fictional-password" not in captured.out + captured.err
+
+
+@pytest.mark.parametrize(
+    ("error", "expected_exit_code"),
+    [
+        (CredentialValidationError("private-marker"), 2),
+        (CredentialStoreError("private-marker"), 1),
+    ],
+)
+def test_configure_maps_project_errors_without_leaking_details(
+    error,
+    expected_exit_code,
+    monkeypatch,
+    capsys,
+):
+    """输入和存储失败应映射为稳定退出码与安全错误摘要。"""
+
+    class FailingConfigurator:
+        def configure(self, username, password):
+            raise error
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "student@example.test")
+    monkeypatch.setattr(
+        "xduwlan.cli.getpass.getpass",
+        lambda prompt: "fictional-password",
+    )
+    monkeypatch.setattr(
+        "xduwlan.cli.build_credential_configurator",
+        lambda: FailingConfigurator(),
+    )
+
+    assert main(["configure"]) == expected_exit_code
+    captured = capsys.readouterr()
+    assert "凭据" in captured.err
+    assert "private-marker" not in captured.out + captured.err
+    assert "student@example.test" not in captured.out + captured.err
+    assert "fictional-password" not in captured.out + captured.err
+
+
+@pytest.mark.parametrize("error", [EOFError(), KeyboardInterrupt()])
+def test_configure_handles_cancelled_input_without_building_service(
+    error,
+    monkeypatch,
+    capsys,
+):
+    """关闭输入或主动中断时应安全退出，且不装配外部依赖。"""
+
+    def cancel_input(prompt):
+        raise error
+
+    def unexpected_call(*args, **kwargs):
+        raise AssertionError("取消输入后不应继续调用其他边界")
+
+    monkeypatch.setattr("builtins.input", cancel_input)
+    monkeypatch.setattr("xduwlan.cli.getpass.getpass", unexpected_call)
+    monkeypatch.setattr(
+        "xduwlan.cli.build_credential_configurator",
+        unexpected_call,
+    )
+
+    assert main(["configure"]) == 130
+    captured = capsys.readouterr()
+    assert "取消" in captured.err
+
+
+def test_configure_fails_when_password_cannot_be_hidden(monkeypatch, capsys):
+    """终端无法关闭回显时不得退化为可能泄漏密码的普通输入。"""
+
+    def unsafe_getpass(prompt):
+        warnings.warn("private-marker", category=getpass.GetPassWarning)
+        return "fictional-password"
+
+    def unexpected_call(*args, **kwargs):
+        raise AssertionError("无法隐藏密码时不应装配应用服务")
+
+    monkeypatch.setattr("builtins.input", lambda prompt: "student@example.test")
+    monkeypatch.setattr("xduwlan.cli.getpass.getpass", unsafe_getpass)
+    monkeypatch.setattr(
+        "xduwlan.cli.build_credential_configurator",
+        unexpected_call,
+    )
+
+    assert main(["configure"]) == 1
+    captured = capsys.readouterr()
+    assert "隐藏" in captured.err
+    assert "private-marker" not in captured.out + captured.err
+    assert "fictional-password" not in captured.out + captured.err
+
+
+def test_build_credential_configurator_wires_service_and_keyring_adapter():
+    """CLI 装配边界应组合应用服务与系统凭据库适配器。"""
+    configurator = build_credential_configurator()
+
+    assert isinstance(configurator, DefaultCredentialConfigurator)
+    assert isinstance(configurator._store, KeyringCredentialStore)

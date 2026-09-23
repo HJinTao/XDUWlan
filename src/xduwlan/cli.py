@@ -3,12 +3,23 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import sys
+import warnings
 from pathlib import Path
 
 from xduwlan.config import AppConfig
-from xduwlan.errors import ConfigurationError
+from xduwlan.credential_service import (
+    CredentialConfigurator,
+    DefaultCredentialConfigurator,
+)
+from xduwlan.errors import (
+    ConfigurationError,
+    CredentialStoreError,
+    CredentialValidationError,
+)
+from xduwlan.keyring_store import KeyringCredentialStore
 from xduwlan.models import NetworkState
 from xduwlan.probe.dns import SystemDnsResolver
 from xduwlan.probe.http import SystemHttpConnectivityChecker
@@ -40,6 +51,37 @@ def build_network_probe(config: AppConfig) -> NetworkProbe:
         tcp_connector=SystemTcpConnector(),
         http_checker=SystemHttpConnectivityChecker(),
     )
+
+
+def build_credential_configurator() -> CredentialConfigurator:
+    """装配凭据配置应用服务与系统凭据库适配器。"""
+    return DefaultCredentialConfigurator(KeyringCredentialStore())
+
+
+def _handle_configure(_args: argparse.Namespace) -> int:
+    """交互收集校园网凭据并安全保存。"""
+    try:
+        username = input("账号: ")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", getpass.GetPassWarning)
+            password = getpass.getpass("密码: ")
+    except getpass.GetPassWarning:
+        print("无法安全隐藏密码", file=sys.stderr)
+        return 1
+    except (EOFError, KeyboardInterrupt):
+        print("输入已取消", file=sys.stderr)
+        return 130
+
+    try:
+        build_credential_configurator().configure(username, password)
+    except CredentialValidationError:
+        print("凭据输入无效", file=sys.stderr)
+        return 2
+    except CredentialStoreError:
+        print("凭据保存失败", file=sys.stderr)
+        return 1
+    print("凭据已保存")
+    return 0
 
 
 def _handle_status(args: argparse.Namespace) -> int:
@@ -98,6 +140,8 @@ def build_parser() -> argparse.ArgumentParser:
             command_parser.add_argument("--json", action="store_true")
             command_parser.add_argument("--debug", action="store_true")
             command_parser.set_defaults(handler=_handle_status)
+        elif command == "configure":
+            command_parser.set_defaults(handler=_handle_configure)
         else:
             command_parser.set_defaults(handler=_handle_placeholder)
 

@@ -7,7 +7,7 @@ name = "xduwlan"
 version = "0.1.0"
 description = "西安电子科技大学校园网学习工具"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["keyring>=25,<26"]
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
