@@ -55,8 +55,8 @@ class KeyringCredentialStore:
         """读取并校验系统凭据库中的 JSON 记录。"""
         try:
             payload = self._backend.get_password(
-                service=KEYRING_SERVICE,
-                username=KEYRING_RECORD_KEY,
+                KEYRING_SERVICE,
+                KEYRING_RECORD_KEY,
             )
         except KeyringError as exc:
             raise CredentialStoreError(_SAFE_ERROR_MESSAGE) from exc
