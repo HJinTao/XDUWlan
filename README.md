@@ -4,9 +4,12 @@ XDUWlan 是一个面向学习的西安电子科技大学校园网命令行工具
 
 ## 当前能力
 
-目前已完成 `status`：读取非敏感配置，依次执行 DNS、TCP 和 HTTP 探测，并输出中文状态、脱敏 JSON 或阶段调试信息。
+目前已完成：
 
-`configure`、`login`、`watch` 和 `account` 已注册为命令名，但尚未实现实际功能。
+- `status`：读取非敏感配置，依次执行 DNS、TCP 和 HTTP 探测，并输出中文状态、脱敏 JSON 或阶段调试信息；
+- `configure`：交互读取校园网账号与密码，并把凭据保存到系统凭据库。
+
+`login`、`watch` 和 `account` 已注册为命令名，但尚未实现实际功能。
 
 ## 开发安装
 
@@ -32,6 +35,14 @@ xduwlan status --config PATH
 - `--config` 读取非敏感 TOML 配置。
 
 真实密码、Cookie、验证码和认证参数不得写入普通配置或项目文件。
+
+## 使用 `configure`
+
+```bash
+xduwlan configure
+```
+
+账号通过普通终端输入读取，密码使用隐藏输入。命令要求终端能够关闭密码回显；无法保证隐藏输入时会安全失败，不会退回明文文件。
 
 ## 文档
 

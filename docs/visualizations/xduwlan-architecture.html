@@ -197,16 +197,16 @@
         ]
       },
       configure: {
-        state: "planned",
-        status: "下一切片 · 未实现",
+        state: "implemented",
+        status: "已实现",
         title: "把密码交给系统凭据库，而不是普通配置",
-        outcome: "预期由交互输入收集凭据，并明确报告凭据后端错误。",
-        boundary: "这里只展示已批准的职责方向；具体文件、符号和测试要在第一个凭据子任务开始前对齐。",
+        outcome: "通过交互输入收集凭据，并明确报告输入安全或凭据后端错误。",
+        boundary: "自动化测试覆盖输入规则、隐藏输入失败、用户取消、系统凭据存取和安全错误转换；尚未进行真实系统凭据库的受控人工验证。",
         layers: [
-          ["收集凭据", "CLI 使用普通输入读取账号，使用隐藏输入读取密码。"],
-          ["控制保存流程", "应用层决定何时保存并把后端失败转换成用户可理解的结果。"],
-          ["声明凭据能力", "计划通过 CredentialStore 端口隔离调用方与具体平台。"],
-          ["连接平台后端", "计划使用 keyring 适配器；不得回退到明文文件。"],
+          ["收集凭据", "_handle_configure() 使用普通账号输入和隐藏密码输入，并处理取消与安全失败。"],
+          ["控制保存流程", "DefaultCredentialConfigurator 负责账号整理、空值校验和 CredentialStore 调用。"],
+          ["声明凭据能力", "CredentialConfigurator 面向 CLI；Credentials 与 CredentialStore 隔离核心数据和外部存储。"],
+          ["连接平台后端", "KeyringCredentialStore 使用固定键保存单条 JSON，并转换后端与损坏记录错误。"],
           ["长期保存密码", "macOS 钥匙串、Windows 凭据管理器或 Linux Secret Service 提供后端。"]
         ]
       },

@@ -19,7 +19,10 @@ CLI 负责解析输入、装配依赖、调用服务和格式化结果；应用�
 src/xduwlan/
 ├── cli.py
 ├── config.py
+├── credential_service.py
+├── credentials.py
 ├── errors.py
+├── keyring_store.py
 ├── models.py
 └── probe/
     ├── interfaces.py
@@ -32,11 +35,14 @@ src/xduwlan/
 
 - `models.py`：网络状态、探测阶段和不可变结果；
 - `config.py`：非敏感配置的默认值、TOML 合并与校验；
+- `credential_service.py`：`configure` 应用服务契约、输入校验与保存编排；
+- `credentials.py`：不可变凭据模型与 `CredentialStore` 端口；
+- `keyring_store.py`：使用固定查询键读写单条 JSON 凭据记录的 `keyring` 适配器，并转换后端与损坏记录错误；
 - `probe/interfaces.py`：DNS、TCP、HTTP 和完整探测的端口契约；
 - `probe/dns.py`、`tcp.py`、`http.py`：系统网络适配器；
 - `probe/classifier.py`：把 HTTP 证据分类为稳定网络状态；
 - `probe/service.py`：编排阶段并生成 `NetworkProbeResult`；
-- `cli.py`：装配系统适配器并提供 `status` 用户界面。
+- `cli.py`：装配系统能力并提供 `status` 与 `configure` 用户界面。
 
 ## `status` 调用链
 
@@ -57,13 +63,29 @@ xduwlan status
 
 `DefaultNetworkProbe` 依赖 `Protocol`，不知道系统适配器如何完成网络操作。测试可以注入替代对象，不访问外部网络。
 
-## 计划边界
+## `configure` 调用链
 
-以下模块尚未实现，具体文件和接口在对应子任务开始前对齐：
+```text
+xduwlan configure
+  → main()
+  → _handle_configure()
+      → input() / getpass.getpass()
+      → CredentialConfigurator.configure()
+          → CredentialStore.save()
+          ← KeyringCredentialStore
+              → keyring.set_password()
+              → 操作系统凭据库
+```
+
+CLI 不校验凭据内容，也不直接依赖存储端口。`DefaultCredentialConfigurator` 负责输入规则和保存编排，`KeyringCredentialStore` 负责第三方库与操作系统边界。
+
+## 切片边界
+
+已完成切片记录实际职责；其余切片只记录计划边界，具体接口在对应子任务开始前对齐：
 
 | 切片 | 计划职责 |
 | --- | --- |
-| `configure` | 凭据端口、`keyring` 适配器和交互输入 |
+| `configure` | 已完成交互输入、应用服务、系统凭据存储和安全错误输出 |
 | `login` | 深澜 challenge、参数编码、响应解析和认证编排 |
 | `watch` | 周期探测、认证、验证、退避和停止 |
 | `account` | 自服务会话、人工验证码、HTTP 客户端和 HTML 解析 |

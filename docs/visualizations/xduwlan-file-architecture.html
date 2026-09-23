@@ -182,7 +182,10 @@
         "src/xduwlan/__init__.py",
         "src/xduwlan/cli.py",
         "src/xduwlan/config.py",
+        "src/xduwlan/credential_service.py",
+        "src/xduwlan/credentials.py",
         "src/xduwlan/errors.py",
+        "src/xduwlan/keyring_store.py",
         "src/xduwlan/models.py",
         "src/xduwlan/probe/__init__.py",
         "src/xduwlan/probe/interfaces.py",
@@ -195,6 +198,8 @@
       "自动化测试": [
         "tests/test_cli.py",
         "tests/test_config.py",
+        "tests/test_credential_service.py",
+        "tests/test_credentials.py",
         "tests/test_models.py",
         "tests/probe/test_dns.py",
         "tests/probe/test_tcp.py",
@@ -219,18 +224,18 @@
         "项目说明", "用户入口", "当前可用",
         "向使用者说明项目用途、已实现命令、安装方式和文档入口。",
         [item("当前可用功能", "只描述已经实现并可运行的用户行为。"), item("文档结构", "链接到各类权威文档。")],
-        [item("status 用法", "展示普通、JSON、debug 和配置路径示例。"), item("安全提醒", "提示敏感数据不能进入普通配置。")],
+        [item("status 用法", "展示普通、JSON、debug 和配置路径示例。"), item("configure 用法", "说明交互输入和系统凭据库边界。"), item("安全提醒", "提示敏感数据不能进入普通配置。")],
         [item("新使用者", "提供最短安装和使用路径。"), item("专项文档", "把开发者引导到 current、roadmap、architecture 和 security。")],
         "不承担开发交接、完整产品规格或教学记录。",
         "用户可见能力、安装命令或文档入口变化时更新。"
       ),
       "pyproject.toml": file(
         "Python 项目配置", "构建配置", "当前生效",
-        "定义包元数据、Python 版本、测试依赖、源码目录和 CLI 入口。",
-        [item("setuptools", "提供构建后端。"), item("pytest", "作为 test 可选依赖。")],
+        "定义包元数据、Python 版本、运行时与测试依赖、源码目录和 CLI 入口。",
+        [item("setuptools", "提供构建后端。"), item("keyring", "连接各平台系统凭据库。"), item("pytest", "作为 test 可选依赖。")],
         [item("项目元数据", "包名、版本、描述和 Python 3.11+。"), item("console script", "xduwlan → xduwlan.cli:main。")],
         [item("安装工具", "创建可编辑安装或构建发行包。"), item("pytest", "从 tests 目录发现测试并加载 src。")],
-        "当前没有运行时第三方依赖；keyring 尚未接入。",
+        "keyring 是唯一运行时第三方依赖；密码不得回退到普通文件。",
         "依赖、入口、版本或测试发现方式变化时更新。"
       ),
 
@@ -244,13 +249,22 @@
         "公共包元数据变化时更新。"
       ),
       "src/xduwlan/cli.py": file(
-        "命令行入口", "生产代码", "status 已实现",
-        "解析命令，装配探测服务，执行 status 并格式化安全输出。",
-        [item("AppConfig", "提供默认值或读取指定 TOML。"), item("NetworkProbe", "返回与具体网络库无关的探测结果。")],
-        [item("build_parser()", "注册五个命令和 status 选项。"), item("_handle_status()", "处理状态、输出模式和退出码。"), item("build_network_probe()", "装配三个系统网络适配器。")],
+        "命令行入口", "生产代码", "status / configure 已实现",
+        "解析命令、装配应用服务与系统适配器，并承担用户交互和安全输出。",
+        [item("AppConfig", "提供默认值或读取指定 TOML。"), item("NetworkProbe / CredentialConfigurator", "隔离 CLI 与业务编排。"), item("getpass", "隐藏读取密码。"), item("warnings", "禁止 GetPassWarning 回退。")],
+        [item("build_parser()", "注册五个命令、status 选项和 configure 处理器。"), item("_handle_status()", "处理状态、输出模式和退出码。"), item("_handle_configure()", "处理隐藏输入、取消、项目错误和安全摘要。"), item("build_network_probe() / build_credential_configurator()", "装配默认应用服务与适配器。")],
         [item("终端用户", "接收中文、JSON 或 debug 输出。"), item("console script", "pyproject 将 xduwlan 命令指向 main()。")],
-        "configure、login、watch、account 仍使用占位处理器。",
+        "login、watch、account 仍使用占位处理器；configure 测试不访问真实凭据库。",
         "CLI 参数、装配关系、输出契约或命令实现状态变化时更新。"
+      ),
+      "src/xduwlan/credential_service.py": file(
+        "凭据配置应用服务", "生产代码", "已实现",
+        "在 CLI 与凭据存储端口之间集中处理输入规则和保存编排。",
+        [item("CredentialStore", "提供与具体平台无关的保存能力。"), item("Credentials / CredentialValidationError", "承载已校验数据和输入失败。")],
+        [item("CredentialConfigurator", "声明 CLI 所需的 configure 能力。"), item("DefaultCredentialConfigurator", "整理账号、校验空字段并保存 Credentials。")],
+        [item("configure CLI", "只需收集输入和映射结果。"), item("KeyringCredentialStore", "经端口间接接收已校验凭据。")],
+        "不读取终端、不格式化输出、不导入 keyring。",
+        "凭据输入规则、保存编排或应用服务接口变化时更新。"
       ),
       "src/xduwlan/config.py": file(
         "非敏感配置", "生产代码", "已实现",
@@ -265,10 +279,28 @@
         "项目异常", "生产代码", "部分实现",
         "提供调用方可以稳定捕获的项目级异常层次。",
         [item("Python Exception", "作为项目异常的语言基础。")],
-        [item("XDUWlanError", "项目可预期异常的共同父类。"), item("ConfigurationError", "表示配置格式、类型或数值错误。")],
-        [item("config.py", "将 TOML 解析错误转换为 ConfigurationError。"), item("CLI", "把配置错误转换为稳定退出码。")],
-        "凭据、协议和解析异常要在对应切片引入，不提前定义。",
+        [item("XDUWlanError", "项目可预期异常的共同父类。"), item("ConfigurationError", "表示配置格式、类型或数值错误。"), item("CredentialStoreError", "表示凭据后端不可用或记录损坏。"), item("CredentialValidationError", "表示 configure 输入无效。")],
+        [item("config.py", "将 TOML 解析错误转换为 ConfigurationError。"), item("credential_service.py / keyring_store.py", "产生稳定的凭据项目错误。"), item("CLI", "把项目错误转换为稳定输出。")],
+        "只定义已进入实现范围的稳定错误类别，不包含敏感错误正文。",
         "新增已进入实现范围的错误类别时更新。"
+      ),
+      "src/xduwlan/credentials.py": file(
+        "凭据模型与端口", "生产代码", "模型与端口已建立",
+        "定义不依赖 CLI、操作系统或 keyring 的凭据数据与存储能力。",
+        [item("dataclasses", "创建不可变且隐藏 repr 字段的 Credentials。"), item("Protocol", "描述 save/load 结构化接口。")],
+        [item("Credentials", "保存账号和密码，两个字段都不进入 repr。"), item("CredentialStore", "声明保存与可空读取能力。")],
+        [item("KeyringCredentialStore", "实现系统凭据库适配。"), item("configure / 未来 login", "只依赖稳定端口。")],
+        "核心契约不导入 keyring，也不负责交互输入或协议编码。",
+        "凭据字段或存储端口契约变化时更新。"
+      ),
+      "src/xduwlan/keyring_store.py": file(
+        "系统凭据库适配器", "生产代码", "已实现",
+        "把一组凭据编码为单条 JSON，并通过固定查询键连接系统凭据库。",
+        [item("Credentials", "提供核心凭据数据。"), item("keyring", "默认连接平台后端。"), item("CredentialStoreError", "承载安全错误边界。")],
+        [item("KeyringBackend", "描述测试与真实模块共用的最小接口。"), item("KeyringCredentialStore", "完成 JSON 存取、校验和安全异常转换。"), item("固定查询键", "避免把校园网账号用作 keyring 查询键。")],
+        [item("configure / 未来 login", "保存或读取凭据。"), item("操作系统凭据库", "承载长期密码。")],
+        "不访问普通配置文件，不提供明文回退；自动化测试注入内存替身。",
+        "序列化格式、查询键、异常转换或后端接口变化时更新。"
       ),
       "src/xduwlan/models.py": file(
         "网络领域模型", "生产代码", "已实现",
@@ -345,12 +377,21 @@
 
       "tests/test_cli.py": file(
         "CLI 契约测试", "自动化测试", "当前通过",
-        "验证命令注册、status 输出、退出码、配置处理、JSON 脱敏、debug 和依赖装配。",
+        "验证命令注册、status 行为，以及 configure 的交互委托、错误映射、取消、安全隐藏输入和依赖装配。",
         [item("pytest", "提供参数化、monkeypatch 和输出捕获。"), item("替代探测器", "避免访问真实网络。")],
-        [item("命令骨架", "验证四个未实现命令仍可解析。"), item("status 行为", "覆盖五类状态和三种输出路径。")],
+        [item("命令骨架", "验证三个未实现命令仍可解析。"), item("status 行为", "覆盖五类状态和三种输出路径。"), item("configure 行为", "覆盖交互委托、错误映射、取消、安全隐藏输入和装配。")],
         [item("cli.py", "保护用户可见契约和装配边界。")],
         "只使用虚构结果；不验证真实终端或校园网。",
         "CLI 参数、输出、退出码或装配行为变化时更新。"
+      ),
+      "tests/test_credential_service.py": file(
+        "凭据配置服务测试", "自动化测试", "当前通过",
+        "验证账号规范化、密码逐字保留、空字段拒绝和存储错误传播。",
+        [item("RecordingCredentialStore", "记录保存结果，不访问系统后端。"), item("虚构凭据", "覆盖正常和无效输入。")],
+        [item("成功路径", "期望生成规范化 Credentials。"), item("失败路径", "期望校验错误且不保存，并保留稳定存储错误。")],
+        [item("credential_service.py", "保护完整应用服务行为。")],
+        "不测试终端交互，也不读取真实凭据记录。",
+        "输入规则或保存编排变化时更新。"
       ),
       "tests/test_config.py": file(
         "配置契约测试", "自动化测试", "当前通过",
@@ -369,6 +410,15 @@
         [item("models.py", "防止跨层稳定值和字段意外变化。")],
         "只覆盖 status 已使用的模型，不提前定义未来模型。",
         "网络领域模型契约变化时更新。"
+      ),
+      "tests/test_credentials.py": file(
+        "凭据存储契约测试", "自动化测试", "GREEN：11 通过",
+        "覆盖凭据模型、端口可替换性和系统凭据库适配器的完整行为。",
+        [item("MemoryKeyring", "记录 set/get 调用，不访问真实系统后端。"), item("虚构凭据", "避免个人信息和真实密码。")],
+        [item("模型与端口", "不可变、repr 脱敏和内存实现替换。"), item("适配器行为", "单记录写入、可空读取、还原、后端异常和损坏记录。")],
+        [item("credentials.py", "保护核心契约。"), item("keyring_store.py", "保护 save/load 的完整行为。")],
+        "不读取或写入真实 Keychain、Credential Manager 或 Secret Service。",
+        "凭据存储契约或安全错误边界变化时更新。"
       ),
       "tests/probe/test_dns.py": file(
         "DNS 适配器测试", "自动化测试", "当前通过",
