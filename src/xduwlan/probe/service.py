@@ -11,6 +11,7 @@ from xduwlan.probe.classifier import classify_http_observation
 from xduwlan.probe.interfaces import (
     DnsResolver,
     HttpConnectivityChecker,
+    NetworkProbe,
     TcpConnector,
 )
 
@@ -24,14 +25,28 @@ class DefaultNetworkProbe:
         dns_resolver: DnsResolver,
         tcp_connector: TcpConnector,
         http_checker: HttpConnectivityChecker,
+        fallback_probe: NetworkProbe | None = None,
     ) -> None:
         self._config = config
         self._dns_resolver = dns_resolver
         self._tcp_connector = tcp_connector
         self._http_checker = http_checker
+        self._fallback_probe = fallback_probe
 
     def probe(self) -> NetworkProbeResult:
         """按 DNS、TCP、HTTP 顺序汇总阶段观察。"""
+        result = self._probe_once()
+        if (self._fallback_probe is not None
+                and result.state not in (NetworkState.ONLINE, NetworkState.PORTAL_REQUIRED)):
+            fallback = self._fallback_probe.probe()
+            if fallback.state is NetworkState.PORTAL_REQUIRED:
+                return NetworkProbeResult(
+                    fallback.state, result.observations + fallback.observations,
+                )
+        return result
+
+    def _probe_once(self) -> NetworkProbeResult:
+        """执行单一目标，不把 HTTP 放行误当成 HTTPS 验证成功。"""
         parsed_url = urlparse(self._config.probe_url)
         host = parsed_url.hostname
         port = parsed_url.port

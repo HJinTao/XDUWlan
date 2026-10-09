@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
+from xduwlan.auth.pages import find_portal_navigation
+from xduwlan.errors import PortalProtocolError
 from xduwlan.models import NetworkState
 from xduwlan.probe.interfaces import HttpObservation
 
@@ -31,5 +33,12 @@ def classify_http_observation(
         body = observation.body or ""
         if "srun_portal" in body.lower():
             return NetworkState.PORTAL_REQUIRED
+        for host in portal_hosts:
+            try:
+                navigation = find_portal_navigation(body, "http://probe.invalid/", f"https://{host}")
+            except PortalProtocolError:
+                continue
+            if navigation is not None:
+                return NetworkState.PORTAL_REQUIRED
 
     return NetworkState.UNKNOWN

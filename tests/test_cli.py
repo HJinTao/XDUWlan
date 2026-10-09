@@ -28,8 +28,8 @@ def test_main_without_command_prints_help(capsys):
     output = capsys.readouterr().out
     assert "status" in output
     assert "login" in output
-    assert "watch" in output
-    assert "account" in output
+    assert "watch" not in output
+    assert "account" not in output
     assert "configure" in output
 
 
@@ -43,10 +43,12 @@ def test_unknown_command_uses_argparse_error_exit():
         raise AssertionError("未知命令必须触发 argparse 的 SystemExit(2)")
 
 
-@pytest.mark.parametrize("command", ["login", "watch", "account"])
-def test_registered_command_returns_success(command):
-    """未接入的命令仍使用任务一的最小处理器。"""
-    assert main([command]) == 0
+@pytest.mark.parametrize("command", ["watch", "account"])
+def test_out_of_scope_commands_do_not_return_placeholder_success(command):
+    """已取消和延期的命令不再伪装为成功完成。"""
+    with pytest.raises(SystemExit) as info:
+        main([command])
+    assert info.value.code == 2
 
 
 def test_status_online_returns_zero_and_prints_chinese_state(monkeypatch, capsys):

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import socket
 import urllib.error
+from http.client import HTTPException
 from time import perf_counter
 from urllib.request import HTTPRedirectHandler, OpenerDirector, Request, build_opener
 
@@ -35,16 +36,17 @@ class SystemHttpConnectivityChecker:
         start = perf_counter()
         request = Request(url, method="GET")
         try:
-            with self._opener.open(request, timeout=timeout) as resp:
+            try:
+                response = self._opener.open(request, timeout=timeout)
+            except urllib.error.HTTPError as exc:
+                response = exc
+            with response as resp:
                 return _observation_from_response(resp, start)
-        except urllib.error.HTTPError as e:
-            with e:
-                return _observation_from_response(e, start)
         except socket.timeout:
             return _failure_observation(start, "HTTP 请求超时")
         except urllib.error.URLError:
             return _failure_observation(start, "HTTP 请求失败")
-        except OSError:
+        except (OSError, HTTPException, LookupError, UnicodeError):
             return _failure_observation(start, "HTTP 请求失败")
 
 

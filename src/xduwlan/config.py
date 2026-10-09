@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import tomllib
+import math
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from xduwlan.errors import ConfigurationError
 
@@ -42,7 +44,10 @@ class AppConfig:
         未知字段应忽略；非法数值或类型应转换为
         ``xduwlan.errors.ConfigurationError``。底层异常需要保留异常链。
         """
-        text = path.read_text(encoding="utf-8")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeError:
+            raise ConfigurationError("配置文件不是有效的 UTF-8") from None
         try:
             data = tomllib.loads(text)
         except tomllib.TOMLDecodeError as exc:
@@ -64,14 +69,34 @@ class AppConfig:
         ):
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ConfigurationError(f"{field_name} 必须是数字")
-            if value <= 0:
+            if not math.isfinite(value) or value <= 0:
                 raise ConfigurationError(f"{field_name} 必须大于 0")
 
+        values = {}
+        for name in ("portal_url", "probe_url", "operator_suffix", "log_level"):
+            value = data.get(name, getattr(defaults, name))
+            if not isinstance(value, str):
+                raise ConfigurationError(f"{name} 必须是字符串")
+            values[name] = value
+        for name in ("portal_url", "probe_url"):
+            value = values[name]
+            try:
+                parsed = urlsplit(value)
+                if (not parsed.hostname or parsed.scheme not in ("http", "https")
+                        or parsed.username is not None or parsed.password is not None
+                        or parsed.fragment or "\\" in value or any(ord(c) < 33 for c in value)):
+                    raise ValueError
+                port = parsed.port
+                if name == "portal_url" and (parsed.scheme != "https" or port not in (None, 443) or parsed.query):
+                    raise ValueError
+            except ValueError:
+                raise ConfigurationError(f"{name} 地址无效") from None
+
         return cls(
-            portal_url=data.get("portal_url", defaults.portal_url),
-            probe_url=data.get("probe_url", defaults.probe_url),
+            portal_url=values["portal_url"],
+            probe_url=values["probe_url"],
             probe_interval_seconds=probe_interval_seconds,
             request_timeout_seconds=request_timeout_seconds,
-            operator_suffix=data.get("operator_suffix", defaults.operator_suffix),
-            log_level=data.get("log_level", defaults.log_level),
+            operator_suffix=values["operator_suffix"],
+            log_level=values["log_level"],
         )

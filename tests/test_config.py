@@ -116,3 +116,18 @@ def test_invalid_numeric_type_is_rejected_as_configuration_error(
 
     with pytest.raises(ConfigurationError):
         AppConfig.load(path)
+
+
+@pytest.mark.parametrize('setting', [
+    'request_timeout_seconds=nan', 'request_timeout_seconds=inf',
+    'probe_url=42', 'portal_url=false', 'operator_suffix=[]', 'log_level={}',
+    'portal_url="http://portal.example.test"',
+    'portal_url="https://user:fictional@portal.example.test"',
+    'probe_url="file:///private-marker"', 'probe_url="https://[invalid"',
+    'portal_url="https://portal.example.test:8443"',
+])
+def test_invalid_operational_values_fail_before_network(setting, tmp_path):
+    path = tmp_path / 'config.toml'
+    path.write_text(setting + '\n')
+    with pytest.raises(ConfigurationError):
+        AppConfig.load(path)

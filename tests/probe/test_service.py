@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 
 from xduwlan.config import AppConfig
-from xduwlan.models import NetworkState, ProbeStage
+from xduwlan.models import NetworkProbeResult, NetworkState, ProbeStage
 from xduwlan.probe.interfaces import HttpObservation, ResolvedAddress, TcpObservation
 from xduwlan.probe.service import DefaultNetworkProbe
 
@@ -254,3 +254,38 @@ def test_http_result_is_classified_without_exposing_location(
     assert result.observations[-1].succeeded is http_succeeded
     assert result.portal_url is None
     assert "private-marker" not in str(result)
+
+
+@pytest.mark.parametrize('fallback_state', [NetworkState.PORTAL_REQUIRED, NetworkState.ONLINE])
+def test_https_failure_only_accepts_trusted_portal_from_http_fallback(fallback_state):
+    class Resolver:
+        def resolve(self, host, port):
+            return ()
+
+    class Fallback:
+        def probe(self):
+            return NetworkProbeResult(fallback_state, ())
+
+    result = DefaultNetworkProbe(AppConfig.defaults(), Resolver(), None, None, fallback_probe=Fallback()).probe()
+    expected = NetworkState.PORTAL_REQUIRED if fallback_state is NetworkState.PORTAL_REQUIRED else NetworkState.UNKNOWN
+    assert result.state is expected
+
+
+def test_https_online_never_runs_fallback():
+    class Resolver:
+        def resolve(self, host, port):
+            return (ResolvedAddress('192.0.2.10', 443, socket.AF_INET),)
+
+    class Connector:
+        def connect(self, target, timeout):
+            return TcpObservation(target, True, 1, 'TCP 连接成功')
+
+    class Checker:
+        def request(self, url, timeout):
+            return HttpObservation(204, None, '', 1)
+
+    class UnexpectedFallback:
+        def probe(self):
+            raise AssertionError('已联网不应回退')
+
+    assert DefaultNetworkProbe(AppConfig.defaults(), Resolver(), Connector(), Checker(), fallback_probe=UnexpectedFallback()).probe().state is NetworkState.ONLINE

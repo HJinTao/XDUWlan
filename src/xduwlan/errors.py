@@ -15,3 +15,15 @@ class CredentialStoreError(XDUWlanError):
 
 class CredentialValidationError(XDUWlanError):
     """用户提供的账号或密码不符合凭据配置要求。"""
+
+
+class PortalProtocolError(XDUWlanError):
+    """Portal 入口、认证上下文或响应不符合已确认的协议。"""
+
+
+class PortalNetworkError(XDUWlanError):
+    """Portal 请求超时、连接失败或返回不可用的 HTTP 状态。"""
+
+
+class AuthenticationRejectedError(XDUWlanError):
+    """Portal 明确拒绝认证；不猜测未经观察的细分错误原因。"""

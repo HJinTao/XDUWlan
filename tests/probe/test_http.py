@@ -201,3 +201,32 @@ def test_http_checker_converts_network_errors_to_observations(
         detail=expected_detail,
     )
     assert str(error) not in observation.detail
+
+
+@pytest.mark.parametrize('redirect', [False, True])
+def test_unknown_charset_becomes_safe_failure_even_for_http_error(redirect):
+    response = FakeResponse(200, b'private-marker', content_type='text/html; charset=fictional-invalid-encoding')
+    if redirect:
+        response = urllib.error.HTTPError('http://probe.example.test/?private-marker', 302,
+            'private-marker', response.headers, io.BytesIO(b'private-marker'))
+    observation = SystemHttpConnectivityChecker(FakeOpener(response)).request('http://probe.example.test/check', 3)
+    assert observation.status_code is None
+    assert observation.body == ''
+    assert 'private-marker' not in repr(observation)
+
+
+@pytest.mark.parametrize('during_read', [False, True])
+def test_http_protocol_failure_becomes_safe_observation(during_read):
+    from http.client import IncompleteRead
+
+    error = IncompleteRead(b'private-marker', 10)
+
+    class BrokenResponse(FakeResponse):
+        def read(self, size=-1):
+            raise error
+
+    outcome = BrokenResponse(200) if during_read else error
+    observation = SystemHttpConnectivityChecker(FakeOpener(outcome)).request('http://probe.example.test/check', 3)
+    assert observation.status_code is None
+    assert observation.body == ''
+    assert 'private-marker' not in repr(observation)

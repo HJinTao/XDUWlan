@@ -6,6 +6,20 @@ from xduwlan.probe.interfaces import HttpObservation
 PORTAL_HOSTS = frozenset({"w.xidian.edu.cn"})
 
 
+def test_realistic_empty_post_entry_requires_authentication():
+    """真实入口没有 srun 特征，仍应按可信空 POST 目标识别。"""
+    observation = HttpObservation(200, None,
+        '<form method="post" action="http://w.xidian.edu.cn/index_8.html"></form>'
+        '<script>document.forms[0].submit()</script>', 2.0)
+    assert classify_http_observation(observation, PORTAL_HOSTS) is NetworkState.PORTAL_REQUIRED
+
+
+def test_form_to_lookalike_host_is_unknown():
+    observation = HttpObservation(200, None,
+        '<form method="post" action="https://w.xidian.edu.cn.attacker.test/"></form>', 2.0)
+    assert classify_http_observation(observation, PORTAL_HOSTS) is NetworkState.UNKNOWN
+
+
 def test_expected_204_is_online():
     """连通性端点返回 204 时应判断为已联网。"""
     observation = HttpObservation(
