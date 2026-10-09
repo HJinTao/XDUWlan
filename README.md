@@ -1,6 +1,6 @@
 # XDUWlan
 
-西安电子科技大学校园网的一次认证恢复工具，要求 Python 3.11+。操作系统先连接校园 Wi-Fi；程序检查网络、按需认证、验证联网并退出。
+西安电子科技大学校园网的一次认证恢复工具，支持 Python 3.10+。操作系统先连接校园 Wi-Fi；程序检查网络、按需认证、验证联网并退出。Python 3.10 的 TOML 解析由安装时自动提供的 `tomli` 完成；3.11+ 使用标准库 `tomllib`。
 
 ## 安装与使用
 
@@ -91,9 +91,9 @@ python -m pytest -q
 python -m build
 ```
 
-发行包位于 `dist/`；可安装构建出的 wheel。生产包仅包含 `xduwlan`，`src/login.py` 是教学实验参考，不参与发行或运行。协议固定向量可以通过 `node tests/auth/reference_vectors.js` 重新生成，运行 Python 测试不需要 Node。
+发行包位于 `dist/`；可安装构建出的 wheel。生产包仅包含 `xduwlan`，`src/login.py` 是教学实验参考，不参与发行或运行。协议固定向量可以通过 `node tests/auth/reference_vectors.js` 重新生成，运行 Python 测试不需要 Node；本地 HTTP/TLS 集成测试需要 OpenSSL。
 
-自动化测试使用虚构输入、本地服务器和外部边界替代对象，不访问真实校园网、终端或系统凭据记录。CI 配置覆盖 macOS、Windows、Linux 的 Python 3.11 与 3.14。CI 尚未在远端执行时不能视为跨平台通过；项目生产流程的校园网实测另行记录。
+自动化测试使用虚构输入、本地服务器和外部边界替代对象，不访问真实校园网、终端或系统凭据记录。当前优先在 ThinkPad 的 `XDWlanLab` 环境验证逻辑。已有 CI 配置覆盖 macOS、Windows、Linux 的 Python 3.10 与 3.14，暂不作为当前验收要求；真实校园网实测另行记录。
 
 第一版不包含后台驻留、自动连接 Wi-Fi、图形界面、开机自启或自服务账号查询。
 

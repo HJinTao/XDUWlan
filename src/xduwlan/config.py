@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-import tomllib
 import math
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 
 from xduwlan.errors import ConfigurationError
 

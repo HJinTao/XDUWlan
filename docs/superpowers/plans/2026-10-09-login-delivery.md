@@ -6,7 +6,7 @@
 
 **架构：** 复用探测与系统凭据端口，将认证纯逻辑、入口解析、HTTP 适配器和应用编排隔离。
 
-**技术栈：** Python 3.11+、标准库、keyring、pytest、setuptools。
+**技术栈：** Python 3.10+、标准库、keyring、pytest、setuptools。
 
 **设计：** [第一版认证恢复设计](../specs/2026-10-09-login-delivery-design.md)。
 

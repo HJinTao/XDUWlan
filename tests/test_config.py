@@ -1,12 +1,9 @@
-import tomllib
-
-import tomllib
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
 
-from xduwlan.config import AppConfig
+from xduwlan.config import AppConfig, tomllib
 from xduwlan.errors import ConfigurationError
 
 
