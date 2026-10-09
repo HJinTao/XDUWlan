@@ -1,0 +1,4 @@
+include README.md AGENTS.md
+recursive-include docs *.md *.html
+recursive-include tests *.py *.json *.js
+exclude src/login.py

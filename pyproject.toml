@@ -5,7 +5,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "xduwlan"
 version = "0.1.0"
-description = "西安电子科技大学校园网学习工具"
+description = "西安电子科技大学校园网一次认证恢复工具"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = ["keyring>=25,<26"]
 
@@ -17,6 +18,7 @@ xduwlan = "xduwlan.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["xduwlan*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
