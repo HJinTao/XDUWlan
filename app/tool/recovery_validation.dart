@@ -22,10 +22,11 @@ import 'recovery_validation_support.dart';
 
 /// 手动实网验证入口，默认产品入口和自动测试均不调用。
 /// 独立构建：flutter build linux --release -t tool/recovery_validation.dart
-/// 运行参数：--scenario=observe --duration-seconds=7200 --directory=/tmp/独立空目录
+/// 运行参数：--scenario=observe --duration-seconds=7200 --directory=/tmp/独立空根目录
 /// 其他场景：check、authenticate、manual-during-auto、exit-during-operation。
 /// 可选：--background、--without-tray。与产品使用相同实例 ID，须顺序运行。
-/// SSH 驱动：在指定目录原子发布 command 文件；固定命令见 ValidationFiles。
+/// 指定根目录中新建唯一私有会话子目录，设置、日志和命令均保存在其中。
+/// SSH 驱动：先私下查找该子目录，再原子发布 command；固定命令见 ValidationFiles。
 void main(List<String> args) {
   final counters = ValidationCounters();
   void safeFailure() => stdout.writeln(

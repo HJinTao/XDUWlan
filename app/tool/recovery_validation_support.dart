@@ -120,7 +120,7 @@ class ValidationFiles {
   File get command => File('${directory.path}/command');
   File get reports => File('${directory.path}/reports.jsonl');
 
-  /// 只使用全新的空目录，拒绝产品目录、其子目录及符号链接别名。
+  /// 只使用新建私有会话目录；指定根目录须为空且不指向产品支持目录。
   static Future<ValidationFiles> create(
     String? path, {
     Directory? forbiddenDirectory,
@@ -151,7 +151,11 @@ class ValidationFiles {
         throw const ValidationFailure();
       }
       await directory.create(recursive: true);
-      return ValidationFiles._(directory);
+      // 指定根目录只承载新会话，检查后新出现的未知文件不参与任何写入。
+      final session = path == null
+          ? directory
+          : await directory.createTemp('xduwlan-recovery-validation-');
+      return ValidationFiles._(session);
     } catch (_) {
       throw const ValidationFailure();
     }
@@ -181,9 +185,24 @@ class ValidationFiles {
   Future<ValidationCommand?> takeCommand() async {
     final type = await FileSystemEntity.type(command.path, followLinks: false);
     if (type == FileSystemEntityType.notFound) return null;
+    if (type != FileSystemEntityType.file &&
+        type != FileSystemEntityType.link) {
+      throw const ValidationFailure();
+    }
+    final capturedDirectory = await directory.createTemp('.xduwlan-command-');
+    final captured = File('${capturedDirectory.path}/command');
     try {
-      if (type != FileSystemEntityType.file) throw const ValidationFailure();
-      final input = await command.open();
+      // 原子捕获后，新发布的 command 留给下一轮；只处理私有目录里的这一项。
+      try {
+        await command.rename(captured.path);
+      } on PathNotFoundException {
+        return null;
+      }
+      if (await FileSystemEntity.type(captured.path, followLinks: false) !=
+          FileSystemEntityType.file) {
+        throw const ValidationFailure();
+      }
+      final input = await captured.open();
       final List<int> bytes;
       try {
         bytes = await input.read(129);
@@ -199,10 +218,19 @@ class ValidationFiles {
     } catch (_) {
       throw const ValidationFailure();
     } finally {
-      // 只删除独立目录里的命令入口；符号链接不会删除其目标。
-      if (type == FileSystemEntityType.file ||
-          type == FileSystemEntityType.link) {
-        await command.delete();
+      try {
+        final capturedType = await FileSystemEntity.type(
+          captured.path,
+          followLinks: false,
+        );
+        // 符号链接只删除捕获的链接；异常目录不递归清理其未知内容。
+        if (capturedType == FileSystemEntityType.file ||
+            capturedType == FileSystemEntityType.link) {
+          await captured.delete();
+        }
+        await capturedDirectory.delete();
+      } catch (_) {
+        throw const ValidationFailure();
       }
     }
   }

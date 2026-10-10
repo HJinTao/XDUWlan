@@ -8,6 +8,7 @@ import 'package:xduwlan_app/application/app_runtime_controller.dart';
 import 'package:xduwlan_app/application/diagnostics.dart';
 import 'package:xduwlan_app/application/recovery_controller.dart';
 import 'package:xduwlan_app/application/recovery_service.dart';
+import 'package:xduwlan_app/application/settings.dart';
 import 'package:xduwlan_app/core/domain.dart';
 
 import '../../tool/recovery_validation_support.dart';
@@ -72,6 +73,41 @@ void main() {
     expect(await support.list().isEmpty, isTrue);
   });
 
+  test('根目录检查后出现未知内容时只写入新建私有会话目录', () async {
+    final parent = await Directory.systemTemp.createTemp('validation-root-');
+    addTearDown(() => parent.delete(recursive: true));
+    final root = await Directory('${parent.path}/root').create();
+    final unknownSettings = File('${root.path}/settings.json');
+    final unknownReports = File('${root.path}/reports.jsonl');
+    final target = File('${parent.path}/untouched');
+    await target.writeAsString('test-only-report-sentinel');
+    Future<void> publishUnknownFiles() async {
+      await unknownSettings.writeAsString('test-only-settings-sentinel');
+      if (Platform.isWindows) {
+        await unknownReports.writeAsString('test-only-report-sentinel');
+      } else {
+        await Link(unknownReports.path).create(target.path);
+      }
+    }
+
+    final files = await IOOverrides.runWithIOOverrides(
+      () => ValidationFiles.create(root.path),
+      _ValidationRootRaceOverrides(root.path, publishUnknownFiles),
+    );
+    await LocalSettingsStore(directory: files.directory)
+        .save(const AppSettings(automaticRecoveryEnabled: false));
+    final log = files.reports.openWrite()..writeln('test-only-safe-report');
+    await log.close();
+    expect(await target.readAsString(), 'test-only-report-sentinel');
+    expect(await unknownSettings.readAsString(), 'test-only-settings-sentinel');
+    expect(await unknownReports.readAsString(), 'test-only-report-sentinel');
+    expect(
+      await FileSystemEntity.identical(files.directory.parent.path, root.path),
+      isTrue,
+    );
+    expect(await files.reports.readAsString(), 'test-only-safe-report\n');
+  });
+
   test('命令文件只接受单条白名单，拒绝未知内容、大文件和链接', () async {
     final root = await Directory.systemTemp.createTemp('validation-test-');
     addTearDown(() => root.delete(recursive: true));
@@ -96,6 +132,33 @@ void main() {
       await expectLater(files.takeCommand(), throwsA(isA<ValidationFailure>()));
       expect(await target.readAsString(), 'check');
     }
+  });
+
+  test('消费期间原子发布的下一条命令保留到下一轮', () async {
+    final root = await Directory.systemTemp.createTemp('validation-command-');
+    addTearDown(() => root.delete(recursive: true));
+    final files = await ValidationFiles.create(root.path);
+    final command = files.command;
+    final next = File('${root.path}/next-command');
+    await command.writeAsString('check');
+    var published = false;
+    Future<void> publishNext() async {
+      if (published) return;
+      published = true;
+      await next.writeAsString('status');
+      await next.rename(command.path);
+    }
+
+    // 只在真实打开或捕获完成后发布第二条，文件读写与重命名仍由系统执行。
+    final taken = await IOOverrides.runWithIOOverrides(
+      files.takeCommand,
+      _CommandRaceOverrides(command.path, publishNext),
+    );
+    expect(taken, ValidationCommand.check);
+    expect(await command.exists(), isTrue);
+    expect(await command.readAsString(), 'status');
+    expect(await files.takeCommand(), ValidationCommand.status);
+    expect(await files.directory.list().isEmpty, isTrue);
   });
 
   test('安全报告只序列化现有诊断白名单与固定观测字段', () {
@@ -348,4 +411,89 @@ class _BlockedDiagnostics extends TestDiagnostics {
   final pending = Completer<List<DiagnosticRecord>>();
   @override
   Future<List<DiagnosticRecord>> load() => pending.future;
+}
+
+final class _CommandRaceOverrides extends IOOverrides {
+  _CommandRaceOverrides(this.commandPath, this.publishNext);
+  final String commandPath;
+  final Future<void> Function() publishNext;
+
+  @override
+  File createFile(String path) {
+    final file = super.createFile(path);
+    return path == commandPath ? _CommandRaceFile(file, publishNext) : file;
+  }
+}
+
+class _CommandRaceFile implements File {
+  _CommandRaceFile(this.file, this.publishNext);
+  final File file;
+  final Future<void> Function() publishNext;
+
+  @override
+  String get path => file.path;
+
+  @override
+  Future<RandomAccessFile> open({FileMode mode = FileMode.read}) async {
+    final opened = await file.open(mode: mode);
+    await publishNext();
+    return opened;
+  }
+
+  @override
+  Future<File> rename(String newPath) async {
+    final captured = await file.rename(newPath);
+    await publishNext();
+    return captured;
+  }
+
+  @override
+  Future<FileSystemEntity> delete({bool recursive = false}) =>
+      file.delete(recursive: recursive);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _ValidationRootRaceOverrides extends IOOverrides {
+  _ValidationRootRaceOverrides(this.rootPath, this.publishUnknownFiles);
+  final String rootPath;
+  final Future<void> Function() publishUnknownFiles;
+
+  @override
+  Directory createDirectory(String path) {
+    final directory = super.createDirectory(path);
+    return path == rootPath
+        ? _ValidationRootRaceDirectory(directory, publishUnknownFiles)
+        : directory;
+  }
+}
+
+class _ValidationRootRaceDirectory implements Directory {
+  _ValidationRootRaceDirectory(this.directory, this.publishUnknownFiles);
+  final Directory directory;
+  final Future<void> Function() publishUnknownFiles;
+
+  @override
+  String get path => directory.path;
+
+  @override
+  Future<Directory> create({bool recursive = false}) async {
+    final created = await directory.create(recursive: recursive);
+    await publishUnknownFiles();
+    return created;
+  }
+
+  @override
+  Future<Directory> createTemp([String? prefix]) =>
+      directory.createTemp(prefix);
+
+  @override
+  Stream<FileSystemEntity> list({
+    bool recursive = false,
+    bool followLinks = true,
+  }) => directory.list(recursive: recursive, followLinks: followLinks);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
