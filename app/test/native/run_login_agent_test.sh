@@ -7,6 +7,8 @@ if [[ -n "${XDUWLAN_FLUTTER_SDK:-}" ]]; then
 else
   flutter_sdk="$(dirname "$(dirname "$(command -v flutter)")")"
 fi
+# 普通 Dart 测试只准备通用缓存；干净 SDK 需先获取原生桌面框架。
+"$flutter_sdk/bin/flutter" precache --macos
 frameworks="$flutter_sdk/bin/cache/artifacts/engine/darwin-x64/FlutterMacOS.xcframework/macos-arm64_x86_64"
 workspace_tmp="$(mktemp -d "${TMPDIR:-/tmp}/xduwlan-native-test.XXXXXX")"
 trap 'rm -rf "$workspace_tmp"' EXIT

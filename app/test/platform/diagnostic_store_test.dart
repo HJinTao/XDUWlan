@@ -140,13 +140,22 @@ void main() {
   }
 
   test('非 JSON 原文及超大文件均被隔离且只保留一个隔离文件', () async {
+    // 等价路径保留不同文本表示，避免依赖目录枚举使用的分隔符。
+    diagnosticFile = File('${directory.path}/./diagnostics.json');
     final store = LocalDiagnosticStore(directory: directory);
     await diagnosticFile.writeAsString('fake-private-invalid-json');
     expect(await store.load(), isEmpty);
     await diagnosticFile.writeAsString('${' ' * (128 * 1024)}[]');
     expect(await store.load(), isEmpty);
     final files = await directory.list().toList();
-    expect(files.map((file) => file.path), ['${diagnosticFile.path}.corrupt']);
+    expect(files, hasLength(1));
+    expect(
+      await FileSystemEntity.identical(
+        files.single.path,
+        '${diagnosticFile.path}.corrupt',
+      ),
+      isTrue,
+    );
   });
 
   test('负耗时记录在写入前被拒绝且已有记录保留', () async {
