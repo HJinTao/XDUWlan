@@ -14,6 +14,30 @@ spec.loader.exec_module(package)
 
 
 class PackageTests(unittest.TestCase):
+    def test_cli_pack_uses_utf8_with_windows_console_codepage(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "Release"
+            (source / "data/flutter_assets").mkdir(parents=True)
+            (source / "xduwlan_app.exe").write_bytes(b"test-only-executable")
+            (source / "flutter_windows.dll").write_bytes(b"test-only-runtime")
+            (source / "data/icudtl.dat").write_bytes(b"test-only-icu")
+            script = str(Path(__file__).with_name("package_desktop.py"))
+            arguments = [sys.executable, script, "pack", "--platform", "windows",
+                         "--version", "test-codepage", "--source", str(source),
+                         "--output", str(root / "out")]
+            environment = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+            result = subprocess.run(arguments, env=environment, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8"))
+            self.assertIn("桌面包封装", result.stdout.decode("utf-8"))
+            package.verify(root / "out/xduwlan-test-codepage-windows.zip", source)
+            # 失败仍须退出非零，中文安全提示也不能依赖 Windows 本地编码。
+            (source / "flutter_windows.dll").unlink()
+            rejected = subprocess.run(arguments, env=environment, capture_output=True)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("桌面包缺少运行文件", rejected.stderr.decode("utf-8"))
+            self.assertNotIn(str(source), rejected.stderr.decode("utf-8"))
+
     def test_safe_error_status_never_includes_exception_text(self):
         private = "test-only-private-path-and-input"
         cases = [

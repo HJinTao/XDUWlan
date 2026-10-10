@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import zipfile
@@ -241,6 +242,15 @@ def pack(platform, version, source, output):
 
 
 def main():
+    # Windows 的重定向输出可能采用 cp1252；中文提示必须与 CI 日志统一为 UTF-8。
+    # 控制台和文件使用 TextIOWrapper 重配置，替代流没有该能力时沿用其实现。
+    try:
+        for stream in (sys.stdout, sys.stderr):
+            reconfigure = getattr(stream, "reconfigure", None)
+            if reconfigure is not None:
+                reconfigure(encoding="utf-8", errors="strict")
+    except Exception as failure:
+        raise SystemExit(safe_error_status(failure)) from None
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["pack", "verify"])
     parser.add_argument("--platform", choices=["linux", "macos", "windows"])
