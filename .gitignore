@@ -1,12 +1,17 @@
-# Python 缓存和构建产物
+# 构建缓存和构建产物
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
-venv/
+*.egg-info/
 dist/
 build/
-*.egg-info/
+
+# Flutter/Dart 工具缓存
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+app/*.iml
 
 # 本地配置、凭据和会话
 .env

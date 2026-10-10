@@ -1,31 +1,33 @@
-# 维护状态
+# 当前实现与维护状态
 
-## 当前版本
+## 当前能力
 
-`0.1.0` 已实现 `status`、`configure` 和 `login`。Linux 环境中的一次认证恢复流程已完成受控验收，当前没有已知功能阻塞。功能范围与运行方式见 [README](../README.md)。
+`app/` 是项目唯一的产品实现，使用 Flutter 3.47.7 / Dart 3.13.5。当前 GUI 原型提供账号配置、网络状态展示、手动一键认证、取消操作和安全错误提示；前台自动恢复、完整安装发行和全部目标平台的真实网络验收仍未完成。
 
-当前维护重点是认证逻辑和 Linux CLI 的可靠性。跨平台运行验收、后台任务、图形界面与自服务功能不属于当前维护范围。
+实现按以下职责组织：
 
-## 验证记录
+| 职责 | 入口 |
+| --- | --- |
+| 界面 | `app/lib/ui/` |
+| 恢复编排 | `app/lib/application/` |
+| 协议、模型与页面解析 | `app/lib/core/` |
+| 网络、Portal 和安全存储适配 | `app/lib/platform/` |
+| 离线与本地服务验证 | `app/test/` |
 
-2026-10-09 验证结果：
+Python CLI 已从仓库移除，不再作为产品入口、构建目标或运行时依赖。旧版本历史由 Git 保留；现有 Flutter 应用不读取旧版本凭据。
 
-- Python 3.10.22 与 Python 3.11 环境的自动化测试均为 `203 passed`。
-- wheel/sdist 构建与安装成功，发行包要求 Python 3.10+。
-- 真实校园网认证恢复及已联网时跳过认证已验证，详见 [协议记录](protocol.md#真实验收)。
+## 已验证事实
 
-2026-10-10：两处协议向量读取已显式指定 UTF-8，修复 Windows 默认 cp1252 导致的 UnicodeDecodeError。本地模拟 cp1252 的受影响测试 `14 passed`、完整回归 `203 passed`；[Windows Python 3.10 与 3.14 的测试、CLI 入口和构建均已通过](https://github.com/HJinTao/XDUWlan/actions/runs/38037614608)。
+- Flutter 工程可执行协议、恢复编排、界面、网络传输和凭据存储测试。
+- 测试使用虚构账号、本地 HTTP/TLS 服务和 `app/test/fixtures/` 中的测试证书与协议向量。
+- macOS Release 应用包已构建；Windows、Linux 和移动平台仍需在对应工具链与设备上独立验收。
+- 测试不证明所有校区、运营商、账户或平台的实际网络行为。
 
-## 后续事项
+## 验收与后续工作
 
-- 不同运营商、校区、IPv6/双栈及具体业务失败响应仍待实测，见协议记录。
-- 结果模型的运行时容器类型校验可以在相关接口变更时加强，当前不阻断功能。
+1. 在 Windows、macOS、Linux 主机执行格式检查、静态分析、测试和对应 Release 构建。
+2. 验证系统安全存储不可用、锁定、升级后的安全失败行为。
+3. 完成前台生命周期、取消、自动恢复退避和提交后不确定结果处理。
+4. 在授权的目标设备和校园网环境中分别记录桌面、Android、iOS/iPadOS 的网络通路和安装验收。
 
-## 维护索引
-
-- 产品与命令：[README](../README.md)。
-- 模块与边界：[架构](architecture.md)、[安全](security.md)、[协议](protocol.md)。
-- CLI 与编排：`src/xduwlan/cli.py`、`config.py`、`login_service.py`。
-- 网络与凭据：`src/xduwlan/auth/`、`probe/`、`keyring_store.py`。
-- 测试：`tests/auth/`、`tests/probe/`、`tests/test_login_*.py`、`tests/test_python_compatibility.py`。
-- 构建：`pyproject.toml`、`MANIFEST.in`。
+平台支持、网络约束和安全边界见 [协议与验证记录](protocol.md) 与 [维护约定](../AGENTS.md)。
