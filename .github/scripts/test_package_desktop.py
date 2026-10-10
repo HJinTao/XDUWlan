@@ -26,12 +26,14 @@ class PackageTests(unittest.TestCase):
             executable.chmod(0o755)
             library = source / "lib/libflutter_linux_gtk.so"
             library.write_bytes(b"test-only-library")
-            library.chmod(0o755)
+            # CMake install(FILES) 的共享库为 644，动态加载不要求执行位。
+            library.chmod(0o644)
             (source / "lib/versioned.so").symlink_to(library.name)
             archive = package.pack("linux", "test-commit", source, root / "out")
             package.verify(archive)
             manifest = package.load_manifest(archive)
             self.assertEqual(manifest["entries"]["xduwlan_app"]["mode"], 0o755)
+            self.assertEqual(manifest["entries"]["lib/libflutter_linux_gtk.so"]["mode"], 0o644)
             self.assertEqual(manifest["entries"]["lib/versioned.so"]["target"], library.name)
             executable.write_bytes(b"altered")
             with self.assertRaises(package.PackageError):

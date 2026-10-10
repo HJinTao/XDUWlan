@@ -54,14 +54,14 @@ def check_layout(platform, root):
     elif platform == "linux":
         required = [root / "xduwlan_app", root / "lib/libflutter_linux_gtk.so",
                     root / "data/icudtl.dat", root / "data/flutter_assets"]
-        executables = required[:2]
+        executables = required[:1]
     elif platform == "windows":
         required = [root / "xduwlan_app.exe", root / "flutter_windows.dll",
                     root / "data/icudtl.dat", root / "data/flutter_assets"]
         executables = []
     else:
         raise PackageError("不支持的平台")
-    if any(not path.exists() for path in required):
+    if any(not path.is_file() for path in required[:-1]) or not required[-1].is_dir():
         raise PackageError("桌面包缺少运行文件")
     if any(not path.is_file() or not (path.stat().st_mode & 0o111)
            for path in executables):
@@ -195,6 +195,9 @@ def main():
                 parser.error("verify 需要压缩包")
             verify(args.archive, args.source)
             print("下载包内容、权限、链接与 SHA-256 核对通过")
+    except PackageError as failure:
+        # 本类只由上面的固定安全检查文案构造，不带输入或底层异常。
+        raise SystemExit(str(failure)) from None
     except Exception:
         # 异常仍以失败退出，不把底层路径、归档内容或异常正文送入日志。
         raise SystemExit("桌面包检查失败，请核对构建目录和完整性") from None
