@@ -96,6 +96,23 @@ void main() {
     expect(store.value!.password, ' spaced-password ');
     controller.dispose();
   });
+
+  test('读取已配置账号不触发网络检查', () async {
+    final store = fakes.Store()
+      ..value = const Credentials('fake-user', 'fake-password');
+    final probe = fakes.Probe([]);
+    final controller = RecoveryController(
+      service: RecoveryService(
+        probe: probe,
+        portal: fakes.Portal(),
+        store: store,
+      ),
+      store: store,
+    );
+
+    expect(await controller.loadAccount(), store.value);
+    controller.dispose();
+  });
 }
 
 class _ChangingProbe implements NetworkProbe {

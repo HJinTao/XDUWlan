@@ -21,6 +21,22 @@ class RecoveryController extends ChangeNotifier {
   Future<void> refresh() => _operate(false);
   Future<void> login() => _operate(true);
 
+  Future<Credentials?> loadAccount() async {
+    if (_disposed) return null;
+    failure = null;
+    try {
+      return await store.load();
+    } on AppFailure catch (error) {
+      failure = error.code;
+      notifyListeners();
+      return null;
+    } catch (_) {
+      failure = FailureCode.credentialFileUnavailable;
+      notifyListeners();
+      return null;
+    }
+  }
+
   Future<void> _operate(bool authenticate) async {
     if (busy || !_foreground || _disposed) return;
     final generation = ++_generation;
@@ -93,11 +109,9 @@ class RecoveryController extends ChangeNotifier {
         ),
       );
       if (_disposed) return false;
-      network = NetworkState.unknown;
-      outcome = null;
       return true;
     } catch (_) {
-      if (!_disposed) failure = FailureCode.credentialStoreUnavailable;
+      if (!_disposed) failure = FailureCode.credentialFileUnavailable;
       return false;
     } finally {
       if (!_disposed) {

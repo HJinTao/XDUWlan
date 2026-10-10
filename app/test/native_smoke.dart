@@ -1,5 +1,6 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:xduwlan_app/application/recovery_controller.dart';
 import 'package:xduwlan_app/application/recovery_service.dart';
 import 'package:xduwlan_app/core/domain.dart';
@@ -9,14 +10,8 @@ import 'package:xduwlan_app/platform/credential_store.dart';
 /// 独立测试服务仅保存虚构记录，完成后删除；不访问生产凭据。
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final storage = FlutterSecureStorage(
-    mOptions: MacOsOptions(
-      usesDataProtectionKeychain: false,
-      accountName:
-          'XDUWlan-native-smoke-${DateTime.now().microsecondsSinceEpoch}',
-    ),
-  );
-  final store = SystemCredentialStore(storage: storage);
+  final directory = await Directory.systemTemp.createTemp('xduwlan-native-');
+  final store = LocalCredentialStore(directory: directory);
   var passed = false;
   try {
     await store.save(const Credentials('test-only-user', 'test-only-password'));
@@ -27,7 +22,7 @@ Future<void> main() async {
   } catch (_) {
     passed = false;
   } finally {
-    await storage.delete(key: SystemCredentialStore.recordKey);
+    await directory.delete(recursive: true);
   }
   // 只输出结论，不输出测试记录、插件错误或存储位置。
   debugPrint(

@@ -29,7 +29,7 @@ class _XduwlanAppState extends State<XduwlanApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    final store = SystemCredentialStore();
+    final store = LocalCredentialStore();
     final transport = IoPortalTransport();
     _controller =
         widget.controller ??

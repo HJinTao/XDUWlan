@@ -9,6 +9,7 @@ enum FailureCode {
   credentialsMissing,
   credentialsInvalid,
   credentialStoreUnavailable,
+  credentialFileUnavailable,
   networkUnavailable,
   protocol,
   authRejected,

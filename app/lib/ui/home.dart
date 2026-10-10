@@ -22,7 +22,7 @@ class XduwlanHome extends StatelessWidget {
     );
     if (saved == true && context.mounted) {
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('账号已保存至本机安全凭据存储')));
+          .showSnackBar(const SnackBar(content: Text('账号已保存至本机配置文件')));
     }
   }
 
@@ -255,7 +255,29 @@ class _AccountDialogState extends State<_AccountDialog> {
   final _password = TextEditingController();
   final _suffix = TextEditingController();
   bool _saving = false;
+  bool _loading = true;
+  bool _obscurePassword = false;
   FailureCode? _failure;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final credentials = await widget.controller.loadAccount();
+    if (!mounted) return;
+    if (credentials != null) {
+      _username.text = credentials.username;
+      _password.text = credentials.password;
+      _suffix.text = credentials.operatorSuffix;
+    }
+    setState(() {
+      _loading = false;
+      _failure = credentials == null ? widget.controller.failure : null;
+    });
+  }
 
   @override
   void dispose() {
@@ -299,7 +321,7 @@ class _AccountDialogState extends State<_AccountDialog> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.controller,
     builder: (context, _) {
-      final enabled = !_saving && !widget.controller.busy;
+      final enabled = !_loading && !_saving && !widget.controller.busy;
       return PopScope(
         canPop: enabled,
         child: AlertDialog(
@@ -319,7 +341,7 @@ class _AccountDialogState extends State<_AccountDialog> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Text(
-                      '账号密码仅保存于本机安全凭据存储。',
+                      '账号密码仅保存于本机配置文件。',
                       style: TextStyle(color: _muted, height: 1.5),
                     ),
                     const SizedBox(height: 22),
@@ -346,16 +368,27 @@ class _AccountDialogState extends State<_AccountDialog> {
                     TextFormField(
                       controller: _password,
                       enabled: enabled,
-                      obscureText: true,
+                      obscureText: _obscurePassword,
                       autocorrect: false,
                       enableSuggestions: false,
                       enableIMEPersonalizedLearning: false,
                       smartDashesType: SmartDashesType.disabled,
                       smartQuotesType: SmartQuotesType.disabled,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: '密码',
                         border: OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          tooltip: _obscurePassword ? '显示密码' : '隐藏密码',
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                        ),
                       ),
                       validator: (value) =>
                           value == null || value.isEmpty ? '请输入密码' : null,
@@ -413,8 +446,8 @@ String _stageMessage(RecoveryStage? stage) => switch (stage) {
 String _failureMessage(FailureCode failure) => switch (failure) {
   FailureCode.credentialsMissing => '尚未配置账号。请先配置账号密码，再尝试认证。',
   FailureCode.credentialsInvalid => '账号信息格式不正确。请检查账号、密码与运营商后缀。',
-  FailureCode.credentialStoreUnavailable =>
-    '安全凭据存储不可用。请解锁系统凭据库，并确认当前桌面会话可用后重试。',
+  FailureCode.credentialStoreUnavailable => '账号配置无法保存或读取。请检查应用目录权限后重试。',
+  FailureCode.credentialFileUnavailable => '账号配置无法保存或读取。请检查应用目录权限后重试。',
   FailureCode.networkUnavailable => '网络暂不可达。请确认已连接校园网，再重试。',
   FailureCode.protocol => '校园网认证页面与预期不符。请稍后重试或联系维护者。',
   FailureCode.authRejected => '认证未通过。请核对账号密码与运营商后缀后重试。',

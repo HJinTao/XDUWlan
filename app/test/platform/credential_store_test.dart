@@ -1,61 +1,41 @@
-import 'dart:convert';
+import 'dart:io';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xduwlan_app/core/domain.dart';
 import 'package:xduwlan_app/platform/credential_store.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-  const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
-  String? stored;
-  bool deny = false;
-  final keys = <String>[];
-  setUp(() {
-    stored = null;
-    deny = false;
-    keys.clear();
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, (call) async {
-          if (deny) throw PlatformException(code: 'denied');
-          final args = Map<String, dynamic>.from(call.arguments as Map);
-          keys.add(args['key'] as String);
-          if (call.method == 'write') stored = args['value'] as String;
-          if (call.method == 'read') return stored;
-          return null;
-        });
+  late Directory directory;
+  setUp(() async {
+    directory = await Directory.systemTemp.createTemp('xduwlan-credentials-');
   });
-  tearDown(
-    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(channel, null),
-  );
+  tearDown(() => directory.delete(recursive: true));
 
-  test('账号以固定键单条安全记录读写，保留后缀', () async {
-    final store = SystemCredentialStore();
+  test('账号以固定本地文件单条记录读写，保留后缀', () async {
+    final store = LocalCredentialStore(directory: directory);
     await store.save(
       const Credentials('fake-user', 'fake-password', operatorSuffix: '@fake'),
     );
-    expect(jsonDecode(stored!)['username'], 'fake-user');
     final loaded = await store.load();
     expect(loaded!.password, 'fake-password');
     expect(loaded.operatorSuffix, '@fake');
-    expect(keys.toSet(), {SystemCredentialStore.recordKey});
-    expect(keys, isNot(contains('fake-user')));
+    expect(await File('${directory.path}/credentials.json').exists(), isTrue);
   });
 
-  test('缺失返回空，损坏与后端拒绝均为安全错误', () async {
-    final store = SystemCredentialStore();
+  test('缺失返回空，损坏与文件写入失败均为普通配置错误', () async {
+    final store = LocalCredentialStore(directory: directory);
     expect(await store.load(), isNull);
-    stored = '["fake-private"]';
+    await File('${directory.path}/credentials.json')
+        .writeAsString('["fake-private"]');
     await expectLater(store.load(), throwsA(isA<AppFailure>()));
-    deny = true;
+    final invalidStore = LocalCredentialStore(file: File(directory.path));
     await expectLater(
-      store.save(const Credentials('fake-user', 'fake-password')),
+      invalidStore.save(const Credentials('fake-user', 'fake-password')),
       throwsA(
         isA<AppFailure>().having(
           (e) => e.code,
           'code',
-          FailureCode.credentialStoreUnavailable,
+          FailureCode.credentialFileUnavailable,
         ),
       ),
     );

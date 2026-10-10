@@ -11,10 +11,10 @@
 | 界面 | `app/lib/ui/` |
 | 恢复编排 | `app/lib/application/` |
 | 协议、模型与页面解析 | `app/lib/core/` |
-| 网络、Portal 和安全存储适配 | `app/lib/platform/` |
+| 网络、Portal 和本地配置适配 | `app/lib/platform/` |
 | 离线与本地服务验证 | `app/test/` |
 
-Python CLI 已从仓库移除，不再作为产品入口、构建目标或运行时依赖。旧版本历史由 Git 保留；现有 Flutter 应用不读取旧版本凭据。
+Python CLI 已从仓库移除，不再作为产品入口、构建目标或运行时依赖。账号配置保存在应用支持目录的单个本地 JSON 文件中；旧版本历史由 Git 保留，现有 Flutter 应用不读取旧版本凭据。
 
 ## 已验证事实
 

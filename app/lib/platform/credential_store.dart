@@ -1,31 +1,35 @@
 import 'dart:convert';
+import 'dart:io';
 
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../core/domain.dart';
 
-/// 单条系统安全存储记录；不读取旧 Python 版本的凭据。
-class SystemCredentialStore implements CredentialStore {
-  SystemCredentialStore({FlutterSecureStorage? storage})
-    : _storage =
-          storage ??
-          const FlutterSecureStorage(
-            mOptions: MacOsOptions(usesDataProtectionKeychain: false),
-          );
-  final FlutterSecureStorage _storage;
-  static const recordKey = 'xduwlan.gui.credentials.v1';
+/// 在应用支持目录保存单条本地配置；不读取旧 Python 版本的凭据。
+class LocalCredentialStore implements CredentialStore {
+  LocalCredentialStore({this.directory, this.file});
+  final Directory? directory;
+  final File? file;
+  static const fileName = 'credentials.json';
+
+  Future<File> _resolveFile() async {
+    if (file case final configuredFile?) return configuredFile;
+    final directory = this.directory ?? await getApplicationSupportDirectory();
+    return File('${directory.path}/$fileName');
+  }
 
   @override
   Future<Credentials?> load() async {
     try {
-      final raw = await _storage.read(key: recordKey);
-      if (raw == null) return null;
+      final file = await _resolveFile();
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
       final data = jsonDecode(raw);
       if (data is! Map<String, dynamic> ||
           data['username'] is! String ||
           data['password'] is! String ||
           data['operatorSuffix'] is! String) {
-        throw const AppFailure(FailureCode.credentialStoreUnavailable);
+        throw const AppFailure(FailureCode.credentialFileUnavailable);
       }
       final credentials = Credentials(
         data['username'] as String,
@@ -37,7 +41,7 @@ class SystemCredentialStore implements CredentialStore {
     } on AppFailure {
       rethrow;
     } catch (_) {
-      throw const AppFailure(FailureCode.credentialStoreUnavailable);
+      throw const AppFailure(FailureCode.credentialFileUnavailable);
     }
   }
 
@@ -50,12 +54,14 @@ class SystemCredentialStore implements CredentialStore {
         'password': credentials.password,
         'operatorSuffix': credentials.operatorSuffix,
       });
-      await _storage.write(key: recordKey, value: value);
-      if (await _storage.read(key: recordKey) != value) {
-        throw const AppFailure(FailureCode.credentialStoreUnavailable);
+      final file = await _resolveFile();
+      await file.parent.create(recursive: true);
+      await file.writeAsString(value, flush: true);
+      if (await file.readAsString() != value) {
+        throw const AppFailure(FailureCode.credentialFileUnavailable);
       }
     } catch (_) {
-      throw const AppFailure(FailureCode.credentialStoreUnavailable);
+      throw const AppFailure(FailureCode.credentialFileUnavailable);
     }
   }
 }

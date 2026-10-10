@@ -20,7 +20,7 @@ void main() {
     expect(harness.store.loads, 0);
   });
 
-  testWidgets('配置使用空白隐藏密码输入并保存用户填写的账号', (tester) async {
+  testWidgets('配置回填已有账号密码并覆盖同一条配置', (tester) async {
     final harness = _Harness();
     harness.store.saved = const Credentials('previous-user', 'previous-secret');
     addTearDown(harness.controller.dispose);
@@ -32,9 +32,18 @@ void main() {
     final passwordInput = tester.widget<TextField>(
       find.descendant(of: passwordField, matching: find.byType(TextField)),
     );
-    expect(passwordInput.obscureText, isTrue);
-    expect(passwordInput.controller!.text, isEmpty);
-    expect(harness.store.loads, 0);
+    expect(passwordInput.obscureText, isFalse);
+    expect(passwordInput.controller!.text, 'previous-secret');
+    expect(
+      tester
+          .widget<TextField>(
+            find.descendant(of: _field('账号'), matching: find.byType(TextField)),
+          )
+          .controller!
+          .text,
+      'previous-user',
+    );
+    expect(harness.store.loads, 1);
 
     await tester.enterText(_field('账号'), 'demo-user');
     await tester.enterText(passwordField, 'demo-secret');
@@ -56,10 +65,27 @@ void main() {
           )
           .controller!
           .text,
-      isEmpty,
+      'demo-secret',
     );
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('保存账号不刷新已有网络状态', (tester) async {
+    final harness = _Harness();
+    harness.controller.network = NetworkState.online;
+    addTearDown(harness.controller.dispose);
+    await _showHome(tester, harness.controller);
+    await tester.tap(find.text('配置账号'));
+    await tester.pumpAndSettle();
+    await tester.enterText(_field('账号'), 'demo-user');
+    await tester.enterText(_field('密码'), 'demo-secret');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(harness.controller.network, NetworkState.online);
+    expect(harness.probe.checks, 0);
+    expect(find.text('网络已连接'), findsOneWidget);
   });
 
   testWidgets('空账号和密码阻止保存并给出可操作提示', (tester) async {
@@ -82,7 +108,7 @@ void main() {
   testWidgets('凭据库保存失败保留表单并显示安全建议', (tester) async {
     final harness = _Harness();
     harness.store.saveFailure = const AppFailure(
-      FailureCode.credentialStoreUnavailable,
+      FailureCode.credentialFileUnavailable,
     );
     addTearDown(harness.controller.dispose);
     await _showHome(tester, harness.controller);
@@ -94,14 +120,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.textContaining('安全凭据存储不可用'), findsWidgets);
+    expect(find.textContaining('账号配置无法保存'), findsWidgets);
     expect(find.textContaining('AppFailure'), findsNothing);
-    expect(_visibleTextContaining('demo-secret'), findsNothing);
     final passwordInput = tester.widget<TextField>(
       find.descendant(of: _field('密码'), matching: find.byType(TextField)),
     );
     expect(passwordInput.enabled, isNot(false));
-    expect(passwordInput.obscureText, isTrue);
+    expect(passwordInput.obscureText, isFalse);
     expect(passwordInput.controller!.text, 'demo-secret');
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
@@ -242,16 +267,6 @@ Finder _field(String label) =>
 Finder _button(String label) => find.ancestor(
   of: find.text(label),
   matching: find.byWidgetPredicate((widget) => widget is ButtonStyleButton),
-);
-
-Finder _visibleTextContaining(String value) => find.byWidgetPredicate(
-  (widget) => switch (widget) {
-    Text() => (widget.data ?? widget.textSpan?.toPlainText() ?? '').contains(
-      value,
-    ),
-    RichText() => widget.text.toPlainText().contains(value),
-    _ => false,
-  },
 );
 
 Future<void> _showHome(
