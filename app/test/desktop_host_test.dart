@@ -43,6 +43,7 @@ void main() {
   const windows = MethodChannel('window_manager');
   const lifecycle = MethodChannel('xduwlan/lifecycle');
   const notifications = MethodChannel('local_notifier');
+  const linuxStartup = MethodChannel('xduwlan/startup');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
   final calls = <MethodCall>[];
@@ -62,11 +63,16 @@ void main() {
       calls.add(call);
       return true;
     });
+    messenger.setMockMethodCallHandler(linuxStartup, (call) async {
+      calls.add(call);
+      return false;
+    });
   });
   tearDown(() {
     messenger.setMockMethodCallHandler(windows, null);
     messenger.setMockMethodCallHandler(lifecycle, null);
     messenger.setMockMethodCallHandler(notifications, null);
+    messenger.setMockMethodCallHandler(linuxStartup, null);
   });
 
   Future<void> emit(MethodChannel channel, MethodCall call) async {
@@ -173,15 +179,67 @@ void main() {
     );
   });
 
-  test('Linux Exec 对路径中的字段码和保留字符安全编码', () async {
+  test('Linux 登录启动只经应用原生通道查询和切换并读回状态', () async {
     final startup = MemoryStartup();
+    var enabled = false;
+    messenger.setMockMethodCallHandler(linuxStartup, (call) async {
+      calls.add(call);
+      if (call.method == 'setEnabled') enabled = call.arguments as bool;
+      return enabled;
+    });
     final host = PluginDesktopHost(
       startup: startup,
       targetPlatform: TargetPlatform.linux,
       executable: '/opt/XDU Wlan/100%/\$tool',
     );
     await host.initializeStartup();
-    expect(startup.path, r'"/opt/XDU Wlan/100%%/\\$tool"');
+    expect(await host.setLaunchAtStartup(true), isTrue);
+    expect(await host.setLaunchAtStartup(false), isFalse);
+    expect(startup.path, isNull);
+    expect(calls.map((call) => (call.method, call.arguments)).toList(), [
+      ('isEnabled', null),
+      ('setEnabled', true),
+      ('isEnabled', null),
+      ('setEnabled', false),
+      ('isEnabled', null),
+    ]);
+  });
+
+  test('Linux 原生启动项失败不传播异常文本或附加数据', () async {
+    messenger.setMockMethodCallHandler(linuxStartup, (call) async {
+      throw PlatformException(
+        code: 'startup_unexpected_entry',
+        message: '虚构底层路径与消息',
+        details: {'private': '虚构私有数据'},
+      );
+    });
+    final host = PluginDesktopHost(targetPlatform: TargetPlatform.linux);
+    await expectLater(
+      host.initializeStartup(),
+      throwsA(
+        isA<PlatformException>()
+            .having((error) => error.code, '安全分类', 'startup_unexpected_entry')
+            .having((error) => error.message, '消息', isNull)
+            .having((error) => error.details, '附加数据', isNull),
+      ),
+    );
+  });
+
+  test('Linux 原生切换后读回不一致时返回安全失败', () async {
+    messenger.setMockMethodCallHandler(linuxStartup, (call) async {
+      return call.method == 'setEnabled';
+    });
+    final host = PluginDesktopHost(targetPlatform: TargetPlatform.linux);
+    await expectLater(
+      host.setLaunchAtStartup(true),
+      throwsA(
+        isA<PlatformException>().having(
+          (error) => error.code,
+          '安全分类',
+          'startup_change_failed',
+        ),
+      ),
+    );
   });
 
   test('认证通知仅包含安全结果并复用同一通知', () async {

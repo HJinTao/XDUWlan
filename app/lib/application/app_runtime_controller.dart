@@ -161,7 +161,8 @@ class AppRuntimeController extends ChangeNotifier {
       settings = settings.copyWith(launchAtStartup: _actualStartup);
       startupAvailable = true;
     } catch (_) {
-      startupError = '无法读取登录启动状态。请检查系统启动项权限后重试。';
+      startupAvailable = false;
+      startupError = '登录启动状态未能确认。请检查同名启动项内容或目录权限后重新打开应用。';
     }
     startupReady = true;
     _changed();
@@ -219,18 +220,26 @@ class AppRuntimeController extends ChangeNotifier {
     _changed();
     try {
       _actualStartup = await desktop.setLaunchAtStartup(enabled);
+      startupAvailable = true;
       startupError = _actualStartup == enabled ? null : '登录启动未能切换，已恢复实际状态。';
     } catch (_) {
       try {
         _actualStartup = await desktop.initializeStartup();
-      } catch (_) {}
-      startupError = '登录启动操作失败，已恢复实际状态。请检查系统启动项权限后重试。';
+        startupAvailable = true;
+        startupError = '登录启动操作失败，已显示查询到的实际状态。请检查同名启动项内容或目录权限后重试。';
+      } catch (_) {
+        startupAvailable = false;
+        startupError = '登录启动操作失败，当前状态未能确认，开关已禁用。请检查同名启动项内容或目录权限后重新打开应用。';
+      }
     }
     settings = settings.copyWith(launchAtStartup: _actualStartup);
     try {
       await settingsStore.save(settings);
+      settingsError = null;
     } catch (_) {
-      settingsError = '设置保存失败；登录启动开关显示系统中的实际状态。';
+      settingsError = startupAvailable
+          ? '设置保存失败；登录启动开关显示系统中的实际状态。'
+          : '设置保存失败；登录启动状态仍未能确认，请检查应用目录权限后重试。';
     }
     settingsSaving = false;
     _changed();

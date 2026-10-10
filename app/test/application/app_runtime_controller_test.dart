@@ -362,4 +362,67 @@ void main() {
     expect(h.runtime.settings.automaticRecoveryEnabled, isTrue);
     expect(h.runtime.settingsError, isNotNull);
   });
+
+  test('启动项操作和回读均失败时保留上次确认值并禁用后续切换', () async {
+    final h = RuntimeHarness();
+    addTearDown(h.dispose);
+    h.desktop.enabled = true;
+    await h.runtime.initialize();
+    h.desktop.failures.addAll(['startupChange', 'startup']);
+    await h.runtime.setLaunchAtStartup(false);
+    expect(h.runtime.settings.launchAtStartup, isTrue);
+    expect(h.runtime.startupAvailable, isFalse);
+    expect(h.runtime.startupError, contains('未能确认'));
+    expect(h.runtime.startupError, isNot(contains('恢复实际状态')));
+    final reads = h.desktop.started.where((name) => name == 'startup').length;
+    await h.runtime.setLaunchAtStartup(false);
+    expect(h.desktop.started.where((name) => name == 'startup').length, reads);
+    expect(h.runtime.settings.launchAtStartup, isTrue);
+    // 托盘更新独立排队，等待状态投递完成再检查菜单。
+    await Future<void>.delayed(Duration.zero);
+    expect(h.desktop.menu.last.startupReady, isFalse);
+  });
+
+  test('启动项操作失败但回读成功时显示已确认状态并保留切换能力', () async {
+    final h = RuntimeHarness();
+    addTearDown(h.dispose);
+    await h.runtime.initialize();
+    h.desktop.enabled = true;
+    h.desktop.failures.add('startupChange');
+    await h.runtime.setLaunchAtStartup(false);
+    expect(h.runtime.settings.launchAtStartup, isTrue);
+    expect(h.runtime.startupAvailable, isTrue);
+    expect(h.runtime.startupError, isNot(contains('未能确认')));
+    expect(h.runtime.startupError, contains('内容'));
+    h.desktop.failures.clear();
+    await h.runtime.setLaunchAtStartup(false);
+    expect(h.runtime.settings.launchAtStartup, isFalse);
+    expect(h.runtime.startupError, isNull);
+  });
+
+  test('启动项回读和设置保存均失败时不将旧值描述为实际状态', () async {
+    final h = RuntimeHarness();
+    addTearDown(h.dispose);
+    await h.runtime.initialize();
+    h.desktop.failures.addAll(['startupChange', 'startup']);
+    h.settings.failSave = true;
+    await h.runtime.setLaunchAtStartup(true);
+    expect(h.runtime.startupAvailable, isFalse);
+    expect(h.runtime.settingsError, contains('未能确认'));
+    expect(h.runtime.settingsError, isNot(contains('实际状态')));
+  });
+
+  test('启动项状态未确认后成功保存设置会清除过时的实际状态提示', () async {
+    final h = RuntimeHarness();
+    addTearDown(h.dispose);
+    await h.runtime.initialize();
+    h.settings.failSave = true;
+    await h.runtime.setLaunchAtStartup(true);
+    expect(h.runtime.settingsError, contains('实际状态'));
+    h.desktop.failures.addAll(['startupChange', 'startup']);
+    h.settings.failSave = false;
+    await h.runtime.setLaunchAtStartup(false);
+    expect(h.runtime.startupAvailable, isFalse);
+    expect(h.runtime.settingsError, isNull);
+  });
 }

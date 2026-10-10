@@ -22,6 +22,7 @@ class PluginDesktopHost with WindowListener implements DesktopHost {
        _platform = targetPlatform ?? defaultTargetPlatform;
 
   static const _lifecycle = MethodChannel('xduwlan/lifecycle');
+  static const _linuxStartup = MethodChannel('xduwlan/startup');
   final LaunchAtStartup? _startupOverride;
   final TargetPlatform _platform;
   final String? executable;
@@ -213,6 +214,9 @@ class PluginDesktopHost with WindowListener implements DesktopHost {
   @override
   Future<bool> initializeStartup() async {
     if (_closed) throw PlatformException(code: 'desktop_closed');
+    if (_platform == TargetPlatform.linux) {
+      return _invokeLinuxStartup('isEnabled');
+    }
     final appExecutable = executable ?? Platform.resolvedExecutable;
     _startup.setup(
       appName: 'XDUWlan',
@@ -232,26 +236,46 @@ class PluginDesktopHost with WindowListener implements DesktopHost {
       }
       return '"$value"';
     }
-    if (_platform == TargetPlatform.linux) {
-      if (value.contains('=')) {
-        throw PlatformException(code: 'startup_path_unavailable');
-      }
-      // desktop entry 的字符串和 Exec 引号规则各做一次反斜线解码。
-      final escaped = value.replaceAllMapped(RegExp(r'[\\"`$%]'), (match) {
-        return switch (match[0]) {
-          r'\' => r'\\\\',
-          '%' => '%%',
-          final character => r'\\' + character!,
-        };
-      });
-      return '"$escaped"';
-    }
     return value;
+  }
+
+  Future<bool> _invokeLinuxStartup(String method, [bool? enabled]) async {
+    try {
+      final actual = await _linuxStartup.invokeMethod<bool>(method, enabled);
+      if (actual == null) {
+        throw PlatformException(code: 'startup_change_failed');
+      }
+      return actual;
+    } on PlatformException catch (error) {
+      const safeCodes = {
+        'startup_path_unavailable',
+        'startup_unexpected_entry',
+        'startup_permission_denied',
+        'startup_io_failed',
+        'startup_conflict',
+        'startup_change_failed',
+      };
+      throw PlatformException(
+        code: safeCodes.contains(error.code)
+            ? error.code
+            : 'startup_change_failed',
+      );
+    } catch (_) {
+      throw PlatformException(code: 'startup_change_failed');
+    }
   }
 
   @override
   Future<bool> setLaunchAtStartup(bool enabled) async {
     if (_closed) throw PlatformException(code: 'desktop_closed');
+    if (_platform == TargetPlatform.linux) {
+      final changed = await _invokeLinuxStartup('setEnabled', enabled);
+      final actual = await _invokeLinuxStartup('isEnabled');
+      if (changed != enabled || actual != enabled) {
+        throw PlatformException(code: 'startup_change_failed');
+      }
+      return actual;
+    }
     final changed = enabled
         ? await _startup.enable()
         : await _startup.disable();
