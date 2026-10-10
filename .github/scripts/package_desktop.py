@@ -16,6 +16,55 @@ class PackageError(Exception):
     pass
 
 
+_stage = "arguments"
+_safe_stages = {
+    "arguments", "source_prepare", "output_prepare", "source_layout",
+    "source_inventory", "archive_write", "manifest_write", "checksum_write",
+    "verify_checksum", "verify_manifest", "verify_members", "verify_extract",
+    "verify_layout", "verify_inventory", "verify_source", "completion",
+}
+_safe_error_types = {
+    "PackageError", "OSError", "FileNotFoundError", "FileExistsError",
+    "PermissionError", "IsADirectoryError", "NotADirectoryError",
+    "UnicodeDecodeError", "UnicodeEncodeError", "UnicodeError", "ValueError",
+    "BadZipFile", "LargeZipFile", "TarError", "ReadError", "CompressionError",
+    "CalledProcessError", "RuntimeError", "OverflowError", "KeyError",
+    "TypeError",
+}
+_safe_errnos = {1, 2, 5, 13, 17, 22, 28, 30, 36, 39, 95}
+
+
+def set_stage(value):
+    global _stage
+    _stage = value if value in _safe_stages else "unknown"
+
+
+def safe_error_status(failure):
+    """仅公开固定阶段、异常类别和白名单 errno，不读取异常正文或路径。"""
+    if isinstance(failure, PackageError):
+        category = "validation"
+    elif isinstance(failure, UnicodeError):
+        category = "encoding"
+    elif isinstance(failure, (zipfile.BadZipFile, zipfile.LargeZipFile, tarfile.TarError)):
+        category = "archive"
+    elif isinstance(failure, OSError):
+        category = "io"
+    elif isinstance(failure, ValueError):
+        category = "value"
+    elif isinstance(failure, subprocess.CalledProcessError):
+        category = "process"
+    else:
+        category = "unknown"
+    error = type(failure).__name__
+    if error not in _safe_error_types:
+        error = "UnknownError"
+    stage = _stage if _stage in _safe_stages else "unknown"
+    status = f"desktop_package_failed stage={stage} category={category} error={error}"
+    if isinstance(failure, OSError) and failure.errno in _safe_errnos:
+        status += f" errno={failure.errno}"
+    return status
+
+
 def digest(path):
     value = hashlib.sha256()
     with path.open("rb") as stream:
@@ -108,6 +157,7 @@ def safe_members(archive, platform):
 
 
 def verify(archive, source=None):
+    set_stage("verify_checksum")
     archive = Path(archive).resolve()
     checksum = archive.with_name("SHA256SUMS-" +
                                  archive.name.split("-")[-1].split(".")[0])
@@ -120,11 +170,14 @@ def verify(archive, source=None):
     for path in [archive, manifest_path(archive)]:
         if expected.get(path.name) != digest(path):
             raise PackageError("下载包 SHA-256 不一致")
+    set_stage("verify_manifest")
     manifest = load_manifest(archive)
     platform = manifest["platform"]
+    set_stage("verify_members")
     safe_members(archive, platform)
     with tempfile.TemporaryDirectory(prefix="xduwlan-package-check-") as temporary:
         root = Path(temporary)
+        set_stage("verify_extract")
         if platform == "macos":
             subprocess.run(["ditto", "-x", "-k", str(archive), str(root)], check=True)
         elif platform == "linux":
@@ -132,19 +185,25 @@ def verify(archive, source=None):
         else:
             with zipfile.ZipFile(archive) as stream:
                 stream.extractall(root)
+        set_stage("verify_layout")
         check_layout(platform, root)
+        set_stage("verify_inventory")
         if inventory(root, platform != "windows") != manifest["entries"]:
             raise PackageError("解包后的内容、权限或链接不一致")
     if source is not None:
+        set_stage("verify_source")
         source = Path(source)
         if source_inventory(platform, source) != manifest["entries"]:
             raise PackageError("下载包与当前构建目录不一致")
 
 
 def pack(platform, version, source, output):
+    set_stage("arguments")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", version):
         raise PackageError("产物标识不可用")
+    set_stage("source_prepare")
     source, output = Path(source).resolve(), Path(output).resolve()
+    set_stage("output_prepare")
     output.mkdir(parents=True, exist_ok=True)
     suffix = "tar.gz" if platform == "linux" else "zip"
     archive = output / f"xduwlan-{version}-{platform}.{suffix}"
@@ -152,10 +211,14 @@ def pack(platform, version, source, output):
     with tempfile.TemporaryDirectory(prefix="xduwlan-package-input-") as temporary:
         basis = source
         if platform == "macos":
+            set_stage("source_prepare")
             basis = Path(temporary)
             subprocess.run(["ditto", str(source), str(basis / "XDUWlan.app")], check=True)
+        set_stage("source_layout")
         check_layout(platform, basis)
+        set_stage("source_inventory")
         entries = inventory(basis, platform != "windows")
+        set_stage("archive_write")
         if platform == "macos":
             subprocess.run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent",
                             str(basis / "XDUWlan.app"), str(archive)], check=True)
@@ -165,9 +228,11 @@ def pack(platform, version, source, output):
             with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as stream:
                 for path in sorted(basis.rglob("*")):
                     stream.write(path, path.relative_to(basis).as_posix())
+    set_stage("manifest_write")
     manifest_path(archive).write_text(json.dumps(
         {"platform": platform, "entries": entries}, ensure_ascii=False,
         sort_keys=True) + "\n", encoding="utf-8")
+    set_stage("checksum_write")
     archive.with_name("SHA256SUMS-" + platform).write_text("".join(
         f"{digest(path)}  {path.name}\n" for path in [archive, manifest_path(archive)]),
         encoding="utf-8")
@@ -189,18 +254,20 @@ def main():
             if not all([args.platform, args.version, args.source, args.output]):
                 parser.error("pack 需要平台、标识、源目录和输出目录")
             result = pack(args.platform, args.version, args.source, args.output)
+            set_stage("completion")
             print("桌面包封装与解包核对通过：" + result.name)
         else:
             if not args.archive:
                 parser.error("verify 需要压缩包")
             verify(args.archive, args.source)
+            set_stage("completion")
             print("下载包内容、权限、链接与 SHA-256 核对通过")
     except PackageError as failure:
         # 本类只由上面的固定安全检查文案构造，不带输入或底层异常。
-        raise SystemExit(str(failure)) from None
-    except Exception:
+        raise SystemExit(safe_error_status(failure) + " " + str(failure)) from None
+    except Exception as failure:
         # 异常仍以失败退出，不把底层路径、归档内容或异常正文送入日志。
-        raise SystemExit("桌面包检查失败，请核对构建目录和完整性") from None
+        raise SystemExit(safe_error_status(failure)) from None
 
 
 if __name__ == "__main__":

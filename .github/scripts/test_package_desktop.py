@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import subprocess
+import sys
 
 spec = importlib.util.spec_from_file_location(
     "package_desktop", Path(__file__).with_name("package_desktop.py"))
@@ -13,6 +14,39 @@ spec.loader.exec_module(package)
 
 
 class PackageTests(unittest.TestCase):
+    def test_safe_error_status_never_includes_exception_text(self):
+        private = "test-only-private-path-and-input"
+        cases = [
+            (PermissionError(13, private, private), "category=io", "error=PermissionError"),
+            (UnicodeEncodeError("ascii", private + "中", len(private), len(private) + 1,
+                                private), "category=encoding", "error=UnicodeEncodeError"),
+            (ValueError(private), "category=value", "error=ValueError"),
+        ]
+        for failure, category, error in cases:
+            status = package.safe_error_status(failure)
+            self.assertIn(category, status)
+            self.assertIn(error, status)
+            self.assertNotIn(private, status)
+        self.assertIn("errno=13", package.safe_error_status(cases[0][0]))
+        self.assertNotIn("errno=9999", package.safe_error_status(OSError(9999, private)))
+
+    def test_cli_failure_reports_safe_stage_and_keeps_nonzero_exit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "test-only-private-source"
+            source.mkdir()
+            blocked = root / "test-only-private-output"
+            blocked.write_bytes(b"test-only-blocked-output")
+            result = subprocess.run([
+                sys.executable, str(Path(__file__).with_name("package_desktop.py")),
+                "pack", "--platform", "windows", "--version", "test-commit",
+                "--source", str(source), "--output", str(blocked),
+            ], capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("stage=output_prepare category=io", result.stderr)
+            self.assertNotIn("test-only-private", result.stderr)
+            self.assertEqual(blocked.read_bytes(), b"test-only-blocked-output")
+
     @unittest.skipIf(os.name == "nt", "Unix 权限与符号链接由 Linux/macOS 验证")
     def test_linux_roundtrip_rejects_changed_content_and_preserves_links(self):
         with tempfile.TemporaryDirectory() as temporary:

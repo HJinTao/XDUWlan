@@ -79,6 +79,14 @@ jobs:
             echo "source=$source"
             echo "archive=xduwlan-$version-$TARGET.$suffix"
           } >> "$GITHUB_OUTPUT"
+      - name: 保留 Windows 封装失败的静态构建目录
+        if: failure() && matrix.target == 'windows' && steps.package.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xduwlan-windows-package-diagnostic-${{ github.sha }}
+          path: app/build/windows/x64/runner/Release
+          if-no-files-found: error
+          retention-days: 3
       - name: 上传完整桌面压缩包
         uses: actions/upload-artifact@v4
         with:
