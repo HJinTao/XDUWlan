@@ -46,3 +46,27 @@ jobs:
         run: flutter test
       - name: 构建桌面应用
         run: flutter build ${{ matrix.target }} --release
+      - name: 上传 Windows 构建产物
+        if: matrix.target == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xduwlan-windows-${{ github.sha }}
+          path: app/build/windows/x64/runner/Release
+          if-no-files-found: error
+          retention-days: 30
+      - name: 上传 macOS 构建产物
+        if: matrix.target == 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xduwlan-macos-${{ github.sha }}
+          path: app/build/macos/Build/Products/Release/*.app
+          if-no-files-found: error
+          retention-days: 30
+      - name: 上传 Linux 构建产物
+        if: matrix.target == 'linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xduwlan-linux-${{ github.sha }}
+          path: app/build/linux/x64/release/bundle
+          if-no-files-found: error
+          retention-days: 30

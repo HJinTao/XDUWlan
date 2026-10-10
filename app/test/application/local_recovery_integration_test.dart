@@ -52,7 +52,8 @@ class _MemoryCredentials implements CredentialStore {
 void main() {
   final vector =
       (jsonDecode(
-            File('test/fixtures/srun_vectors.json').readAsStringSync(encoding: utf8),
+            File('test/fixtures/srun_vectors.json')
+                .readAsStringSync(encoding: utf8),
           ) as List<dynamic>).first
           as Map<String, dynamic>;
 
