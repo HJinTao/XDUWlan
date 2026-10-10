@@ -14,7 +14,7 @@
 - wheel/sdist 构建与安装成功，发行包要求 Python 3.10+。
 - 真实校园网认证恢复及已联网时跳过认证已验证，详见 [协议记录](protocol.md#真实验收)。
 
-2026-10-10：Windows CI 在读取包含中文与 emoji 的协议向量时使用系统默认 cp1252，触发 UnicodeDecodeError。两处向量读取已显式指定 UTF-8；本地模拟 cp1252 的受影响测试 `14 passed`、完整回归 `203 passed`，远端 Windows CI 待确认。
+2026-10-10：两处协议向量读取已显式指定 UTF-8，修复 Windows 默认 cp1252 导致的 UnicodeDecodeError。本地模拟 cp1252 的受影响测试 `14 passed`、完整回归 `203 passed`；[Windows Python 3.10 与 3.14 的测试、CLI 入口和构建均已通过](https://github.com/HJinTao/XDUWlan/actions/runs/38037614608)。
 
 ## 后续事项
 
