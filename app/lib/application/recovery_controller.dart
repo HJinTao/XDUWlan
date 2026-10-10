@@ -1,104 +1,189 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/domain.dart';
 import 'recovery_service.dart';
 
-/// 界面状态只保留安全结果；一切手动操作通过此入口串行执行。
+/// 所有来源的检查与认证共享同一个串行门闩，仅保留一个待执行意图。
 class RecoveryController extends ChangeNotifier {
   RecoveryController({required this.service, required this.store});
   final RecoveryService service;
   final CredentialStore store;
   bool busy = false;
+  bool accountSaving = false;
   NetworkState network = NetworkState.unknown;
   RecoveryStage? stage;
   FailureCode? failure;
+  FailureCode? accountFailure;
   RecoveryOutcome? outcome;
+  OperationReport? lastReport;
+  DateTime? lastCheckAt;
+  DateTime? lastAuthenticateAt;
+  FailureCode? lastFailure;
+  int accountRevision = 0;
+  int operationSequence = 0;
+  OperationKind? activeKind;
+  OperationSource? activeSource;
   OperationScope? _scope;
-  bool _foreground = true;
+  _Intent? _pending;
+  bool _stopped = false;
   bool _disposed = false;
-  int _generation = 0;
+  bool get manualPending => _pending != null;
 
-  Future<void> refresh() => _operate(false);
-  Future<void> login() => _operate(true);
+  Future<OperationReport?> refresh() =>
+      run(OperationKind.check, OperationSource.manual);
+  Future<OperationReport?> login() =>
+      run(OperationKind.authenticate, OperationSource.manual);
 
-  Future<Credentials?> loadAccount() async {
-    if (_disposed) return null;
-    failure = null;
-    try {
-      return await store.load();
-    } on AppFailure catch (error) {
-      failure = error.code;
+  Future<OperationReport?> run(
+    OperationKind kind,
+    OperationSource source, {
+    bool allowAuthentication = false,
+  }) {
+    if (_stopped) return Future.value(null);
+    final intent = _Intent(kind, source, allowAuthentication);
+    if (busy) {
+      if (source == OperationSource.automatic) return Future.value(null);
+      if (_pending == null) {
+        _pending = intent;
+      } else {
+        _pending!.kind = kind;
+        _pending!.source = source;
+        _pending!.waiters.addAll(intent.waiters);
+      }
       notifyListeners();
-      return null;
-    } catch (_) {
-      failure = FailureCode.credentialFileUnavailable;
-      notifyListeners();
-      return null;
+    } else {
+      busy = true;
+      unawaited(_drain(intent));
     }
+    return intent.waiters.first.future;
   }
 
-  Future<void> _operate(bool authenticate) async {
-    if (busy || !_foreground || _disposed) return;
-    final generation = ++_generation;
+  Future<void> _drain(_Intent intent) async {
+    var current = intent;
+    while (true) {
+      final report = await _execute(current);
+      for (final waiter in current.waiters) {
+        waiter.complete(report);
+      }
+      if (_stopped || _pending == null) break;
+      current = _pending!;
+      _pending = null;
+    }
+    busy = false;
+    stage = null;
+    activeKind = null;
+    activeSource = null;
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<OperationReport> _execute(_Intent intent) async {
+    operationSequence++;
+    activeKind = intent.kind;
+    activeSource = intent.source;
     final scope = OperationScope();
+    final elapsed = Stopwatch()..start();
     _scope = scope;
-    busy = true;
     stage = RecoveryStage.checking;
     failure = null;
     outcome = null;
+    var kind = intent.kind;
+    var resultNetwork = NetworkState.unknown;
+    FailureCode? resultFailure;
+    RecoveryOutcome? resultOutcome;
     notifyListeners();
-    bool current() => !_disposed && generation == _generation;
     try {
-      if (authenticate) {
+      if (intent.kind == OperationKind.authenticate ||
+          intent.allowAuthentication) {
         final result = await service.login(
           scope,
           onStage: (value) {
-            if (!current()) return;
+            if (value == RecoveryStage.preparing) {
+              kind = OperationKind.authenticate;
+            }
+            if (_disposed) return;
             stage = value;
             notifyListeners();
           },
         );
-        if (!current()) return;
-        network = result.network;
-        failure = result.failure;
-        outcome = result.outcome;
+        resultNetwork = result.network;
+        resultFailure = result.failure;
+        resultOutcome = kind == OperationKind.authenticate
+            ? result.outcome
+            : null;
       } else {
-        final result = await scope.run(() => service.check(scope));
-        if (!current()) return;
-        network = result;
+        resultNetwork = await scope.run(() => service.check(scope));
+        resultFailure = switch (resultNetwork) {
+          NetworkState.unavailable => FailureCode.networkUnavailable,
+          NetworkState.unknown => FailureCode.protocol,
+          _ => null,
+        };
       }
     } on AppFailure catch (error) {
-      if (current()) {
-        network = NetworkState.unknown;
-        failure = error.code;
+      resultFailure = scope.submitted
+          ? FailureCode.submittedUnconfirmed
+          : error.code;
+      if (error.code == FailureCode.cancelled) {
+        resultOutcome = RecoveryOutcome.cancelled;
       }
     } catch (_) {
-      if (current()) {
-        network = NetworkState.unknown;
-        failure = FailureCode.networkUnavailable;
-      }
+      resultFailure = FailureCode.networkUnavailable;
     } finally {
       scope.finish();
-      if (current()) {
-        _scope = null;
-        stage = null;
-        busy = false;
-        notifyListeners();
-      }
+      _scope = null;
+      elapsed.stop();
     }
+    final report = OperationReport(
+      kind: kind,
+      source: intent.source,
+      network: resultNetwork,
+      outcome: resultOutcome,
+      failure: resultFailure,
+      elapsed: elapsed.elapsed,
+      completedAt: DateTime.now(),
+    );
+    if (!_disposed) {
+      network = report.network;
+      failure = report.failure;
+      outcome = report.outcome;
+      lastReport = report;
+      lastCheckAt = report.completedAt;
+      if (kind == OperationKind.authenticate) {
+        lastAuthenticateAt = report.completedAt;
+      }
+      if (report.failure != null) lastFailure = report.failure;
+      notifyListeners();
+    }
+    return report;
+  }
+
+  Future<Credentials?> loadAccount() async {
+    if (_stopped) return null;
+    accountFailure = null;
+    try {
+      return await store.load();
+    } on AppFailure catch (error) {
+      accountFailure = error.code;
+    } catch (_) {
+      accountFailure = FailureCode.credentialFileUnavailable;
+    }
+    if (!_disposed) notifyListeners();
+    return null;
   }
 
   Future<bool> saveAccount(Credentials credentials) async {
-    if (busy || _disposed) return false;
+    if (_stopped || accountSaving) return false;
+    accountFailure = null;
     try {
       validateCredentials(credentials);
     } on AppFailure catch (error) {
-      failure = error.code;
+      accountFailure = error.code;
+      if (!busy) failure = error.code;
       notifyListeners();
       return false;
     }
-    busy = true;
-    failure = null;
+    accountSaving = true;
     notifyListeners();
     try {
       await store.save(
@@ -108,41 +193,45 @@ class RecoveryController extends ChangeNotifier {
           operatorSuffix: credentials.operatorSuffix,
         ),
       );
-      if (_disposed) return false;
+      if (_stopped) return false;
+      accountRevision++;
       return true;
     } catch (_) {
-      if (!_disposed) failure = FailureCode.credentialFileUnavailable;
+      accountFailure = FailureCode.credentialFileUnavailable;
+      if (!busy) failure = accountFailure;
       return false;
     } finally {
-      if (!_disposed) {
-        busy = false;
-        notifyListeners();
-      }
+      accountSaving = false;
+      if (!_disposed) notifyListeners();
     }
   }
 
-  void setForeground(bool foreground) {
-    _foreground = foreground;
-    if (foreground || _disposed || _scope == null) return;
-    ++_generation;
-    final submitted = _scope!.submitted;
-    _scope!.cancel();
-    _scope = null;
-    busy = false;
-    stage = null;
-    network = NetworkState.unknown;
-    outcome = RecoveryOutcome.cancelled;
-    failure = submitted
-        ? FailureCode.submittedUnconfirmed
-        : FailureCode.cancelled;
-    notifyListeners();
+  /// 窗口可见性不改变网络任务生命周期，保留旧接口以兼容调用方。
+  void setForeground(bool foreground) {}
+
+  void shutdown() {
+    if (_stopped) return;
+    _stopped = true;
+    _scope?.cancel();
+    final pending = _pending;
+    _pending = null;
+    for (final waiter in pending?.waiters ?? <Completer<OperationReport?>>[]) {
+      waiter.complete(null);
+    }
   }
 
   @override
   void dispose() {
+    shutdown();
     _disposed = true;
-    ++_generation;
-    _scope?.cancel();
     super.dispose();
   }
+}
+
+class _Intent {
+  _Intent(this.kind, this.source, this.allowAuthentication);
+  OperationKind kind;
+  OperationSource source;
+  final bool allowAuthentication;
+  final waiters = [Completer<OperationReport?>()];
 }

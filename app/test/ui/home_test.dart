@@ -32,7 +32,7 @@ void main() {
     final passwordInput = tester.widget<TextField>(
       find.descendant(of: passwordField, matching: find.byType(TextField)),
     );
-    expect(passwordInput.obscureText, isFalse);
+    expect(passwordInput.obscureText, isTrue);
     expect(passwordInput.controller!.text, 'previous-secret');
     expect(
       tester
@@ -126,7 +126,7 @@ void main() {
       find.descendant(of: _field('密码'), matching: find.byType(TextField)),
     );
     expect(passwordInput.enabled, isNot(false));
-    expect(passwordInput.obscureText, isFalse);
+    expect(passwordInput.obscureText, isTrue);
     expect(passwordInput.controller!.text, 'demo-secret');
     await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
@@ -140,6 +140,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(_field('账号'), 'demo-user');
     await tester.enterText(_field('密码'), 'demo-secret');
+    await tester.tap(find.text('校园网（空后缀）'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('自定义').last);
+    await tester.pumpAndSettle();
     await tester.enterText(_field('运营商后缀（可选）'), 'untrusted suffix');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
@@ -187,7 +191,7 @@ void main() {
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('网络检查期间禁用操作并阻止重复触发', (tester) async {
+  testWidgets('网络检查期间账号配置仍可交互，手动认证排队执行', (tester) async {
     final harness = _Harness();
     final pending = Completer<NetworkState>();
     harness.probe.pending = pending.future;
@@ -195,19 +199,21 @@ void main() {
     await _showHome(tester, harness.controller);
     await tester.tap(find.text('检查网络'));
     await tester.pump();
-
     expect(find.text('正在检查网络'), findsOneWidget);
-    expect(tester.widget<FilledButton>(_button('一键认证')).onPressed, isNull);
-    expect(tester.widget<TextButton>(_button('检查网络')).onPressed, isNull);
-    expect(tester.widget<TextButton>(_button('配置账号')).onPressed, isNull);
+    expect(tester.widget<FilledButton>(_button('一键认证')).onPressed, isNotNull);
+    expect(tester.widget<TextButton>(_button('配置账号')).onPressed, isNotNull);
     await tester.tap(find.text('一键认证'));
-    await tester.tap(find.text('检查网络'));
     await tester.pump();
+    expect(harness.controller.manualPending, isTrue);
     expect(harness.probe.checks, 1);
-    expect(harness.store.loads, 0);
-
+    await tester.tap(find.text('配置账号'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(AlertDialog), findsOneWidget);
+    await tester.tap(find.text('取消'));
     pending.complete(NetworkState.online);
     await tester.pumpAndSettle();
+    expect(harness.probe.checks, 2);
     expect(find.text('网络已连接'), findsOneWidget);
   });
 
@@ -235,7 +241,7 @@ void main() {
     await tester.tap(find.text('一键认证'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('核对账号密码'), findsOneWidget);
+    expect(find.textContaining('核对账号密码'), findsWidgets);
     expect(find.textContaining('AppFailure'), findsNothing);
     expect(find.textContaining('demo-user'), findsNothing);
     expect(find.textContaining('demo-secret'), findsNothing);

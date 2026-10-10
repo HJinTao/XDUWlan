@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:path_provider/path_provider.dart';
-
 import '../core/domain.dart';
+import 'application_support.dart';
 
 /// 在应用支持目录保存单条本地配置；不读取旧 Python 版本的凭据。
 class LocalCredentialStore implements CredentialStore {
@@ -14,7 +13,8 @@ class LocalCredentialStore implements CredentialStore {
 
   Future<File> _resolveFile() async {
     if (file case final configuredFile?) return configuredFile;
-    final directory = this.directory ?? await getApplicationSupportDirectory();
+    final directory =
+        this.directory ?? await resolveApplicationSupportDirectory();
     return File('${directory.path}/$fileName');
   }
 

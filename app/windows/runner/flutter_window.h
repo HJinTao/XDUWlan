@@ -2,7 +2,9 @@
 #define RUNNER_FLUTTER_WINDOW_H_
 
 #include <flutter/dart_project.h>
+#include <flutter/encodable_value.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
 
 #include <memory>
 
@@ -12,7 +14,8 @@
 class FlutterWindow : public Win32Window {
  public:
   // Creates a new FlutterWindow hosting a Flutter view running |project|.
-  explicit FlutterWindow(const flutter::DartProject& project);
+  explicit FlutterWindow(const flutter::DartProject& project,
+                         bool background = false);
   virtual ~FlutterWindow();
 
  protected:
@@ -25,6 +28,9 @@ class FlutterWindow : public Win32Window {
  private:
   // The project to run.
   flutter::DartProject project_;
+  bool background_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      lifecycle_channel_;
 
   // The Flutter instance hosted by this window.
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;

@@ -23,6 +23,30 @@ enum RecoveryStage { checking, preparing, authenticating, verifying }
 
 enum RecoveryOutcome { alreadyOnline, restored, failed, cancelled }
 
+enum OperationSource { manual, automatic, tray }
+
+enum OperationKind { check, authenticate }
+
+class OperationReport {
+  const OperationReport({
+    required this.kind,
+    required this.source,
+    required this.network,
+    required this.outcome,
+    required this.failure,
+    required this.elapsed,
+    required this.completedAt,
+  });
+
+  final OperationKind kind;
+  final OperationSource source;
+  final NetworkState network;
+  final RecoveryOutcome? outcome;
+  final FailureCode? failure;
+  final Duration elapsed;
+  final DateTime completedAt;
+}
+
 class AppFailure implements Exception {
   const AppFailure(this.code);
   final FailureCode code;

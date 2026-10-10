@@ -39,7 +39,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libsecret-1-dev
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libnotify-dev libx11-dev libxi-dev
       - name: 获取应用依赖
         run: flutter pub get
       - name: 格式与静态检查
@@ -48,6 +48,9 @@ jobs:
           flutter analyze
       - name: 执行虚构数据与本地服务测试
         run: flutter test
+      - name: 验证 macOS 登录启动文件边界
+        if: runner.os == 'macOS'
+        run: bash test/native/run_login_agent_test.sh
       - name: 构建桌面应用
         run: flutter build ${{ matrix.target }} --release
       - name: 上传 Windows 构建产物

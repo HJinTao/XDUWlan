@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../application/recovery_controller.dart';
+import '../application/app_runtime_controller.dart';
+import '../core/presentation.dart';
+import 'diagnostics_page.dart';
 import '../core/domain.dart';
 
 const _canvas = Color(0xFFF8F9F6);
@@ -10,25 +13,18 @@ const _muted = Color(0xFF657185);
 
 /// 主界面只展示安全结果，探测与凭据访问由控制器按需执行。
 class XduwlanHome extends StatelessWidget {
-  const XduwlanHome({super.key, required this.controller});
+  const XduwlanHome({super.key, required this.controller, this.runtime});
 
   final RecoveryController controller;
+  final AppRuntimeController? runtime;
 
   Future<void> _configure(BuildContext context) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _AccountDialog(controller: controller),
-    );
-    if (saved == true && context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('账号已保存至本机配置文件')));
-    }
+    await showAccountConfiguration(context, controller);
   }
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: controller,
+    animation: Listenable.merge([controller, ?runtime]),
     builder: (context, _) => Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
@@ -81,9 +77,27 @@ class XduwlanHome extends StatelessWidget {
                     const SizedBox(height: 14),
                     _FailureNotice(failure: failure),
                   ],
+                  const SizedBox(height: 14),
+                  Text(
+                    '最近检查：${formatTime(controller.lastCheckAt)}',
+                    style: const TextStyle(color: _muted),
+                  ),
+                  Text(
+                    '最近认证：${formatTime(controller.lastAuthenticateAt)}',
+                    style: const TextStyle(color: _muted),
+                  ),
+                  if (controller.lastFailure case final recentFailure?)
+                    Text(
+                      '最近失败：${failureMessage(recentFailure)}',
+                      style: const TextStyle(color: _muted),
+                    ),
+                  if (controller.manualPending)
+                    const Text('已记录待执行操作，当前操作结束后立即执行。'),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: controller.busy ? null : controller.login,
+                    onPressed: () => runtime == null
+                        ? controller.login()
+                        : runtime!.authenticate(OperationSource.manual),
                     icon: const Icon(Icons.login_rounded, size: 20),
                     label: const Text('一键认证'),
                     style: FilledButton.styleFrom(
@@ -104,15 +118,15 @@ class XduwlanHome extends StatelessWidget {
                     spacing: 12,
                     children: [
                       TextButton.icon(
-                        onPressed: controller.busy ? null : controller.refresh,
+                        onPressed: () => runtime == null
+                            ? controller.refresh()
+                            : runtime!.check(OperationSource.manual),
                         icon: const Icon(Icons.refresh_rounded, size: 18),
                         label: const Text('检查网络'),
                         style: TextButton.styleFrom(foregroundColor: _muted),
                       ),
                       TextButton.icon(
-                        onPressed: controller.busy
-                            ? null
-                            : () => _configure(context),
+                        onPressed: () => _configure(context),
                         icon: const Icon(
                           Icons.manage_accounts_outlined,
                           size: 18,
@@ -122,6 +136,10 @@ class XduwlanHome extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (runtime case final current?) ...[
+                    const SizedBox(height: 18),
+                    _RuntimeControls(runtime: current),
+                  ],
                 ],
               ),
             ),
@@ -195,7 +213,7 @@ class _NetworkCard extends StatelessWidget {
             Icon(icon, size: 32, color: color),
           const SizedBox(height: 20),
           Text(
-            controller.busy ? _stageMessage(controller.stage) : title,
+            controller.busy ? stageMessage(controller.stage) : title,
             style: Theme.of(context).textTheme.titleLarge
                 ?.copyWith(color: _ink, fontWeight: FontWeight.w600),
           ),
@@ -232,7 +250,7 @@ class _FailureNotice extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            _failureMessage(failure),
+            failureMessage(failure),
             style: const TextStyle(color: Color(0xFF6D5635), height: 1.5),
           ),
         ),
@@ -256,7 +274,8 @@ class _AccountDialogState extends State<_AccountDialog> {
   final _suffix = TextEditingController();
   bool _saving = false;
   bool _loading = true;
-  bool _obscurePassword = false;
+  bool _obscurePassword = true;
+  bool _customSuffix = false;
   FailureCode? _failure;
 
   @override
@@ -272,10 +291,11 @@ class _AccountDialogState extends State<_AccountDialog> {
       _username.text = credentials.username;
       _password.text = credentials.password;
       _suffix.text = credentials.operatorSuffix;
+      _customSuffix = credentials.operatorSuffix.isNotEmpty;
     }
     setState(() {
       _loading = false;
-      _failure = credentials == null ? widget.controller.failure : null;
+      _failure = credentials == null ? widget.controller.accountFailure : null;
     });
   }
 
@@ -291,9 +311,7 @@ class _AccountDialogState extends State<_AccountDialog> {
   }
 
   Future<void> _save() async {
-    if (_saving ||
-        widget.controller.busy ||
-        !_formKey.currentState!.validate()) {
+    if (_saving || !_formKey.currentState!.validate()) {
       return;
     }
     setState(() {
@@ -301,7 +319,11 @@ class _AccountDialogState extends State<_AccountDialog> {
       _failure = null;
     });
     final saved = await widget.controller.saveAccount(
-      Credentials(_username.text, _password.text, operatorSuffix: _suffix.text),
+      Credentials(
+        _username.text,
+        _password.text,
+        operatorSuffix: _customSuffix ? _suffix.text : '',
+      ),
     );
     if (!mounted) return;
     if (saved) {
@@ -312,7 +334,7 @@ class _AccountDialogState extends State<_AccountDialog> {
     } else {
       setState(() {
         _saving = false;
-        _failure = widget.controller.failure;
+        _failure = widget.controller.accountFailure;
       });
     }
   }
@@ -321,9 +343,9 @@ class _AccountDialogState extends State<_AccountDialog> {
   Widget build(BuildContext context) => AnimatedBuilder(
     animation: widget.controller,
     builder: (context, _) {
-      final enabled = !_loading && !_saving && !widget.controller.busy;
+      final enabled = !_loading && !_saving;
       return PopScope(
-        canPop: enabled,
+        canPop: !_saving,
         child: AlertDialog(
           backgroundColor: _canvas,
           insetPadding: const EdgeInsets.symmetric(
@@ -394,19 +416,39 @@ class _AccountDialogState extends State<_AccountDialog> {
                           value == null || value.isEmpty ? '请输入密码' : null,
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _suffix,
-                      enabled: enabled,
-                      autocorrect: false,
-                      enableSuggestions: false,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _save(),
+                    DropdownButtonFormField<bool>(
+                      initialValue: _customSuffix,
+                      isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: '运营商后缀（可选）',
-                        helperText: '不需要时留空',
+                        labelText: '账号后缀',
                         border: OutlineInputBorder(),
                       ),
+                      items: const [
+                        DropdownMenuItem(value: false, child: Text('校园网（空后缀）')),
+                        DropdownMenuItem(value: true, child: Text('自定义')),
+                      ],
+                      onChanged: enabled
+                          ? (value) =>
+                                setState(() => _customSuffix = value ?? false)
+                          : null,
                     ),
+                    if (_customSuffix) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _suffix,
+                        enabled: enabled,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _save(),
+                        decoration: const InputDecoration(
+                          labelText: '运营商后缀（可选）',
+                          helperText: '不需要时留空',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ],
+                    if (_loading) const Text('账号配置准备中'),
                     if (_failure case final failure?) ...[
                       const SizedBox(height: 16),
                       _FailureNotice(failure: failure),
@@ -418,7 +460,7 @@ class _AccountDialogState extends State<_AccountDialog> {
           ),
           actions: [
             TextButton(
-              onPressed: enabled
+              onPressed: !_saving
                   ? () => Navigator.of(context).pop(false)
                   : null,
               child: const Text('取消'),
@@ -435,24 +477,96 @@ class _AccountDialogState extends State<_AccountDialog> {
   );
 }
 
-String _stageMessage(RecoveryStage? stage) => switch (stage) {
-  RecoveryStage.checking => '正在检查网络',
-  RecoveryStage.preparing => '正在准备认证',
-  RecoveryStage.authenticating => '正在提交认证',
-  RecoveryStage.verifying => '正在确认联网',
-  null => '正在处理',
-};
+Future<void> showAccountConfiguration(
+  BuildContext context,
+  RecoveryController controller,
+) async {
+  final saved = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => _AccountDialog(controller: controller),
+  );
+  if (saved == true && context.mounted) {
+    ScaffoldMessenger.maybeOf(context)
+        ?.showSnackBar(const SnackBar(content: Text('账号已保存至本机配置文件')));
+  }
+}
 
-String _failureMessage(FailureCode failure) => switch (failure) {
-  FailureCode.credentialsMissing => '尚未配置账号。请先配置账号密码，再尝试认证。',
-  FailureCode.credentialsInvalid => '账号信息格式不正确。请检查账号、密码与运营商后缀。',
-  FailureCode.credentialStoreUnavailable => '账号配置无法保存或读取。请检查应用目录权限后重试。',
-  FailureCode.credentialFileUnavailable => '账号配置无法保存或读取。请检查应用目录权限后重试。',
-  FailureCode.networkUnavailable => '网络暂不可达。请确认已连接校园网，再重试。',
-  FailureCode.protocol => '校园网认证页面与预期不符。请稍后重试或联系维护者。',
-  FailureCode.authRejected => '认证未通过。请核对账号密码与运营商后缀后重试。',
-  FailureCode.verificationFailed => '已完成认证，但尚未确认联网。请检查网络后再试。',
-  FailureCode.cancelled => '操作已取消。回到应用后可以重新检查网络。',
-  FailureCode.timeout => '操作超时。请检查网络后重试。',
-  FailureCode.submittedUnconfirmed => '认证请求已提交，结果尚未确认。请先检查网络，避免重复认证。',
-};
+class _RuntimeControls extends StatelessWidget {
+  const _RuntimeControls({required this.runtime});
+  final AppRuntimeController runtime;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('自动恢复'),
+        subtitle: Text(
+          !runtime.settingsReady
+              ? '准备中'
+              : runtime.authenticationPaused
+              ? '账号需要检查，暂停自动认证；每 5 分钟检查网络。'
+              : '隐藏到托盘后继续检测和认证。',
+        ),
+        value: runtime.settings.automaticRecoveryEnabled,
+        onChanged: runtime.settingsReady && !runtime.settingsSaving
+            ? runtime.setAutomaticRecovery
+            : null,
+      ),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('登录系统后启动'),
+        subtitle: Text(
+          runtime.startupReady && runtime.settingsReady ? '以隐藏模式运行' : '准备中',
+        ),
+        value: runtime.settings.launchAtStartup,
+        onChanged:
+            runtime.settingsReady &&
+                runtime.startupReady &&
+                runtime.startupAvailable &&
+                !runtime.settingsSaving
+            ? runtime.setLaunchAtStartup
+            : null,
+      ),
+      if (!runtime.trayReady) const Text('托盘准备中'),
+      if (!runtime.notificationReady) const Text('系统通知准备中'),
+      for (final message in [
+        runtime.settingsError,
+        runtime.trayError,
+        runtime.notificationError,
+        runtime.startupError,
+        runtime.windowError,
+        runtime.diagnosticsError,
+      ])
+        if (message != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFF6D5635)),
+            ),
+          ),
+      Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        children: [
+          TextButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => DiagnosticsPage(runtime: runtime),
+              ),
+            ),
+            icon: const Icon(Icons.history),
+            label: const Text('诊断记录'),
+          ),
+          TextButton.icon(
+            onPressed: runtime.exit,
+            icon: const Icon(Icons.power_settings_new),
+            label: const Text('退出'),
+          ),
+        ],
+      ),
+    ],
+  );
+}
