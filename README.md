@@ -1,72 +1,62 @@
 # XDUWlan
 
-西安电子科技大学校园网的一次认证恢复工具，支持 Python 3.10+。操作系统先连接校园 Wi-Fi；程序检查网络、按需认证、验证联网并退出。Python 3.10 的 TOML 解析由安装时自动提供的 `tomli` 完成；3.11+ 使用标准库 `tomllib`。
+西安电子科技大学校园网认证恢复命令行工具。连接校园网后，程序检查网络状态，按需执行 Portal 认证，验证联网结果并退出。
 
-## 安装与使用
+当前提供 `status`、`configure` 和 `login` 三个命令，支持 Python 3.10+。Linux 环境中的认证恢复流程已完成受控实测，验证范围见[协议与验证记录](docs/protocol.md#真实验收)。
 
-在项目目录创建虚拟环境并安装：
+## 安装
+
+在项目目录中创建 Python 虚拟环境并安装：
 
 ```bash
 python -m venv .venv
-```
-
-macOS / Linux 激活：
-
-```bash
 source .venv/bin/activate
+python -m pip install .
 ```
 
-Windows PowerShell 激活：
+也可以安装到已有 Python 3.10+ 环境。Python 3.10 使用条件依赖 `tomli` 解析 TOML，3.11+ 使用标准库 `tomllib`。
 
-```powershell
-.venv\Scripts\Activate.ps1
-```
+Linux 需要可用且已解锁的 Secret Service 等安全凭据后端。当前以 Linux 为主要验证环境，其他平台尚未完成运行验收。
 
-然后安装并配置凭据：
+## 快速开始
+
+首次使用时配置账号密码：
 
 ```bash
-python -m pip install .
 xduwlan configure
 ```
 
-密码使用隐藏输入并保存到系统凭据库，不写入普通配置。网络认证失效时运行：
+密码使用隐藏输入并保存至系统凭据库。需要恢复认证时运行：
 
 ```bash
 xduwlan login
 ```
 
-已联网时直接退出，不读取凭据；只有确认可信 Portal 要求认证后才读取并提交凭据，每次最多认证一次。认证响应成功后仍需独立联网验证。
+已联网时直接结束，不读取凭据。确认需要认证后，程序校验 Portal 上下文、读取凭据并认证一次；只有联网复查通过才报告恢复成功。
 
-## 命令与输出
+Wi-Fi 的连接和重连由操作系统负责。程序不提供后台常驻、自动连接 Wi-Fi、图形界面、自服务账户查询或设备管理。
+
+## 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `xduwlan status` | 检查网络状态 |
+| `xduwlan configure` | 交互配置凭据 |
+| `xduwlan login` | 按需认证并验证联网结果 |
+
+`status` 和 `login` 支持 `--config PATH`、`--json` 和 `--debug`：
 
 ```bash
-xduwlan status
 xduwlan status --json
-xduwlan status --debug
-xduwlan login --json
 xduwlan login --debug
-xduwlan login --config PATH
+xduwlan login --config config.toml
 ```
 
-`status` 检查网络；`configure` 保存凭据；`login` 尝试恢复。无子命令显示帮助。JSON 只输出固定状态、阶段成功与耗时；debug 不输出账号、IP、认证参数或原始响应。
+JSON 输出固定状态、探测阶段结果与耗时；debug 输出安全的阶段信息。无子命令时显示帮助。
 
-| login 退出码 | 含义 |
-| --- | --- |
-| 0 | 原本已联网或恢复后验证成功 |
-| 1 | 状态未知或系统凭据库不可用 |
-| 2 | 配置或凭据输入无效 |
-| 3 | 未配置凭据，先运行 configure |
-| 5 | 网络或 Portal 暂时不可达 |
-| 6 | Portal 明确拒绝认证，检查凭据或账户限制 |
-| 7 | 可信目标、上下文或认证协议不符合预期 |
-| 8 | 已提交认证，但联网验证未通过 |
-| 130 | 用户取消 |
+## 配置
 
-`status` 的退出码为在线 0、需要认证 4、不可达 5、未知 1、配置错误 2。
-
-## 非敏感配置
-
-`status` 和 `login` 都支持 `--config PATH`；未指定时使用默认值。示例：
+未指定 `--config` 时使用默认值。TOML 配置示例：
 
 ```toml
 portal_url = "https://w.xidian.edu.cn"
@@ -75,15 +65,29 @@ request_timeout_seconds = 5
 operator_suffix = ""
 ```
 
-Portal 必须使用可信 HTTPS 主机、默认端口和有效证书。入口导航始终校验同源目标。默认 HTTPS 探测失败时，程序用同一端点的 HTTP 地址发现 Portal；HTTP 放行不会掩盖 HTTPS 验证失败。
+Portal 必须使用可信 HTTPS 主机、默认端口和有效证书。HTTPS 探测失败时，HTTP 回退用于发现 Portal；HTTP 返回 204 不会覆盖 HTTPS 验证失败。
 
-`operator_suffix` 默认为空，只在用户显式配置时追加一次。不同运营商、IPv6 和双栈尚未真实验证。兼容保留的 `probe_interval_seconds`、`log_level` 不启动循环或输出原始协议调试信息。密码、Cookie、验证码、challenge 和认证参数不得放入 TOML、命令参数或源码。
+`operator_suffix` 仅在显式配置时追加一次。兼容保留的 `probe_interval_seconds` 和 `log_level` 不启动周期任务或原始协议日志。密码及会话信息不得写入普通配置，详见[安全规则](docs/security.md)。
 
-## 系统凭据库
+## 退出码
 
-macOS 使用钥匙串，Windows 使用系统凭据管理器；Linux 需要可用且已解锁的 Secret Service 等安全后端。无桌面或 D-Bus 会话的 Linux 环境可能无法读取凭据；程序明确失败，不回退到明文文件。可使用 `python -m keyring diagnose` 在本机诊断，不把诊断中的个人信息提交到仓库。[keyring 官方说明](https://keyring.readthedocs.io/en/latest/)
+| login 退出码 | 含义 |
+| --- | --- |
+| 0 | 已联网，或认证后联网验证成功 |
+| 1 | 网络状态未知，或凭据库不可用 |
+| 2 | 配置或凭据输入无效 |
+| 3 | 尚未配置凭据 |
+| 5 | 网络或 Portal 不可达 |
+| 6 | Portal 拒绝认证 |
+| 7 | 可信目标、上下文或协议不符合预期 |
+| 8 | 已提交认证，但联网验证未通过 |
+| 130 | 操作取消 |
 
-## 开发、打包与验证
+`status` 的退出码为在线 0、需要认证 4、不可达 5、未知 1、配置错误 2。
+
+凭据缺失或输入无效时重新运行 `configure`。凭据库不可用时检查桌面/D-Bus 会话及后端解锁状态；程序不回退到明文文件。未认证时 HTTPS 探测可能超时，一次恢复可能需要约 10 秒。
+
+## 开发与构建
 
 ```bash
 python -m pip install -e ".[test]" build
@@ -91,17 +95,17 @@ python -m pytest -q
 python -m build
 ```
 
-发行包位于 `dist/`；可安装构建出的 wheel。生产包仅包含 `xduwlan`，`src/login.py` 是教学实验参考，不参与发行或运行。协议固定向量可以通过 `node tests/auth/reference_vectors.js` 重新生成，运行 Python 测试不需要 Node；本地 HTTP/TLS 集成测试需要 OpenSSL。
+构建产物位于 `dist/`。自动化测试使用虚构输入与本地服务，不访问真实校园网或凭据记录。HTTP/TLS 集成测试需要 OpenSSL；协议向量可通过 `node tests/auth/reference_vectors.js` 重新生成，运行 Python 测试不需要 Node。
 
-自动化测试使用虚构输入、本地服务器和外部边界替代对象，不访问真实校园网、终端或系统凭据记录。当前优先在 ThinkPad 的 `XDWlanLab` 环境验证逻辑。已有 CI 配置覆盖 macOS、Windows、Linux 的 Python 3.10 与 3.14，暂不作为当前验收要求；真实校园网实测另行记录。
+## 验证范围
 
-第一版不包含后台驻留、自动连接 Wi-Fi、图形界面、开机自启或自服务账号查询。
+已验证 Linux IPv4 环境下的 Portal 识别、认证恢复、系统凭据读取与已联网时跳过认证。不同运营商、校区、IPv6/双栈及具体业务失败响应仍待实测；自动化测试覆盖相应的项目错误处理契约，不代表这些环境已经在线验证。
 
-## 文档
+## 项目文档
 
-- [`docs/current.md`](docs/current.md)：当前工作与验证状态；
-- [`docs/roadmap.md`](docs/roadmap.md)：产品范围与验收；
-- [`docs/architecture.md`](docs/architecture.md)：实际模块与调用链；
-- [`docs/security.md`](docs/security.md)：安全和隐私规则；
-- [`docs/protocol/`](docs/protocol/)：脱敏协议证据；
-- [`docs/visualizations/`](docs/visualizations/)：命令与文件职责图。
+- [维护状态](docs/current.md)
+- [架构](docs/architecture.md)
+- [安全与隐私](docs/security.md)
+- [协议与验证记录](docs/protocol.md)
+- [命令职责图](docs/visualizations/xduwlan-architecture.html)
+- [文件职责图](docs/visualizations/xduwlan-file-architecture.html)

@@ -1,102 +1,69 @@
-# 架构说明
+# 架构
 
-## 架构目标
-
-XDUWlan 使用“CLI → 应用服务 → 端口接口 ← 基础设施适配器”的依赖方向。核心数据、状态机和协议纯逻辑不依赖 CLI、操作系统、`httpx` 或 `keyring`，便于单元测试和未来跨语言实现。
+## 依赖方向与设计理由
 
 ```text
-CLI
-  → 应用服务
-    → 核心模型与端口接口
-      ← DNS、TCP、HTTP、凭据库和文件适配器
+CLI → 应用服务 → 核心模型与端口 ← 基础设施适配器
 ```
 
-CLI 负责解析输入、装配依赖、调用服务和格式化结果；应用服务负责编排流程；端口接口描述调用方需要的能力；适配器连接 Python 标准库、第三方库或操作系统。
+CLI 负责交互与装配，服务负责编排，适配器连接网络和凭据库。核心不依赖平台和具体 HTTP 库，使协议逻辑和失败分支可离线验证。
 
-## 当前实现
+- 使用 Python 与标准库网络接口，减少额外依赖；Python 3.10 的 TOML 解析由条件依赖 tomli 补足。
+- 长期凭据交给 keyring，平台后端不可用时明确失败，避免明文回退。
+- 入口发现与认证分开：`prepare()` 不接收凭据，未知目标不会触发读取或提交。
+- 不自动跟随认证重定向，逐步校验目标；成功响应之后仍做独立联网复查。
 
-```text
-src/xduwlan/
-├── cli.py
-├── config.py
-├── credential_service.py
-├── credentials.py
-├── errors.py
-├── keyring_store.py
-├── models.py
-└── probe/
-    ├── interfaces.py
-    ├── dns.py
-    ├── tcp.py
-    ├── http.py
-    ├── classifier.py
-    └── service.py
-```
+产品范围和命令契约见 [README](../README.md)，凭据边界见 [安全](security.md)，编码依据见 [协议](protocol.md)。
 
-- `models.py`：网络状态、探测阶段和不可变结果；
-- `config.py`：非敏感配置的默认值、TOML 合并与校验；
-- `credential_service.py`：`configure` 应用服务契约、输入校验与保存编排；
-- `credentials.py`：不可变凭据模型与 `CredentialStore` 端口；
-- `keyring_store.py`：使用固定查询键读写单条 JSON 凭据记录的 `keyring` 适配器，并转换后端与损坏记录错误；
-- `probe/interfaces.py`：DNS、TCP、HTTP 和完整探测的端口契约；
-- `probe/dns.py`、`tcp.py`、`http.py`：系统网络适配器；
-- `probe/classifier.py`：把 HTTP 证据分类为稳定网络状态；
-- `probe/service.py`：编排阶段并生成 `NetworkProbeResult`；
-- `cli.py`：装配系统能力并提供 `status` 与 `configure` 用户界面。
+## 模块与接口
 
-## `status` 调用链
-
-```text
-xduwlan status
-  → main()
-  → _handle_status()
-  → AppConfig.defaults() / AppConfig.load()
-  → build_network_probe()
-  → DefaultNetworkProbe.probe()
-      → DnsResolver.resolve()
-      → TcpConnector.connect()
-      → HttpConnectivityChecker.request()
-      → classify_http_observation()
-  → NetworkProbeResult
-  → 中文 / JSON / debug 输出
-```
-
-`DefaultNetworkProbe` 依赖 `Protocol`，不知道系统适配器如何完成网络操作。测试可以注入替代对象，不访问外部网络。
-
-## `configure` 调用链
-
-```text
-xduwlan configure
-  → main()
-  → _handle_configure()
-      → input() / getpass.getpass()
-      → CredentialConfigurator.configure()
-          → CredentialStore.save()
-          ← KeyringCredentialStore
-              → keyring.set_password()
-              → 操作系统凭据库
-```
-
-CLI 不校验凭据内容，也不直接依赖存储端口。`DefaultCredentialConfigurator` 负责输入规则和保存编排，`KeyringCredentialStore` 负责第三方库与操作系统边界。
-
-## 切片边界
-
-已完成切片记录实际职责；其余切片只记录计划边界，具体接口在对应子任务开始前对齐：
-
-| 切片 | 计划职责 |
+| 文件 | 职责与主要符号 |
 | --- | --- |
-| `configure` | 已完成交互输入、应用服务、系统凭据存储和安全错误输出 |
-| `login` | 深澜 challenge、参数编码、响应解析和认证编排 |
-| `watch` | 周期探测、认证、验证、退避和停止 |
-| `account` | 自服务会话、人工验证码、HTTP 客户端和 HTML 解析 |
+| `cli.py` | `main`、参数解析、`build_network_probe`、`build_login_service`、安全结果输出 |
+| `config.py` | `AppConfig`、TOML 默认值、合并与校验 |
+| `models.py` | `NetworkState`、`ProbeObservation`、`NetworkProbeResult` |
+| `credential_service.py` | `DefaultCredentialConfigurator`、整理输入与保存编排 |
+| `credentials.py` | `Credentials`、`CredentialStore` |
+| `keyring_store.py` | `KeyringCredentialStore`、固定键单条 JSON 与后端错误转换 |
+| `errors.py` | 配置、凭据、Portal 网络/协议和认证拒绝异常 |
+| `probe/interfaces.py` | DNS、TCP、HTTP 与 `NetworkProbe` 端口 |
+| `probe/dns.py`、`tcp.py`、`http.py` | 系统网络适配器 |
+| `probe/classifier.py` | `classify_http_observation`、HTTP 证据分类 |
+| `probe/service.py` | `DefaultNetworkProbe`、主探测与 HTTP 入口回退 |
+| `auth/interfaces.py` | `PortalContext`、`PortalResponse`、`PortalTransport`、`PortalClient` |
+| `auth/pages.py` | 可信 URL、空 POST/meta refresh 和 CONFIG 解析 |
+| `auth/protocol.py` | HMAC-MD5、UTF-16/XEncode、自定义 Base64、checksum、严格 JSONP |
+| `auth/transport.py` | `SystemPortalTransport`、超时、正文上限、TLS 校验、禁止代理和重定向 |
+| `auth/client.py` | `SrunPortalClient.prepare()` 与 `authenticate()` |
+| `login_service.py` | `LoginState`、`LoginResult`、`DefaultLoginService` |
 
-Portal 认证与自服务监测必须保持独立：前者负责让设备联网，后者负责读取账户数据。验证码或自服务页面变化不得直接破坏 Portal 登录。
+## 调用链
 
-## 稳定边界
+```text
+configure → 隐藏输入 → DefaultCredentialConfigurator
+          → CredentialStore.save ← KeyringCredentialStore → 系统凭据库
 
-未来跨语言实现优先复用网络与认证状态值、协议测试向量、错误分类、状态机转换和 CLI 输入输出约定。平台差异集中在适配器，不进入核心模型。
+status → AppConfig → DefaultNetworkProbe
+       → DNS → TCP → HTTP → classify_http_observation
+       → 主探测失败或未知：HTTP 回退，仅接受可信 Portal 结果
+       → NetworkProbeResult → 安全输出
 
-## 可视化
+login → AppConfig → DefaultLoginService
+      → NetworkProbe.probe
+      → 已联网或未确认需要认证：结束
+      → PortalClient.prepare
+          → HTTP 入口 → 同源 HTTPS 导航 → PortalContext
+      → CredentialStore.load → 凭据校验与显式后缀
+      → PortalClient.authenticate
+          → HTTPS challenge → build_login_params → HTTPS login
+      → NetworkProbe.probe → 仅 ONLINE 为恢复成功
+      → LoginResult → 安全输出
+```
 
-- [命令分层与数据流](visualizations/xduwlan-architecture.html)
-- [文件、符号与依赖关系](visualizations/xduwlan-file-architecture.html)
+导航最多六次，challenge/login 各一次，认证失败不重试。HTTP 204 不覆盖主 HTTPS 探测失败。原始响应与业务消息不进入 CLI。
+
+## 验证边界
+
+固定虚构 JavaScript 向量验证纯函数；本地服务器验证 HTTP 与 TLS；注入的外部边界验证状态转换和凭据访问时机。真实校园网结果独立记录在协议文档，不混入自动测试。
+
+辅助视图：[命令职责](visualizations/xduwlan-architecture.html)、[文件职责](visualizations/xduwlan-file-architecture.html)。

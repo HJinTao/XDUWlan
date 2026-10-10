@@ -126,7 +126,7 @@
   <main>
     <header>
       <h1>XDUWlan 文件职责与依赖</h1>
-      <p class="intro">这里只展示入口与配置、生产代码和自动化测试。选择文件后，右侧用“依赖什么、内部负责什么、影响谁”说明可执行项目结构。</p>
+      <p class="intro">展示维护文档、入口配置、生产代码和自动化测试。选择文件后，右侧用“依赖什么、内部负责什么、影响谁”说明可执行项目结构。</p>
     </header>
 
     <div class="layout">
@@ -178,6 +178,7 @@
 
     const groups = {
       "入口与配置": ["AGENTS.md", "README.md", "pyproject.toml"],
+      "维护文档": ["docs/current.md", "docs/architecture.md", "docs/security.md", "docs/protocol.md"],
       "生产代码": [
         "src/xduwlan/__init__.py",
         "src/xduwlan/cli.py",
@@ -212,10 +213,10 @@
 
     const files = {
       "AGENTS.md": file(
-        "开发协作规则", "协作入口", "稳定规则",
-        "规定跨会话恢复、技术设计责任、教学方式、子任务粒度、实现分工和验证节奏。",
-        [item("用户需求", "决定默认协作方式和允许的例外。"), item("记忆架构决策", "规定默认只加载工作记忆。")],
-        [item("恢复顺序", "AGENTS → current → 任务索引。"), item("设计责任", "指导者决定技术设计并解释，学习者不承担接口取舍。"), item("开发节奏", "按认知边界拆子任务，每个子任务一次完整 RED/GREEN。")],
+        "维护约定", "维护入口", "稳定规则",
+        "规定工具维护的恢复顺序、自主实施、安全边界、文档职责和 Git 约定。",
+        [item("任务范围", "决定维护目标与操作边界。"), item("当前维护约定", "默认只加载工作记忆和任务索引。")],
+        [item("恢复顺序", "AGENTS → current → 任务索引。"), item("实施责任", "维护者负责设计、业务实现、测试与文档。"), item("工作节奏", "按影响范围实施和验证，复用已有有效证据。")],
         [item("所有开发会话", "开始工作前先遵守这里的稳定约束。"), item("docs/current.md", "按这里定义的生命周期维护工作记忆。")],
         "不保存项目进度、详细架构或协议事实。",
         "只有稳定协作方式、记忆规则或安全入口变化时更新。"
@@ -225,18 +226,50 @@
         "向使用者说明项目用途、已实现命令、安装方式和文档入口。",
         [item("当前可用功能", "只描述已经实现并可运行的用户行为。"), item("文档结构", "链接到各类权威文档。")],
         [item("status 用法", "展示普通、JSON、debug 和配置路径示例。"), item("configure 用法", "说明交互输入和系统凭据库边界。"), item("安全提醒", "提示敏感数据不能进入普通配置。")],
-        [item("新使用者", "提供最短安装和使用路径。"), item("专项文档", "把开发者引导到 current、roadmap、architecture 和 security。")],
-        "不承担开发交接、完整产品规格或教学记录。",
+        [item("新使用者", "提供最短安装和使用路径。"), item("专项文档", "链接到当前状态、架构、安全和协议文档。")],
+        "产品范围与用法的唯一入口；维护状态另见 current。",
         "用户可见能力、安装命令或文档入口变化时更新。"
       ),
       "pyproject.toml": file(
         "Python 项目配置", "构建配置", "当前生效",
         "定义包元数据、Python 版本、运行时与测试依赖、源码目录和 CLI 入口。",
         [item("setuptools", "提供构建后端。"), item("keyring", "连接各平台系统凭据库。"), item("pytest", "作为 test 可选依赖。")],
-        [item("项目元数据", "包名、版本、描述和 Python 3.11+。"), item("console script", "xduwlan → xduwlan.cli:main。")],
+        [item("项目元数据", "包名、版本、描述和 Python 3.10+。"), item("console script", "xduwlan → xduwlan.cli:main。")],
         [item("安装工具", "创建可编辑安装或构建发行包。"), item("pytest", "从 tests 目录发现测试并加载 src。")],
-        "keyring 是唯一运行时第三方依赖；密码不得回退到普通文件。",
+        "运行时使用 keyring；Python 3.10 另需条件依赖 tomli。",
         "依赖、入口、版本或测试发现方式变化时更新。"
+      ),
+      "docs/current.md": file(
+        "当前维护状态", "维护文档", "当前有效",
+        "保存版本状态、已有证据、已知问题与维护索引。",
+        [item("README 与专项文档", "按任务索引加载，不重复长期事实。")],
+        [item("版本", "0.1.0 的功能与维护范围。"), item("证据", "引用既有自动化与真实验收结果。")],
+        [item("后续维护", "恢复上下文并继续实际任务。")],
+        "唯一工作记忆；历史由 Git 保存。", "实际状态变化时更新。"
+      ),
+      "docs/architecture.md": file(
+        "架构", "维护文档", "当前有效",
+        "说明实际模块、端口、调用链与关键设计理由。",
+        [item("生产源码", "以当前实现为依据。")],
+        [item("依赖", "CLI → 应用服务 → 模型与端口 ← 适配器。")],
+        [item("代码维护", "保护职责与依赖边界。")],
+        "不维护产品计划或逐轮开发记录。", "结构或调用关系变化时更新。"
+      ),
+      "docs/security.md": file(
+        "安全与隐私", "维护文档", "当前有效",
+        "约束凭据输入、存储、网络目标、输出和真实操作。",
+        [item("用户授权", "限定敏感操作的设备与范围。")],
+        [item("凭据", "隐藏输入、系统凭据库、禁止明文回退。"), item("输出", "固定状态与脱敏结果。")],
+        [item("全部维护与运行", "统一安全边界。")],
+        "不保存真实敏感字段或原始响应。", "安全规则变化时更新。"
+      ),
+      "docs/protocol.md": file(
+        "协议与实测证据", "协议文档", "项目验证与真实验收",
+        "集中保存探测、Portal 入口、编码与真实恢复的脱敏事实。",
+        [item("虚构向量与本地服务", "证明项目契约。"), item("Linux 实测", "证明当前校园网恢复路径。")],
+        [item("探测", "HTTPS 主探测与可信 HTTP 入口回退。"), item("认证", "challenge、XEncode、checksum、JSONP。"), item("验收", "恢复后 HTTP/HTTPS 204，再次运行不认证。")],
+        [item("探测与认证实现", "提供协议依据。")],
+        "真实观察与离线测试分开；未经测试的范围标记待验证。", "协议事实或证据变化时更新。"
       ),
 
       "src/xduwlan/__init__.py": file(
@@ -249,12 +282,12 @@
         "公共包元数据变化时更新。"
       ),
       "src/xduwlan/cli.py": file(
-        "命令行入口", "生产代码", "status / configure 已实现",
+        "命令行入口", "生产代码", "status / configure / login 已实现",
         "解析命令、装配应用服务与系统适配器，并承担用户交互和安全输出。",
-        [item("AppConfig", "提供默认值或读取指定 TOML。"), item("NetworkProbe / CredentialConfigurator", "隔离 CLI 与业务编排。"), item("getpass", "隐藏读取密码。"), item("warnings", "禁止 GetPassWarning 回退。")],
-        [item("build_parser()", "注册五个命令、status 选项和 configure 处理器。"), item("_handle_status()", "处理状态、输出模式和退出码。"), item("_handle_configure()", "处理隐藏输入、取消、项目错误和安全摘要。"), item("build_network_probe() / build_credential_configurator()", "装配默认应用服务与适配器。")],
+        [item("AppConfig", "提供默认值或读取指定 TOML。"), item("NetworkProbe / CredentialConfigurator / LoginService", "隔离 CLI 与业务编排。"), item("getpass", "隐藏读取密码。"), item("warnings", "禁止 GetPassWarning 回退。")],
+        [item("build_parser()", "注册 status、configure、login 三个命令与选项。"), item("_handle_status()", "处理状态、输出模式和退出码。"), item("_handle_configure()", "处理隐藏输入、取消、项目错误和安全摘要。"), item("_handle_login()", "执行一次恢复并格式化结果。"), item("build_network_probe() / build_credential_configurator() / build_login_service()", "装配默认应用服务与适配器。")],
         [item("终端用户", "接收中文、JSON 或 debug 输出。"), item("console script", "pyproject 将 xduwlan 命令指向 main()。")],
-        "login、watch、account 仍使用占位处理器；configure 测试不访问真实凭据库。",
+        "只展示固定结果；自动测试不访问真实凭据库。",
         "CLI 参数、装配关系、输出契约或命令实现状态变化时更新。"
       ),
       "src/xduwlan/credential_service.py": file(
@@ -268,18 +301,18 @@
       ),
       "src/xduwlan/config.py": file(
         "非敏感配置", "生产代码", "已实现",
-        "提供运行配置的默认值、TOML 合并和数值字段校验。",
-        [item("pathlib.Path", "读取 UTF-8 配置文件。"), item("tomllib", "解析 TOML。"), item("ConfigurationError", "统一报告配置内容错误。")],
+        "提供默认值、TOML 合并、字符串、有限正数和 URL 校验。",
+        [item("pathlib.Path", "读取 UTF-8 配置文件。"), item("tomllib / tomli", "3.11+ 使用标准库，3.10 使用兼容依赖解析 TOML。"), item("ConfigurationError", "统一报告配置内容错误。")],
         [item("AppConfig", "不可变的六字段配置。"), item("defaults()", "创建完整默认值。"), item("load()", "读取、合并、校验并保留解析异常链。")],
         [item("status CLI", "取得探测 URL、Portal URL 和超时。"), item("DefaultNetworkProbe", "使用探测目标和请求超时。")],
         "只处理非敏感配置，不读取或保存密码、Cookie 和会话。",
         "配置字段、默认值或验证契约变化时更新。"
       ),
       "src/xduwlan/errors.py": file(
-        "项目异常", "生产代码", "部分实现",
+        "项目异常", "生产代码", "已实现",
         "提供调用方可以稳定捕获的项目级异常层次。",
         [item("Python Exception", "作为项目异常的语言基础。")],
-        [item("XDUWlanError", "项目可预期异常的共同父类。"), item("ConfigurationError", "表示配置格式、类型或数值错误。"), item("CredentialStoreError", "表示凭据后端不可用或记录损坏。"), item("CredentialValidationError", "表示 configure 输入无效。")],
+        [item("XDUWlanError", "项目可预期异常的共同父类。"), item("ConfigurationError", "表示配置格式、类型或数值错误。"), item("CredentialStoreError", "表示凭据后端不可用或记录损坏。"), item("CredentialValidationError", "表示 configure 输入无效。"), item("PortalNetworkError / PortalProtocolError / AuthenticationRejectedError", "区分网络、协议和业务拒绝。")],
         [item("config.py", "将 TOML 解析错误转换为 ConfigurationError。"), item("credential_service.py / keyring_store.py", "产生稳定的凭据项目错误。"), item("CLI", "把项目错误转换为稳定输出。")],
         "只定义已进入实现范围的稳定错误类别，不包含敏感错误正文。",
         "新增已进入实现范围的错误类别时更新。"
@@ -289,7 +322,7 @@
         "定义不依赖 CLI、操作系统或 keyring 的凭据数据与存储能力。",
         [item("dataclasses", "创建不可变且隐藏 repr 字段的 Credentials。"), item("Protocol", "描述 save/load 结构化接口。")],
         [item("Credentials", "保存账号和密码，两个字段都不进入 repr。"), item("CredentialStore", "声明保存与可空读取能力。")],
-        [item("KeyringCredentialStore", "实现系统凭据库适配。"), item("configure / 未来 login", "只依赖稳定端口。")],
+        [item("KeyringCredentialStore", "实现系统凭据库适配。"), item("configure / login", "只依赖稳定端口。")],
         "核心契约不导入 keyring，也不负责交互输入或协议编码。",
         "凭据字段或存储端口契约变化时更新。"
       ),
@@ -298,7 +331,7 @@
         "把一组凭据编码为单条 JSON，并通过固定查询键连接系统凭据库。",
         [item("Credentials", "提供核心凭据数据。"), item("keyring", "默认连接平台后端。"), item("CredentialStoreError", "承载安全错误边界。")],
         [item("KeyringBackend", "描述测试与真实模块共用的最小接口。"), item("KeyringCredentialStore", "完成 JSON 存取、校验和安全异常转换。"), item("固定查询键", "避免把校园网账号用作 keyring 查询键。")],
-        [item("configure / 未来 login", "保存或读取凭据。"), item("操作系统凭据库", "承载长期密码。")],
+        [item("configure / login", "保存或读取凭据。"), item("操作系统凭据库", "承载长期密码。")],
         "不访问普通配置文件，不提供明文回退；自动化测试注入内存替身。",
         "序列化格式、查询键、异常转换或后端接口变化时更新。"
       ),
@@ -360,17 +393,17 @@
         "HTTP 状态分类器", "生产代码", "已实现",
         "把结构化 HTTP 观察映射成 ONLINE、PORTAL_REQUIRED 或 UNKNOWN。",
         [item("HttpObservation", "提供状态码、Location 和正文。"), item("Portal 主机集合", "限制可信重定向目标。")],
-        [item("classify_http_observation()", "按 204、已知 3xx、srun_portal 200 的优先级分类。"), item("urlparse().hostname", "避免字符串伪装主机名。")],
+        [item("classify_http_observation()", "根据 204、已知重定向、srun 特征和可信空 POST/刷新分类。"), item("urlparse().hostname", "避免字符串伪装主机名。")],
         [item("DefaultNetworkProbe", "取得最终 NetworkState。")],
-        "纯函数不访问网络、不读取配置；真实校园网规则仍需脱敏证据。",
+        "纯函数不访问网络、不读取配置；已用虚构页面验证可信空 POST 与刷新入口；Linux 生产恢复流程已验收。",
         "分类契约或协议证据变化时更新。"
       ),
       "src/xduwlan/probe/service.py": file(
         "完整网络探测服务", "生产代码", "已实现",
         "编排 URL 端口、DNS、TCP 多候选、HTTP 请求和状态分类。",
         [item("AppConfig", "提供目标 URL、Portal URL 和超时。"), item("三个阶段端口", "通过依赖注入执行外部操作。"), item("分类器", "把 HTTP 证据变成领域状态。")],
-        [item("DefaultNetworkProbe", "保存四个依赖。"), item("probe()", "汇总 ProbeObservation，并在 DNS/TCP 失败时提前返回。")],
-        [item("status CLI", "通过 NetworkProbe 端口调用。"), item("未来 watch", "可以复用同一完整探测能力。")],
+        [item("DefaultNetworkProbe", "组合阶段适配器与可选 HTTP 回退。"), item("probe()", "汇总 ProbeObservation，并在 DNS/TCP 失败时提前返回。")],
+        [item("status CLI", "通过 NetworkProbe 端口调用。"), item("DefaultLoginService", "复用探测，按需认证并验证后退出。")],
         "不格式化 CLI 输出，不执行 Portal 认证。",
         "阶段顺序、失败状态或依赖接口变化时更新。"
       ),
@@ -379,7 +412,7 @@
         "CLI 契约测试", "自动化测试", "当前通过",
         "验证命令注册、status 行为，以及 configure 的交互委托、错误映射、取消、安全隐藏输入和依赖装配。",
         [item("pytest", "提供参数化、monkeypatch 和输出捕获。"), item("替代探测器", "避免访问真实网络。")],
-        [item("命令骨架", "验证三个未实现命令仍可解析。"), item("status 行为", "覆盖五类状态和三种输出路径。"), item("configure 行为", "覆盖交互委托、错误映射、取消、安全隐藏输入和装配。")],
+        [item("命令骨架", "验证三个已实现命令，已取消和延期命令不返回占位成功。"), item("status 行为", "覆盖五类状态和三种输出路径。"), item("configure 行为", "覆盖交互委托、错误映射、取消、安全隐藏输入和装配。")],
         [item("cli.py", "保护用户可见契约和装配边界。")],
         "只使用虚构结果；不验证真实终端或校园网。",
         "CLI 参数、输出、退出码或装配行为变化时更新。"
@@ -408,7 +441,7 @@
         [item("领域模型", "直接构造 Enum 和 dataclass。")],
         [item("枚举契约", "同时检查成员名称和值。"), item("不可变结果", "检查观察与完整结果不能重新赋值。")],
         [item("models.py", "防止跨层稳定值和字段意外变化。")],
-        "只覆盖 status 已使用的模型，不提前定义未来模型。",
+        "只覆盖 status 已使用的模型，保持网络结果的核心契约。",
         "网络领域模型契约变化时更新。"
       ),
       "tests/test_credentials.py": file(
@@ -453,7 +486,7 @@
         [item("虚构 HttpObservation", "直接提供状态码、Location 和正文。")],
         [item("在线与 Portal", "覆盖 204、可信 3xx 和 srun_portal 200。"), item("防误判", "覆盖未知主机、查询参数伪装和畸形 URL。")],
         [item("classifier.py", "保护纯函数分类契约。")],
-        "只验证项目规则，不声明西电线上行为。",
+        "只验证既有项目规则；真实 200 自动提交入口尚无对应 RED。",
         "分类规则或协议证据变化时更新。"
       ),
       "tests/probe/test_integration_server.py": file(
@@ -476,6 +509,49 @@
       ),
 
     };
+
+    // 认证恢复模块与对应自动测试。
+    groups["生产代码"].push("src/xduwlan/login_service.py");
+    files["src/xduwlan/login_service.py"] = file("一次认证恢复应用服务", "实现与交付", "已实现", "依赖 NetworkProbe、CredentialStore、PortalClient；先确认可信上下文再读凭据，认证后复查网络。", [], [["主要符号", "DefaultLoginService、LoginService、LoginState、LoginResult"]], [], "只依赖端口，未知网络或上下文失败时不读取凭据。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/__init__.py");
+    files["src/xduwlan/auth/__init__.py"] = file("认证包入口", "实现与交付", "已实现", "隔离协议纯逻辑、页面解析和 HTTP 适配器。", [], [["主要符号", "auth 包"]], [], "核心结构或纯函数；不读取系统凭据。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/interfaces.py");
+    files["src/xduwlan/auth/interfaces.py"] = file("认证端口与模型", "实现与交付", "已实现", "模型隐藏网络标识与原始正文；接口不依赖平台或具体 HTTP 库。", [], [["主要符号", "PortalClient、PortalTransport、PortalContext、PortalResponse"]], [], "核心结构或纯函数；不读取系统凭据。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/pages.py");
+    files["src/xduwlan/auth/pages.py"] = file("可信页面解析", "实现与交付", "已实现", "校验同源 HTTPS 目标，只解析空 POST、meta refresh 与 CONFIG，不执行脚本。", [], [["主要符号", "trusted_portal_url、find_portal_navigation、parse_portal_context"]], [], "核心结构或纯函数；不读取系统凭据。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/protocol.py");
+    files["src/xduwlan/auth/protocol.py"] = file("认证协议纯逻辑", "实现与交付", "已实现", "UTF-16 装包、HMAC-MD5、自定义 Base64、checksum 与严格 JSONP。", [], [["主要符号", "build_login_params、parse_jsonp、_xencode"]], [], "核心结构或纯函数；不读取系统凭据。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/client.py");
+    files["src/xduwlan/auth/client.py"] = file("Portal 客户端", "实现与交付", "已实现", "无凭据入口导航最多六次；challenge 与登录各一次，原始业务消息不外传。", [], [["主要符号", "SrunPortalClient.prepare、authenticate"]], [], "prepare 不接收凭据，认证固定使用同源 HTTPS。", "接口与实际行为变化时更新。");
+    groups["生产代码"].push("src/xduwlan/auth/transport.py");
+    files["src/xduwlan/auth/transport.py"] = file("认证 HTTP 适配器", "实现与交付", "已实现", "系统 TLS 证书校验、有超时、正文上限、无代理、不自动重定向。", [], [["主要符号", "SystemPortalTransport.request"]], [], "网络操作限于受校验的目标，不记录完整 URL。", "接口与实际行为变化时更新。");
+    groups["入口与配置"].push(".github/workflows/tests.yml");
+    files[".github/workflows/tests.yml"] = file("三平台 CI", "实现与交付", "已实现", "macOS、Windows、Linux 的离线回归、CLI 入口和发行包构建；远端结果待执行。", [], [["主要符号", "Python 3.10 / 3.14"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["入口与配置"].push("MANIFEST.in");
+    files["MANIFEST.in"] = file("发行包内容", "实现与交付", "已实现", "包含测试与文档；排除原始实验参考 src/login.py。", [], [["主要符号", "sdist 清单"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/test_protocol.py");
+    files["tests/auth/test_protocol.py"] = file("离线验证", "自动化测试", "已实现", "独立 JavaScript 向量和严格 JSONP", [], [["主要符号", "test_protocol.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/test_pages.py");
+    files["tests/auth/test_pages.py"] = file("离线验证", "自动化测试", "已实现", "可信空 POST、刷新、上下文与恶意目标", [], [["主要符号", "test_pages.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/test_client.py");
+    files["tests/auth/test_client.py"] = file("离线验证", "自动化测试", "已实现", "入口链、字段顺序、挑战校验与认证错误", [], [["主要符号", "test_client.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/test_transport.py");
+    files["tests/auth/test_transport.py"] = file("离线验证", "自动化测试", "已实现", "本地 HTTP 服务、重定向、空 POST、正文上限与异常", [], [["主要符号", "test_transport.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/reference_vectors.js");
+    files["tests/auth/reference_vectors.js"] = file("离线验证", "自动化测试", "已实现", "JavaScript 原生 UTF-16 与位运算参考", [], [["主要符号", "reference_vectors.js"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/auth/vectors.json");
+    files["tests/auth/vectors.json"] = file("离线验证", "自动化测试", "已实现", "完全虚构的 ASCII、中文与 emoji 固定协议向量", [], [["主要符号", "vectors.json"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/test_login_service.py");
+    files["tests/test_login_service.py"] = file("离线验证", "自动化测试", "已实现", "按需加载凭据、认证一次、独立验证与结果状态", [], [["主要符号", "test_login_service.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/test_login_cli.py");
+    files["tests/test_login_cli.py"] = file("离线验证", "自动化测试", "已实现", "中文/JSON/debug、错误退出码、配置、取消与装配", [], [["主要符号", "test_login_cli.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+    groups["自动化测试"].push("tests/test_login_integration.py");
+    files["tests/test_login_integration.py"] = file("离线验证", "自动化测试", "已实现", "实际 CLI、服务、解析和编码的离线纵向流程", [], [["主要符号", "test_login_integration.py"]], [], "不执行真实校园网或凭据库实验。", "接口与实际行为变化时更新。");
+
+    groups["自动化测试"].push("tests/test_python_compatibility.py");
+    files["tests/test_python_compatibility.py"] = file("解释器兼容验证", "自动化测试", "已验证", "在当前解释器的独立进程核对 TOML 配置和解析错误；Python 3.10 已通过。", [], [], [], "不访问真实校园网或系统凭据记录。", "验证契约变化时更新。");
+    groups["自动化测试"].push("tests/test_login_socket_integration.py");
+    files["tests/test_login_socket_integration.py"] = file("真实 HTTP/TLS 纵向测试", "自动化测试", "已验证", "用虚构输入与 loopback 服务贯穿 DNS、TCP、Portal 传输、证书验证和 CLI；覆盖恢复、拒绝、验证失败与再次运行不认证。", [], [], [], "不访问真实校园网或系统凭据记录。", "验证契约变化时更新。");
 
     const tree = document.querySelector("[data-tree]");
     const allPaths = Object.values(groups).flat();
