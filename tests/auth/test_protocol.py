@@ -9,7 +9,7 @@ from xduwlan.credentials import Credentials
 from xduwlan.errors import PortalProtocolError
 
 
-@pytest.mark.parametrize("vector", json.loads(Path(__file__).with_name("vectors.json").read_text()))
+@pytest.mark.parametrize("vector", json.loads(Path(__file__).with_name("vectors.json").read_text(encoding="utf-8")))
 def test_encoding_matches_independent_javascript_vectors(vector):
     """字节截断、字段次序和校验串错误应被独立 JavaScript 向量发现。"""
     params = build_login_params(

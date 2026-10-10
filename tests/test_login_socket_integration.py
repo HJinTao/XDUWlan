@@ -35,7 +35,7 @@ from xduwlan.probe.tcp import SystemTcpConnector
 ])
 def test_real_http_tls_probe_authentication_and_cli(scenario, expected_state, expected_exit, tmp_path, monkeypatch, capsys):
     """真实探测与传输必须协作；拒绝或联网复查失败不得输出恢复成功。"""
-    vector = json.loads((Path(__file__).parent / 'auth/vectors.json').read_text())[0]
+    vector = json.loads((Path(__file__).parent / 'auth/vectors.json').read_text(encoding='utf-8'))[0]
     certificate, private_key = tmp_path / 'localhost.crt', tmp_path / 'localhost.key'
     subprocess.run([
         shutil.which('openssl'), 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
