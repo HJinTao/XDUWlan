@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             target: linux
           - os: macos-latest
             target: macos
@@ -44,81 +44,134 @@ jobs:
         run: flutter pub get
       - name: 格式与静态检查
         run: |
-          dart format --output=none --set-exit-if-changed lib test
+          dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze
+      - name: 验证桌面封装检查入口
+        run: python ../.github/scripts/test_package_desktop.py
       - name: 执行虚构数据与本地服务测试
         run: flutter test
       - name: 验证 macOS 登录启动文件边界
         if: runner.os == 'macOS'
         run: bash test/native/run_login_agent_test.sh
+      - name: 验证 Linux 登录启动文件边界
+        if: runner.os == 'Linux'
+        run: bash test/native/run_autostart_file_test.sh
       - name: 构建桌面应用
         run: flutter build ${{ matrix.target }} --release
-      - name: 上传 Windows 构建产物
-        if: matrix.target == 'windows'
+      - name: 在构建平台封装并解包核对
+        id: package
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          version="$GITHUB_SHA"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then version="$GITHUB_REF_NAME"; fi
+          case "$TARGET" in
+            macos) source="build/macos/Build/Products/Release/XDUWlan.app"; suffix=zip ;;
+            windows) source="build/windows/x64/runner/Release"; suffix=zip ;;
+            linux) source="build/linux/x64/release/bundle"; suffix=tar.gz ;;
+          esac
+          python ../.github/scripts/package_desktop.py pack \
+            --platform "$TARGET" --version "$version" --source "$source" \
+            --output "$RUNNER_TEMP/product-packages"
+          {
+            echo "version=$version"
+            echo "source=$source"
+            echo "archive=xduwlan-$version-$TARGET.$suffix"
+          } >> "$GITHUB_OUTPUT"
+      - name: 上传完整桌面压缩包
         uses: actions/upload-artifact@v4
         with:
-          name: xduwlan-windows-${{ github.sha }}
-          path: app/build/windows/x64/runner/Release
+          name: xduwlan-${{ matrix.target }}-${{ github.sha }}
+          path: ${{ runner.temp }}/product-packages/*
           if-no-files-found: error
           retention-days: 30
-      - name: 上传 macOS 构建产物
-        if: matrix.target == 'macos'
+      - name: 下载当前提交的桌面压缩包
+        uses: actions/download-artifact@v4
+        with:
+          name: xduwlan-${{ matrix.target }}-${{ github.sha }}
+          path: ${{ runner.temp }}/product-downloaded
+      - name: 核对 artifact 传输后的完整性与权限
+        env:
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          SOURCE: ${{ steps.package.outputs.source }}
+        run: |
+          python ../.github/scripts/package_desktop.py verify \
+            --archive "$RUNNER_TEMP/product-downloaded/$ARCHIVE" --source "$SOURCE"
+      - name: 单独构建手动 Linux 验证工具
+        if: runner.os == 'Linux'
+        run: flutter build linux --release -t tool/recovery_validation.dart
+      - name: 封装手动 Linux 验证工具
+        if: runner.os == 'Linux'
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          python ../.github/scripts/package_desktop.py pack \
+            --platform linux --version "$VERSION-validation" \
+            --source build/linux/x64/release/bundle --output "$RUNNER_TEMP/validation-packages"
+      - name: 上传独立 Linux 验证工具包
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
-          name: xduwlan-macos-${{ github.sha }}
-          path: app/build/macos/Build/Products/Release/*.app
+          name: xduwlan-linux-validation-${{ github.sha }}
+          path: ${{ runner.temp }}/validation-packages/*
           if-no-files-found: error
           retention-days: 30
-      - name: 上传 Linux 构建产物
-        if: matrix.target == 'linux'
-        uses: actions/upload-artifact@v4
+      - name: 下载独立 Linux 验证工具包
+        if: runner.os == 'Linux'
+        uses: actions/download-artifact@v4
         with:
-          name: xduwlan-linux-${{ github.sha }}
-          path: app/build/linux/x64/release/bundle
-          if-no-files-found: error
-          retention-days: 30
+          name: xduwlan-linux-validation-${{ github.sha }}
+          path: ${{ runner.temp }}/validation-downloaded
+      - name: 核对验证工具的传输完整性
+        if: runner.os == 'Linux'
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          python ../.github/scripts/package_desktop.py verify \
+            --archive "$RUNNER_TEMP/validation-downloaded/xduwlan-$VERSION-validation-linux.tar.gz" \
+            --source build/linux/x64/release/bundle
 
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: desktop
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v7
       - name: 下载 Windows 构建产物
         uses: actions/download-artifact@v4
         with:
           name: xduwlan-windows-${{ github.sha }}
-          path: release-inputs/windows
+          path: release-assets
       - name: 下载 macOS 构建产物
         uses: actions/download-artifact@v4
         with:
           name: xduwlan-macos-${{ github.sha }}
-          path: release-inputs/macos
+          path: release-assets
       - name: 下载 Linux 构建产物
         uses: actions/download-artifact@v4
         with:
           name: xduwlan-linux-${{ github.sha }}
-          path: release-inputs/linux
-      - name: 打包 Release 附件
-        env:
-          TAG: ${{ github.ref_name }}
+          path: release-assets
+      - name: 核对 Release 附件并汇总 SHA-256
         run: |
           set -euo pipefail
-          mkdir -p release-assets
-          (cd release-inputs/windows && zip -qr "../../release-assets/xduwlan-${TAG}-windows.zip" .)
-          (cd release-inputs/macos && zip -qr "../../release-assets/xduwlan-${TAG}-macos.zip" .)
-          tar -czf "release-assets/xduwlan-${TAG}-linux.tar.gz" -C release-inputs/linux .
+          (cd release-assets && sha256sum --check SHA256SUMS-linux SHA256SUMS-macos SHA256SUMS-windows)
+          cat release-assets/SHA256SUMS-linux release-assets/SHA256SUMS-macos \
+            release-assets/SHA256SUMS-windows > release-assets/SHA256SUMS
       - name: 创建或更新 GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
+          assets=(release-assets/*.zip release-assets/*.tar.gz release-assets/*.manifest.json release-assets/SHA256SUMS)
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/* --clobber
+            gh release upload "$TAG" "${assets[@]}" --clobber
           else
-            gh release create "$TAG" release-assets/* \
+            gh release create "$TAG" "${assets[@]}" \
               --title "XDUWlan $TAG" \
               --generate-notes
           fi
