@@ -60,6 +60,9 @@ class PackageTests(unittest.TestCase):
             archive = package.pack("windows", "test-commit", source, root / "out")
             package.verify(archive, source)
             self.assertIn("window_manager_plugin.dll", package.load_manifest(archive)["entries"])
+            # Release 只发布汇总校验文件，下载后使用同一验证入口。
+            archive.with_name("SHA256SUMS-windows").rename(archive.with_name("SHA256SUMS"))
+            package.verify(archive, source)
 
     def test_checksum_detects_changed_download(self):
         with tempfile.TemporaryDirectory() as temporary:

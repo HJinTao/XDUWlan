@@ -111,6 +111,8 @@ def verify(archive, source=None):
     archive = Path(archive).resolve()
     checksum = archive.with_name("SHA256SUMS-" +
                                  archive.name.split("-")[-1].split(".")[0])
+    if not checksum.exists():
+        checksum = archive.with_name("SHA256SUMS")
     expected = {}
     for line in checksum.read_text(encoding="utf-8").splitlines():
         value, name = line.split("  ", 1)
@@ -193,7 +195,8 @@ def main():
                 parser.error("verify 需要压缩包")
             verify(args.archive, args.source)
             print("下载包内容、权限、链接与 SHA-256 核对通过")
-    except (PackageError, OSError, ValueError, subprocess.CalledProcessError):
+    except Exception:
+        # 异常仍以失败退出，不把底层路径、归档内容或异常正文送入日志。
         raise SystemExit("桌面包检查失败，请核对构建目录和完整性") from None
 
 
