@@ -2,6 +2,10 @@ name: Flutter 离线测试与桌面构建
 
 on:
   push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
   pull_request:
   workflow_dispatch:
 
@@ -70,3 +74,48 @@ jobs:
           path: app/build/linux/x64/release/bundle
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: desktop
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 下载 Windows 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: xduwlan-windows-${{ github.sha }}
+          path: release-inputs/windows
+      - name: 下载 macOS 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: xduwlan-macos-${{ github.sha }}
+          path: release-inputs/macos
+      - name: 下载 Linux 构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: xduwlan-linux-${{ github.sha }}
+          path: release-inputs/linux
+      - name: 打包 Release 附件
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          (cd release-inputs/windows && zip -qr "../../release-assets/xduwlan-${TAG}-windows.zip" .)
+          (cd release-inputs/macos && zip -qr "../../release-assets/xduwlan-${TAG}-macos.zip" .)
+          tar -czf "release-assets/xduwlan-${TAG}-linux.tar.gz" -C release-inputs/linux .
+      - name: 创建或更新 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            gh release create "$TAG" release-assets/* \
+              --title "XDUWlan $TAG" \
+              --generate-notes
+          fi

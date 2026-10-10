@@ -159,7 +159,8 @@ class OperationScope {
         }
       });
       ensureActive();
-      final work = Future<T>.sync(action);
+      // 直接调用 action，确保已完成失败 Future 立即绑定错误监听器。
+      final work = action();
       work.then(
         (value) {
           unregister?.call();

@@ -33,7 +33,8 @@ flutter build linux --release
 
 GitHub Actions 的桌面构建任务会在构建成功后上传对应平台的 Release 产物，
 可在 workflow 运行详情页的 Artifacts 区域下载。产物保留 30 天，Windows、
-macOS 和 Linux 分别提供独立归档。
+macOS 和 Linux 分别提供独立归档。推送 `v*` 标签时，workflow 还会把三种平台
+的压缩包发布到对应的 GitHub Release 页面；重复推送同一标签会覆盖同名附件。
 
 各平台的工具链、最低系统版本、签名和真机验收要求见[维护状态](docs/current.md)。当前测试只使用虚构账号、本地服务和测试证书，不连接真实校园网，也不读取旧实现的凭据。
 

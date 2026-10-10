@@ -21,7 +21,7 @@ Python CLI 已从仓库移除，不再作为产品入口、构建目标或运行
 - Flutter 工程可执行协议、恢复编排、界面、网络传输和凭据存储测试。
 - 测试使用虚构账号、本地 HTTP/TLS 服务和 `app/test/fixtures/` 中的测试证书与协议向量。
 - macOS Release 应用包已构建；Windows、Linux 和移动平台仍需在对应工具链与设备上独立验收。
-- GitHub Actions 的 Windows、macOS、Linux Release 构建成功后会分别上传可下载产物，保留 30 天。
+- GitHub Actions 的 Windows、macOS、Linux Release 构建成功后会分别上传可下载产物，保留 30 天；推送 `v*` 标签时还会将三种平台压缩包发布到对应 GitHub Release，重复发布同一标签会覆盖附件。
 - 测试不证明所有校区、运营商、账户或平台的实际网络行为。
 
 ## 验收与后续工作
