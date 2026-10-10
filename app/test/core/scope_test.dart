@@ -5,11 +5,13 @@ import 'package:xduwlan_app/core/domain.dart';
 
 void main() {
   test('同步任务耗尽截止时间时也消费其失败 Future', () async {
-    final scope = OperationScope(budget: const Duration(milliseconds: 2));
+    final scope = _SynchronouslyExpiredScope();
+    var actionEntered = false;
     Future<void> start() async {
       await scope.run(() {
-        final elapsed = Stopwatch()..start();
-        while (elapsed.elapsed < const Duration(milliseconds: 8)) {}
+        // 精确模拟同步任务耗尽预算，不依赖首次 JIT 是否赶上 2ms 窗口。
+        actionEntered = true;
+        scope.expired = true;
         return Future<void>.error(const AppFailure(FailureCode.protocol));
       });
     }
@@ -24,6 +26,8 @@ void main() {
         ),
       ),
     );
+    expect(actionEntered, isTrue);
+    expect(scope.remaining, Duration.zero);
     scope.finish();
   });
 
@@ -91,4 +95,11 @@ void main() {
       isNot(contains('fake-secret')),
     );
   });
+}
+
+/// 只在同步任务内令剩余预算归零，真实截止与资源释放仍由独立用例验证。
+class _SynchronouslyExpiredScope extends OperationScope {
+  bool expired = false;
+  @override
+  Duration get remaining => expired ? Duration.zero : super.remaining;
 }
