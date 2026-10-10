@@ -1,0 +1,22 @@
+name: xduwlan_app
+description: 西安电子科技大学校园网认证应用。
+publish_to: none
+version: 0.2.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  crypto: ^3.0.7
+  html: ^0.15.7
+  flutter_secure_storage: ^11.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

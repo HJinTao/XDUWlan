@@ -1,0 +1,32 @@
+[
+  {
+    "username": "student@example.test",
+    "password": "fictional-password",
+    "ip": "192.0.2.10",
+    "acid": "8",
+    "challenge": "0123456789abcdef0123456789abcdef",
+    "hmd5": "81628c8f4e98d2df1521b38a550640e6",
+    "info": "{SRBX1}lM1UgvJHRYWg1uVFbaab5PZShEEk5Vpc94+nJ2z/aOdnHd+X9QzYDvzaNk44WQjkC9OLGcynUzrV1l6HTAJWWGceJ+skUiXsr5atoRSOMdXs8Oy+Wo3mX87yojFVz0pPR9WhsXNNjt7Q4gdnwWc5BDBohWV8uyEPTdp3h+==",
+    "checksum": "6a95659402292a854dc5de275221747671d62754"
+  },
+  {
+    "username": "fictional-学生",
+    "password": "虚构密码",
+    "ip": "192.0.2.10",
+    "acid": "8",
+    "challenge": "0123456789abcdef0123456789abcdef",
+    "hmd5": "ca49252f723fce17cd436637d10d00d5",
+    "info": "{SRBX1}rh0WQUR+HFwvV25hph3sORonZ4/5IBy0n8AqSLaw3tMe0Zc1vjWDWmuImUobQrSkMNfpeVCHKBdKOlxZDWLERt6eDQuhapHI9xZPzVlASFJZLxo6MSmVeliw5nrkGPzC4QWndS==",
+    "checksum": "3dd766fb373cd41f0b1d9928ce0be6fc229081f0"
+  },
+  {
+    "username": "fictional-emoji",
+    "password": "test-😀-pass",
+    "ip": "192.0.2.10",
+    "acid": "8",
+    "challenge": "0123456789abcdef0123456789abcdef",
+    "hmd5": "31ac5c8c8486134b034d53f56e1eca08",
+    "info": "{SRBX1}dihgJdqLtHpTVF1zTuYcABHfV0Zke0cBbNU8eirmjmU/qIj78et/wT0gFGHdZcA8u+/5/FcSSgvtdAZWRIxSHv0bb18X+6KwKF56OAX6dvC0nFSWJZmu5RGHwheHRrJDtjeljKGcLymXKHdYJuSbN+==",
+    "checksum": "cddeb4eb4282587c3b7cbad9e2a750ebdd973658"
+  }
+]
