@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'application/app_runtime_controller.dart';
+import 'application/background_tasks.dart';
 import 'application/diagnostics.dart';
 import 'application/recovery_controller.dart';
 import 'application/recovery_service.dart';
@@ -11,6 +12,7 @@ import 'application/settings.dart';
 import 'platform/credential_store.dart';
 import 'platform/desktop_host.dart';
 import 'platform/http_transport.dart';
+import 'platform/mobile_host.dart';
 import 'platform/network_probe.dart';
 import 'platform/srun_client.dart';
 import 'ui/home.dart';
@@ -27,11 +29,14 @@ void main(List<String> args) {
     ),
     store: store,
   );
+  final mobile = Platform.isIOS || Platform.isAndroid;
   final runtime = AppRuntimeController(
     recovery: recovery,
-    desktop: PluginDesktopHost(),
+    desktop: mobile ? null : PluginDesktopHost(),
+    host: mobile ? MobileHost() : null,
     settingsStore: LocalSettingsStore(),
     diagnosticStore: LocalDiagnosticStore(),
+    backgroundScheduler: mobile ? WorkmanagerBackgroundTaskScheduler() : null,
     background:
         args.contains('--background') ||
         Platform.executableArguments.contains('--background'),
@@ -51,16 +56,32 @@ class XduwlanApp extends StatefulWidget {
   State<XduwlanApp> createState() => _XduwlanAppState();
 }
 
-class _XduwlanAppState extends State<XduwlanApp> {
+class _XduwlanAppState extends State<XduwlanApp> with WidgetsBindingObserver {
   final _navigator = GlobalKey<NavigatorState>();
   bool _configuring = false;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.runtime.onConfigureRequest = _configure;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(widget.runtime.initialize());
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (widget.runtime.isDesktop) return;
+    switch (state) {
+      case AppLifecycleState.resumed:
+        widget.runtime.resume();
+      case AppLifecycleState.inactive ||
+          AppLifecycleState.hidden ||
+          AppLifecycleState.paused:
+        widget.runtime.suspend();
+      case AppLifecycleState.detached:
+        break;
+    }
   }
 
   void _configure() {
@@ -77,6 +98,7 @@ class _XduwlanAppState extends State<XduwlanApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.runtime.onConfigureRequest = null;
     if (widget.ownsRuntime) {
       widget.runtime.dispose();

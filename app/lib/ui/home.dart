@@ -136,9 +136,13 @@ class XduwlanHome extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (runtime case final current?) ...[
+                  if (runtime case final current? when current.isDesktop) ...[
                     const SizedBox(height: 18),
                     _RuntimeControls(runtime: current),
+                  ],
+                  if (runtime case final current? when !current.isDesktop) ...[
+                    const SizedBox(height: 18),
+                    _MobileRuntimeControls(runtime: current),
                   ],
                 ],
               ),
@@ -566,6 +570,55 @@ class _RuntimeControls extends StatelessWidget {
             label: const Text('退出'),
           ),
         ],
+      ),
+    ],
+  );
+}
+
+class _MobileRuntimeControls extends StatelessWidget {
+  const _MobileRuntimeControls({required this.runtime});
+  final AppRuntimeController runtime;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('自动恢复'),
+        subtitle: Text(
+          !runtime.settingsReady
+              ? '准备中'
+              : runtime.authenticationPaused
+              ? '账号需要检查，暂停自动认证；打开应用后会再次尝试。'
+              : '前台实时检查，后台由系统安排，时间可能延迟。',
+        ),
+        value: runtime.settings.automaticRecoveryEnabled,
+        onChanged: runtime.settingsReady && !runtime.settingsSaving
+            ? runtime.setAutomaticRecovery
+            : null,
+      ),
+      if (!runtime.notificationReady) const Text('系统通知准备中'),
+      for (final message in [runtime.settingsError, runtime.notificationError])
+        if (message != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              message,
+              style: const TextStyle(color: Color(0xFF6D5635)),
+            ),
+          ),
+      Align(
+        alignment: Alignment.center,
+        child: TextButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => DiagnosticsPage(runtime: runtime),
+            ),
+          ),
+          icon: const Icon(Icons.history),
+          label: const Text('诊断记录'),
+        ),
       ),
     ],
   );

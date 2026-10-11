@@ -45,6 +45,7 @@ class DiagnosticsPage extends StatelessWidget {
                         OperationSource.manual => '手动',
                         OperationSource.automatic => '自动',
                         OperationSource.tray => '托盘',
+                        OperationSource.background => '后台',
                       };
                       final action = record.action == OperationKind.check
                           ? '检查'

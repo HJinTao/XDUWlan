@@ -60,6 +60,7 @@ class LocalCredentialStore implements CredentialStore {
       if (await file.readAsString() != value) {
         throw const AppFailure(FailureCode.credentialFileUnavailable);
       }
+      await excludeFromBackup(file);
     } catch (_) {
       throw const AppFailure(FailureCode.credentialFileUnavailable);
     }

@@ -4,27 +4,35 @@ import 'package:flutter/foundation.dart';
 
 import '../core/domain.dart';
 import '../core/presentation.dart';
+import 'background_tasks.dart';
 import 'desktop_host.dart';
 import 'diagnostics.dart';
 import 'recovery_controller.dart';
+import 'runtime_host.dart';
 import 'settings.dart';
 
 /// 首帧后的能力初始化、唯一调度计时器和桌面生命周期。
 class AppRuntimeController extends ChangeNotifier {
   AppRuntimeController({
     required this.recovery,
-    required this.desktop,
+    DesktopHost? desktop,
+    RuntimeHost? host,
     required this.settingsStore,
     required this.diagnosticStore,
     this.background = false,
-  }) {
+    this.backgroundScheduler,
+  }) : desktop = desktop ?? (host is DesktopHost ? host : null),
+       host = host ?? desktop ?? NoopRuntimeHost() {
     recovery.addListener(_recoveryChanged);
   }
   final RecoveryController recovery;
-  final DesktopHost desktop;
+  final RuntimeHost host;
+  final DesktopHost? desktop;
   final SettingsStore settingsStore;
   final DiagnosticStore diagnosticStore;
   final bool background;
+  final BackgroundTaskScheduler? backgroundScheduler;
+  bool get isDesktop => desktop != null;
   AppSettings settings = const AppSettings();
   bool initialized = false;
   bool settingsReady = false;
@@ -69,17 +77,26 @@ class AppRuntimeController extends ChangeNotifier {
   Future<void> _initialize() async {
     // 诊断 I/O 独立排队，不成为认证或其他初始化的前置条件。
     _diagnosticTail = _loadDiagnostics();
-    await Future.wait([
-      _loadSettings(),
-      _initializeWindow(),
-      _initializeTray(),
-      _initializeNotifications(),
-      _initializeStartup(),
-    ]);
+    final currentDesktop = desktop;
+    if (currentDesktop == null) {
+      await Future.wait([_loadSettings(), _initializeNotifications()]);
+      await _initializeBackgroundScheduler();
+    } else {
+      await Future.wait([
+        _loadSettings(),
+        _initializeWindow(currentDesktop),
+        _initializeTray(currentDesktop),
+        _initializeNotifications(),
+        _initializeStartup(currentDesktop),
+      ]);
+    }
     if (_exiting) return;
     initialized = true;
     _changed();
     if (settings.automaticRecoveryEnabled && !_suspended) await _cycle();
+    if (currentDesktop == null && settings.automaticRecoveryEnabled) {
+      await backgroundScheduler?.schedule();
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -97,9 +114,9 @@ class AppRuntimeController extends ChangeNotifier {
     _changed();
   }
 
-  Future<void> _initializeWindow() async {
+  Future<void> _initializeWindow(DesktopHost currentDesktop) async {
     try {
-      await desktop.initializeWindow(
+      await currentDesktop.initializeWindow(
         background: background,
         onClose: () => unawaited(closeWindow()),
         onSuspend: suspend,
@@ -114,13 +131,13 @@ class AppRuntimeController extends ChangeNotifier {
     _changed();
   }
 
-  Future<void> _initializeTray() async {
+  Future<void> _initializeTray(DesktopHost currentDesktop) async {
     try {
-      await desktop.initializeTray(_trayAction);
+      await currentDesktop.initializeTray(_trayAction);
       trayAvailable = true;
-      if (_exiting) await desktop.disposeTray();
+      if (_exiting) await currentDesktop.disposeTray();
     } catch (_) {
-      trayError = desktop.trayAdvice ?? '托盘不可用，关闭窗口将退出应用。';
+      trayError = currentDesktop.trayAdvice ?? '托盘不可用，关闭窗口将退出应用。';
     }
     trayReady = true;
     await _showFallbackWindow();
@@ -137,7 +154,7 @@ class AppRuntimeController extends ChangeNotifier {
     }
     // 必须等窗口初始化的隐藏动作结束后再展示，避免无托盘时失去入口。
     try {
-      await desktop.showWindow();
+      await desktop?.showWindow();
     } catch (_) {
       windowError = '窗口显示失败。请退出后重新打开应用。';
     }
@@ -145,7 +162,7 @@ class AppRuntimeController extends ChangeNotifier {
 
   Future<void> _initializeNotifications() async {
     try {
-      await desktop.initializeNotifications();
+      await host.initializeNotifications();
       notificationsAvailable = true;
     } catch (_) {
       notificationError = '系统通知不可用，结果仍可在主界面和托盘查看。';
@@ -155,9 +172,9 @@ class AppRuntimeController extends ChangeNotifier {
   }
 
   bool _actualStartup = false;
-  Future<void> _initializeStartup() async {
+  Future<void> _initializeStartup(DesktopHost currentDesktop) async {
     try {
-      _actualStartup = await desktop.initializeStartup();
+      _actualStartup = await currentDesktop.initializeStartup();
       settings = settings.copyWith(launchAtStartup: _actualStartup);
       startupAvailable = true;
     } catch (_) {
@@ -166,6 +183,28 @@ class AppRuntimeController extends ChangeNotifier {
     }
     startupReady = true;
     _changed();
+  }
+
+  Future<void> _initializeBackgroundScheduler() async {
+    try {
+      await backgroundScheduler?.initialize(_runBackgroundTask);
+    } catch (_) {
+      diagnosticsError = '后台检查未能注册，打开应用时仍可手动检查。';
+    }
+  }
+
+  Future<void> _runBackgroundTask() async {
+    if (_exiting || !settings.automaticRecoveryEnabled || recovery.busy) {
+      return;
+    }
+    await recovery.run(
+      OperationKind.check,
+      OperationSource.background,
+      allowAuthentication: !authenticationPaused,
+    );
+    if (!_exiting && settings.automaticRecoveryEnabled) {
+      await backgroundScheduler?.schedule();
+    }
   }
 
   Future<void> _loadDiagnostics() async {
@@ -195,10 +234,12 @@ class AppRuntimeController extends ChangeNotifier {
       }
       if (enabled) {
         _immediatePending = true;
+        if (desktop == null) await backgroundScheduler?.schedule();
         if (initialized && !recovery.busy && !_suspended) unawaited(_cycle());
       } else {
         _timer?.cancel();
         _timer = null;
+        await backgroundScheduler?.cancel();
       }
     } catch (_) {
       settingsError = '设置保存失败，开关已恢复。请检查应用目录权限后重试。';
@@ -209,7 +250,8 @@ class AppRuntimeController extends ChangeNotifier {
   }
 
   Future<void> setLaunchAtStartup(bool enabled) async {
-    if (!settingsReady ||
+    if (desktop == null ||
+        !settingsReady ||
         !startupReady ||
         !startupAvailable ||
         settingsSaving ||
@@ -219,12 +261,12 @@ class AppRuntimeController extends ChangeNotifier {
     settingsSaving = true;
     _changed();
     try {
-      _actualStartup = await desktop.setLaunchAtStartup(enabled);
+      _actualStartup = await desktop!.setLaunchAtStartup(enabled);
       startupAvailable = true;
       startupError = _actualStartup == enabled ? null : '登录启动未能切换，已恢复实际状态。';
     } catch (_) {
       try {
-        _actualStartup = await desktop.initializeStartup();
+        _actualStartup = await desktop!.initializeStartup();
         startupAvailable = true;
         startupError = '登录启动操作失败，已显示查询到的实际状态。请检查同名启动项内容或目录权限后重试。';
       } catch (_) {
@@ -300,7 +342,7 @@ class AppRuntimeController extends ChangeNotifier {
         !_suspended) {
       if (_immediatePending) {
         unawaited(_cycle());
-      } else {
+      } else if (desktop != null) {
         _schedule();
       }
     }
@@ -348,7 +390,8 @@ class AppRuntimeController extends ChangeNotifier {
       }
       _changed();
     });
-    if (report.source == OperationSource.automatic &&
+    if ((report.source == OperationSource.automatic ||
+            report.source == OperationSource.background) &&
         report.kind == OperationKind.authenticate) {
       if (report.outcome == RecoveryOutcome.restored ||
           (report.failure != null && report.failure != _notifiedFailure)) {
@@ -360,7 +403,7 @@ class AppRuntimeController extends ChangeNotifier {
 
   Future<void> _notify(OperationReport report) async {
     try {
-      await desktop.notifyAuthentication(report);
+      await host.notifyAuthentication(report);
     } catch (_) {
       notificationsAvailable = false;
       notificationError = '系统通知不可用，结果仍可在主界面和托盘查看。';
@@ -396,12 +439,14 @@ class AppRuntimeController extends ChangeNotifier {
 
   Future<void> closeWindow() async {
     if (_exiting) return;
+    final currentDesktop = desktop;
+    if (currentDesktop == null) return;
     if (!trayAvailable || !windowReady) {
       await exit();
       return;
     }
     try {
-      await desktop.hideWindow();
+      await currentDesktop.hideWindow();
     } catch (_) {
       windowError = '窗口隐藏失败。请通过退出按钮结束应用。';
       _changed();
@@ -410,8 +455,10 @@ class AppRuntimeController extends ChangeNotifier {
 
   Future<void> showWindow() async {
     if (_exiting) return;
+    final currentDesktop = desktop;
+    if (currentDesktop == null) return;
     try {
-      await desktop.showWindow();
+      await currentDesktop.showWindow();
     } catch (_) {
       windowError = '窗口显示失败。请通过托盘退出后重新打开应用。';
       _changed();
@@ -445,7 +492,8 @@ class AppRuntimeController extends ChangeNotifier {
   void _changed() {
     if (_disposed || _exiting) return;
     notifyListeners();
-    if (trayAvailable) {
+    final currentDesktop = desktop;
+    if (trayAvailable && currentDesktop != null) {
       final state = TrayState(
         status: recovery.busy
             ? stageMessage(recovery.stage)
@@ -464,10 +512,10 @@ class AppRuntimeController extends ChangeNotifier {
       _trayTail = _trayTail.then((_) async {
         if (_exiting) return;
         try {
-          await desktop.updateTray(state);
+          await currentDesktop.updateTray(state);
         } catch (_) {
           trayAvailable = false;
-          trayError = desktop.trayAdvice ?? '托盘不可用，关闭窗口将退出应用。';
+          trayError = currentDesktop.trayAdvice ?? '托盘不可用，关闭窗口将退出应用。';
           if (!_disposed) notifyListeners();
           if (background) unawaited(showWindow());
         }
@@ -496,10 +544,11 @@ class AppRuntimeController extends ChangeNotifier {
     _timer?.cancel();
     _timer = null;
     recovery.shutdown();
+    await backgroundScheduler?.cancel();
     try {
-      await desktop.disposeTray();
+      await desktop?.disposeTray();
     } catch (_) {}
-    await desktop.exit();
+    await host.exit();
   }
 
   @override

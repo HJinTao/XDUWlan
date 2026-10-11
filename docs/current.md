@@ -2,11 +2,13 @@
 
 ## 当前能力
 
-`app/` 是唯一产品实现，使用 Flutter 3.47.7 / Dart 3.13.5。当前已实现 Linux/macOS 优先的常驻连接管家；默认行为、用法和隐私要求以 [README](../README.md#产品目标) 为准。Windows 保持源码、插件注册和 CI 构建兼容，本期不验收其桌面交互；移动端不属于本期实现范围。
+`app/` 是唯一产品实现，使用 Flutter 3.47.7 / Dart 3.13.5。当前实现覆盖 Linux/macOS 桌面连接管家与 iOS 18+/Android API 26+ 移动端前台流程；移动端后台使用 Workmanager 的系统尽力调度，不承诺桌面端的 60 秒周期。默认行为、用法和隐私要求以 [README](../README.md#产品目标) 为准。Windows 保持源码、插件注册和 CI 构建兼容，本阶段暂停新增桌面功能。
 
-首帧前只同步创建对象并调用 `runApp()`。首帧后 `AppRuntimeController` 并行初始化设置、窗口、托盘、通知与登录启动状态，诊断文件独立读写。初始化状态局部展示，不阻塞账号配置和浏览。
+首帧前只同步创建对象并调用 `runApp()`。首帧后 `AppRuntimeController` 并行初始化设置、通知和对应平台能力；桌面端额外初始化窗口、托盘与登录启动状态，移动端注册后台任务，诊断文件独立读写。初始化状态局部展示，不阻塞账号配置和浏览。
 
 `RecoveryController` 是检查与认证的唯一入口，所有来源共享串行门闩，返回同一安全 `OperationReport`。交互请求合并为一个待执行意图，当前操作完成后优先执行；自动检查确认需要认证时在同一轮中认证并复查，不重复初始探测。运行时消费报告，安排唯一的一次性调度计时器，并更新托盘、通知和诊断。关闭隐藏不取消操作；退出停止调度、取消网络作用域并释放桌面资源。睡眠信号取消调度，唤醒立即检查。
+
+移动端通过 `RuntimeHost` 与桌面窗口/托盘能力隔离；前台生命周期恢复时立即检查，后台回调创建独立恢复实例执行一轮检查/认证，并把白名单报告写入移动端诊断文件。iOS 使用 `BGTaskScheduler`，Android 使用唯一的 WorkManager 周期任务，最小周期为 15 分钟；移动端界面不显示托盘、登录启动和退出控制。
 
 设置和诊断采用有界 JSON 文件与同目录原子替换。诊断保留最近 50 条白名单记录，文件损坏整体隔离为单个 `.corrupt` 文件，清空删除当前及隔离记录。账号文件格式不变；macOS 解除 sandbox 后，惰性目录解析器继续使用存在的旧容器支持目录，新安装使用平台常规目录，不读取或迁移真实配置。
 
@@ -20,13 +22,17 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 
 2026-10-10 至 2026-10-11 的本地验证只使用虚构输入、临时目录、内存传输或本地 HTTP/TLS 服务，未使用真实账号、访问校园网、注册用户登录项或改变系统网络设置。
 
-- 当前候选的 `dart format --output=none --set-exit-if-changed lib test tool` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 249 项测试通过。
+- 当前候选的 `dart format --output=none --set-exit-if-changed lib test tool` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 252 项测试通过。
 - 自动测试覆盖首帧后初始化与挂起时交互、统一操作报告、串行排队、单计时器和 60 秒周期、退避重置、账号错误暂停及保存后恢复、隐藏与退出、睡眠与唤醒调度、通知去重、设置和诊断错误恢复、旧目录兼容及查询门户零请求。
 - 回归测试覆盖初始化顺序竞争、账号拒绝后排队恢复、设置保存与启动项状态竞争，以及启动项操作与读回均失败时禁用开关、不把旧值描述为已确认状态。开发工具测试覆盖命令捕获竞争、私有会话目录、白名单输出和生产运行时调用；同步截止时间测试不依赖冷启动延迟。
 - macOS 原生登录启动文件测试在临时目录验证后台参数、权限、启用/禁用、未知内容及符号链接的拒绝行为。此证据不等同于真实登录启动验收。
 - Linux 原生文件逻辑的 14 组临时目录测试覆盖重复操作、旧格式、特殊字符、类型、所有权、权限、损坏内容、写入失败，以及发布、捕获、恢复和临时清理竞争；macOS 本地离线子集与此前候选的 Linux CI 均通过。测试未注册真实用户启动项。
 - macOS 原生离线 Release 入口 `test/native_smoke.dart` 使用独立临时记录和虚构账号，分别以正常模式、`--background` 和系统再激活运行。已验证菜单栏托盘创建、正常模式可见、后台首次启动保持隐藏但完成首帧初始化、关闭隐藏、恢复窗口、通知送达、诊断与显式退出（进程退出码 0）。系统再激活通过 Launch Services 触发，与 Dock 再激活共用原生回调；未模拟鼠标点击 Dock。
 - 当前产品入口的 `flutter build macos --release -t lib/main.dart` 已在本机构建成功，产物为 `app/build/macos/Build/Products/Release/XDUWlan.app`；构建成功不代表已签名发行或真实网络验收。
+- 当前产品入口的 `flutter build ios --no-codesign` 已在本机构建成功，产物为 `app/build/ios/iphoneos/Runner.app`；工程配置为 iOS 18、移动包标识 `cn.xduwlan.mobile`。
+- iOS 18.7.1 真机 `Hhhjt的iPhone` 已完成 Release 签名、安装和启动，使用虚构数据启动验证；尚未进行真实校园网认证。
+- iOS 启动白屏/闪退回归已定位并修复：Workmanager 在首轮初始化时先提交 `BGAppRefreshTask`，但 iOS launch handler 尚未注册，系统抛出 `No launch handler registered for task with identifier cn.xduwlan.mobile.recovery`；`AppDelegate` 现于应用启动阶段提前注册任务标识。iOS 18.6 模拟器已重新安装、启动并显示完整首页，日志无该异常。
+- Flutter 分析、完整 Dart 测试和移动运行时测试通过；`flutter build apk --debug` 已构建成功。Android 模拟器启动后未保持 ADB 连接，尚未完成 Android 安装/启动验收。
 - GitHub Actions 已加入 Linux/macOS 原生启动项检查、平台内封装及 artifact 下载后核对，并单独构建和上传 Linux 开发工具。此前候选的 [CI](https://github.com/HJinTao/XDUWlan/actions/runs/38071076914) 中，Linux 的 Dart/原生检查与产品 Release 构建通过；封装因错误要求共享库具有执行位而失败。当前修复保留构建权限、只要求 Linux 主程序可执行，虚构的 `0644` 共享库回归已先失败后通过。
 - 最终候选提交 `d9059dd` 的 push [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073853102) 与 PR [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073856520) 均通过；每个平台的 Release 构建、封装、artifact 下载后核对均通过，Windows 还验证了 UTF-8 安全失败输出。审查入口为[草稿 PR #1](https://github.com/HJinTao/XDUWlan/pull/1)。
 - 授权 ThinkPad 的最终应用代码 bundle 已在 Wayland 会话启动；该 bundle 与 d9059dd 的产品源码相同，d9059dd 之后只变更桌面封装脚本与其测试。应用 IPv4/IPv6 默认路由均走目标无线连接，SSH 控制仍走有线。产品入口运行期间诊断记录保持白名单且每 60 秒检查，SNI 宿主注册了托盘菜单；隐藏窗口、托盘恢复、单实例再次启动和托盘退出均得到安全退出证据。开发工具在线检查与认证跳过场景均未读取凭据或提交认证；1 轮受控断线记录为 `unavailable`，重新连接后的下一轮检查报告 `restored`，之后回到 60 秒检查节奏，最大并发请求为 1。
@@ -39,6 +45,8 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 | macOS | Dart 自动测试、插件边界测试、原生临时目录测试、本机产品 Release 构建；最终 d9059dd CI 原生检查、Release 构建和包核对 | 真实登录启动、鼠标点击 Dock、真实系统休眠/恢复、安装签名与授权校园网环境 |
 | Linux | 调度与平台接口离线测试；启动项原生边界测试；最终 d9059dd CI 原生检查、Release 构建、包核对；Wayland 产品启动、SNI 托盘、隐藏/恢复、单实例和退出；1 轮授权断线恢复 | 两小时持续运行；真实登录启动与休眠恢复；GNOME 无宿主降级和通知送达的完整桌面验收 |
 | Windows | 共享 Dart 分析/测试、插件注册、后台启动与电源事件源码兼容；最终 d9059dd 测试、Release 构建、包核对和 UTF-8 安全错误回归 | 桌面交互不作为本期要求 |
+| iOS | iOS 18 工程、后台任务声明、无签名 Release 构建、共享 Dart 测试、iOS 18.6 模拟器首帧、iOS 18.7.1 真机签名安装启动 | 前后台生命周期、通知权限和系统后台任务实际触发；真实校园网环境 |
+| Android | API 26 工程、WorkManager 配置、共享 Dart 测试 | 安装 Android SDK 后的调试构建、API 26+ 模拟器/真机前台流程、通知权限和后台任务触发 |
 
 `local_notifier` 0.1.6 的 macOS 实现仍使用已弃用的 `NSUserNotification` API，并依赖 CocoaPods；当前能构建与运行，但 Flutter 提示未来版本可能要求 Swift Package Manager。后续 SDK/插件升级需复核通知与构建兼容性。
 

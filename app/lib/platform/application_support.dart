@@ -1,8 +1,15 @@
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 
 const _bundleIdentifier = 'cn.xduwlan.desktop';
+
+Future<void> excludeFromBackup(File file) async {
+  if (!Platform.isIOS) return;
+  await const MethodChannel('cn.xduwlan/storage')
+      .invokeMethod<void>('excludeFromBackup', file.path);
+}
 
 /// 延迟请求平台目录；macOS 解除沙盒后继续使用已有容器中的支持目录。
 /// 注入的目录和平台标志用于离线验证，不读取或迁移目录内的文件。

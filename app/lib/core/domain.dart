@@ -23,7 +23,7 @@ enum RecoveryStage { checking, preparing, authenticating, verifying }
 
 enum RecoveryOutcome { alreadyOnline, restored, failed, cancelled }
 
-enum OperationSource { manual, automatic, tray }
+enum OperationSource { manual, automatic, tray, background }
 
 enum OperationKind { check, authenticate }
 

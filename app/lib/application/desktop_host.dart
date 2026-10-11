@@ -1,4 +1,4 @@
-import '../core/domain.dart';
+import 'runtime_host.dart';
 
 enum TrayAction {
   show,
@@ -26,7 +26,7 @@ class TrayState {
 }
 
 /// 桌面能力只在首帧后初始化，界面和调度不直接依赖插件。
-abstract interface class DesktopHost {
+abstract interface class DesktopHost implements RuntimeHost {
   Future<void> initializeWindow({
     required bool background,
     required void Function() onClose,
@@ -34,14 +34,11 @@ abstract interface class DesktopHost {
     required void Function() onResume,
   });
   Future<void> initializeTray(void Function(TrayAction) onAction);
-  Future<void> initializeNotifications();
   Future<bool> initializeStartup();
   Future<bool> setLaunchAtStartup(bool enabled);
   Future<void> updateTray(TrayState state);
   Future<void> showWindow();
   Future<void> hideWindow();
-  Future<void> notifyAuthentication(OperationReport report);
   Future<void> disposeTray();
-  Future<void> exit();
   String? get trayAdvice;
 }
