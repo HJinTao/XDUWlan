@@ -39,4 +39,5 @@
 - Task 6: complete — `5372ed5`.
 - Task 7: not run — physical iOS device and authorized ThinkPad are unavailable in this turn; limits recorded in `docs/current.md` and `docs/protocol.md`.
 - Task 8: complete for offline scope — full Flutter test suite, analyzer, iOS device/simulator builds, Android debug build, and iPhone 16 Pro Simulator launch verified.
+- Final review follow-up: restored desktop/Linux legacy probing while keeping iOS/Android background fail-closed; wired the ThinkPad CLI management-link and one-shot observer adapters; Android notification status now reflects the plugin's enabled state; automatic/background network transitions participate in notification dedupe.
 
