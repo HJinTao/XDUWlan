@@ -1,6 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:xduwlan_app/core/domain.dart';
+import 'package:xduwlan_app/platform/credential_store.dart';
+import 'package:xduwlan_app/platform/http_transport.dart';
+import 'package:xduwlan_app/platform/network_probe.dart';
+import 'package:xduwlan_app/platform/srun_client.dart';
+import 'package:xduwlan_app/core/srun_protocol.dart';
+
 enum ThinkPadLabAction { status, down, up, observe }
 
 enum ThinkPadResultCategory { ready, completed, unavailable, rejected, failed }
@@ -296,8 +303,13 @@ class _Evidence {
 Future<void> main(List<String> args) async {
   try {
     final options = ThinkPadLabOptions.parse(args);
-    final event = await ThinkPadLab(platformIsLinux: Platform.isLinux)
-        .run(options);
+    final runner = IoThinkPadProcessRunner();
+    final event = await ThinkPadLab(
+      runner: runner,
+      platformIsLinux: Platform.isLinux,
+      hostLink: () => _readManagementLink(runner),
+      observe: _observeProtocol,
+    ).run(options);
     stdout.writeln(event.toJson());
   } on FormatException {
     stderr.writeln('{"result":"rejected"}');
@@ -308,5 +320,108 @@ Future<void> main(List<String> args) async {
   } catch (_) {
     stderr.writeln('{"result":"failed"}');
     exitCode = 70;
+  }
+}
+
+Future<HostLinkCategory> _readManagementLink(
+  ThinkPadProcessRunner runner,
+) async {
+  final result = await runner.run('nmcli', const [
+    '-t',
+    '-f',
+    'TYPE,STATE',
+    'device',
+    'status',
+  ]);
+  if (result.exitCode != 0) return HostLinkCategory.unavailable;
+  final wired = const LineSplitter()
+      .convert(result.stdout)
+      .any((line) => line == 'ethernet:connected');
+  return wired ? HostLinkCategory.wired : HostLinkCategory.wireless;
+}
+
+Future<ThinkPadObservation> _observeProtocol(Duration duration) async {
+  final candidate = stdin.readLineSync();
+  if (candidate == null ||
+      !RegExp(r'^@[A-Za-z0-9._-]{1,32}$').hasMatch(candidate.trim())) {
+    return const ThinkPadObservation(
+      resultCategory: ThinkPadResultCategory.unavailable,
+    );
+  }
+  // CLI 只负责受保护输入和一次性安全观察；真实协议请求仍受同源客户端约束。
+  final sink = _LabObservationSink();
+  final transport = _LabCountingTransport(IoPortalTransport(), sink);
+  final scope = OperationScope(budget: duration);
+  try {
+    final probe = IoNetworkProbe(transport: transport, allowLegacyPath: true);
+    final initial = await probe.check(scope);
+    if (initial.portal != NetworkState.portalRequired) {
+      return ThinkPadObservation(
+        resultCategory: ThinkPadResultCategory.unavailable,
+        requests: sink.requests,
+      );
+    }
+    final portal = SrunPortalClient(
+      transport: transport,
+      observationSink: sink,
+    );
+    final context = await portal.prepare(scope);
+    final credentials = await LocalCredentialStore().load();
+    if (credentials == null) {
+      return const ThinkPadObservation(
+        resultCategory: ThinkPadResultCategory.unavailable,
+      );
+    }
+    final username = credentials.username.endsWith(candidate.trim())
+        ? credentials.username
+        : '${credentials.username}${candidate.trim()}';
+    await portal.authenticate(
+      context,
+      Credentials(username, credentials.password),
+      scope,
+      beforeSubmit: () async {},
+    );
+    final verified = (await probe.check(scope)).portal == NetworkState.online;
+    return ThinkPadObservation(
+      resultCategory: verified
+          ? ThinkPadResultCategory.completed
+          : ThinkPadResultCategory.unavailable,
+      requests: sink.requests,
+      submissions: sink.submissions,
+    );
+  } catch (_) {
+    return ThinkPadObservation(
+      resultCategory: ThinkPadResultCategory.unavailable,
+      requests: sink.requests,
+      submissions: sink.submissions,
+    );
+  } finally {
+    scope.finish();
+  }
+}
+
+class _LabObservationSink implements SrunObservationSink {
+  int requests = 0;
+  int submissions = 0;
+  @override
+  void request() => requests++;
+  @override
+  void submission() => submissions++;
+  @override
+  void inspectLoginRequest(
+    Map<String, Object> params,
+    Credentials credentials,
+    PortalContext context,
+  ) {}
+}
+
+class _LabCountingTransport implements PortalTransport {
+  _LabCountingTransport(this.inner, this.sink);
+  final PortalTransport inner;
+  final _LabObservationSink sink;
+  @override
+  Future<PortalResponse> request(String method, Uri url, OperationScope scope) {
+    sink.request();
+    return inner.request(method, url, scope);
   }
 }

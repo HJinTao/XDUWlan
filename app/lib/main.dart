@@ -26,17 +26,21 @@ void main(List<String> args) {
   final background =
       args.contains('--background') ||
       Platform.executableArguments.contains('--background');
+  final mobile = Platform.isIOS || Platform.isAndroid;
   final transport = IoPortalTransport(testProxy: _debugProxy(background));
   final pathSource = Platform.isIOS ? MethodChannelNetworkPathSource() : null;
   final recovery = RecoveryController(
     service: RecoveryService(
-      probe: IoNetworkProbe(transport: transport, pathSource: pathSource),
+      probe: IoNetworkProbe(
+        transport: transport,
+        pathSource: pathSource,
+        allowLegacyPath: !mobile && !Platform.isAndroid,
+      ),
       portal: SrunPortalClient(transport: transport),
       store: store,
     ),
     store: store,
   );
-  final mobile = Platform.isIOS || Platform.isAndroid;
   final runtime = AppRuntimeController(
     recovery: recovery,
     desktop: mobile ? null : PluginDesktopHost(),

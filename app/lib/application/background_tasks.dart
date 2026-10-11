@@ -77,7 +77,7 @@ Future<bool> runMobileBackgroundRecovery() async {
   final transport = IoPortalTransport();
   final recovery = RecoveryController(
     service: RecoveryService(
-      probe: IoNetworkProbe(transport: transport),
+      probe: IoNetworkProbe(transport: transport, allowLegacyPath: false),
       portal: SrunPortalClient(transport: transport),
       store: store,
     ),

@@ -225,7 +225,10 @@ class _ValidationSession {
     final credentials = CountingCredentials(LocalCredentialStore(), counters);
     final recovery = RecoveryController(
       service: RecoveryService(
-        probe: CountingProbe(IoNetworkProbe(transport: transport), counters),
+        probe: CountingProbe(
+          IoNetworkProbe(transport: transport, allowLegacyPath: true),
+          counters,
+        ),
         portal: CountingPortal(
           SrunPortalClient(transport: transport),
           counters,
@@ -259,7 +262,7 @@ class _ValidationSession {
       options.scenario == ValidationScenario.protocolObserve
           ? ProtocolObserver(
               probe: CountingProbe(
-                IoNetworkProbe(transport: transport),
+                IoNetworkProbe(transport: transport, allowLegacyPath: true),
                 counters,
               ),
               portal: CountingPortal(
@@ -318,14 +321,24 @@ class _ValidationSession {
         if (options.scenario == ValidationScenario.protocolObserve) {
           final observer = protocolObserver;
           if (observer == null) throw const ValidationFailure();
+          final candidate = await files.takeCandidate();
           final observation = await observer.observe(
-            candidateReader: files.takeCandidate,
+            candidateReader: () async => candidate,
           );
+          // 同一候选在一次会话中必须完成两次独立观察；提升门仍要求
+          // 由固定 ThinkPad 控制器产生的 down/up 证据，因此这里不会伪造提升。
+          final secondObservation = observation.candidateAccepted
+              ? await observer.observe(candidateReader: () async => candidate)
+              : observation;
+          final gate = ProtocolPromotionGate();
+          gate.record(observation);
+          gate.record(secondObservation);
+          if (gate.promotable) throw const ValidationFailure();
           log.write(
             ValidationOutput.encode(
               ValidationEvent.protocolObservation,
               counters: driver.counters,
-              observation: observation,
+              observation: secondObservation,
             ),
           );
           await driver.dispatch(ValidationCommand.exit);

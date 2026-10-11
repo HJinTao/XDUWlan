@@ -11,6 +11,7 @@ class IoNetworkProbe implements NetworkProbe {
     Uri? fallbackUrl,
     this.enableHttpFallback = true,
     this.pathSource,
+    this.allowLegacyPath = false,
   }) : probeUrl =
            probeUrl ?? Uri.parse('https://connect.rom.miui.com/generate_204'),
        portalUrl = portalUrl ?? Uri.parse('https://w.xidian.edu.cn'),
@@ -26,11 +27,15 @@ class IoNetworkProbe implements NetworkProbe {
   final bool enableHttpFallback;
   final NetworkPathSource? pathSource;
 
+  /// 桌面/授权 Linux 验证入口沿用既有系统网络事实；移动端保持关闭。
+  final bool allowLegacyPath;
+
   @override
   Future<NetworkObservation> check(OperationScope scope) async {
     scope.ensureActive();
     final path = await _pathSnapshot();
-    if (!path.available || path.link != NetworkLink.wifi) {
+    if (!allowLegacyPath &&
+        (!path.available || path.link != NetworkLink.wifi)) {
       return _observation(NetworkState.unknown, path);
     }
     if (!_validEndpoint(probeUrl, 'https') ||
@@ -78,13 +83,26 @@ class IoNetworkProbe implements NetworkProbe {
             NetworkState.unknown => CampusNetworkState.unknown,
           };
     return NetworkObservation(
-      link: path.link,
-      campus: campus,
+      link:
+          allowLegacyPath &&
+              !path.available &&
+              state == NetworkState.portalRequired
+          ? NetworkLink.wifi
+          : path.link,
+      campus:
+          allowLegacyPath &&
+              !path.available &&
+              state == NetworkState.portalRequired
+          ? CampusNetworkState.authenticationRequired
+          : campus,
       portal: state,
       authenticationAllowed:
-          path.available &&
-          path.link == NetworkLink.wifi &&
-          state == NetworkState.portalRequired,
+          (allowLegacyPath &&
+              !path.available &&
+              state == NetworkState.portalRequired) ||
+          (path.available &&
+              path.link == NetworkLink.wifi &&
+              state == NetworkState.portalRequired),
     );
   }
 

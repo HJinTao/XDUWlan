@@ -201,6 +201,12 @@ class InMemoryProtocolObservationSink implements ProtocolObservationSink {
   int get requests => _requests;
   @override
   int get submissions => _submissions;
+  void reset() {
+    _encodingRulePassed = false;
+    _requests = 0;
+    _submissions = 0;
+  }
+
   @override
   void request() => _requests++;
   @override
@@ -248,6 +254,9 @@ class ProtocolObserver {
   Future<ProtocolObservation> observe({
     required Future<String?> Function() candidateReader,
   }) async {
+    if (sink case final InMemoryProtocolObservationSink memory) {
+      memory.reset();
+    }
     final started = DateTime.now();
     final runIdentity = _nextProtocolRunIdentity();
     String? candidateIdentity;

@@ -449,7 +449,9 @@ class AppRuntimeController extends ChangeNotifier {
   }
 
   String? _notificationEventKey(OperationReport report) {
-    if (report.kind != OperationKind.authenticate) return null;
+    if (desktop != null && report.kind != OperationKind.authenticate) {
+      return null;
+    }
     final link = report.link ?? NetworkLink.unknown;
     final campus = report.campus ?? CampusNetworkState.unknown;
     if (report.outcome != RecoveryOutcome.restored &&
@@ -474,6 +476,7 @@ class AppRuntimeController extends ChangeNotifier {
       }
       await host.notifyAuthentication(report);
     } catch (_) {
+      _lastNotificationEventKey = null;
       notificationsAvailable = false;
       notificationError = '系统通知不可用，结果仍可在主界面和托盘查看。';
       _changed();

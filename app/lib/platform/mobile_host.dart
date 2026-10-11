@@ -76,7 +76,14 @@ class LocalNotificationsMobileHostBridge implements MobileHostBridge {
         await _channel.invokeMethod<String>('notificationStatus'),
       );
     }
-    return NotificationAuthorizationStatus.authorized;
+    final enabled = await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.areNotificationsEnabled();
+    return enabled == true
+        ? NotificationAuthorizationStatus.authorized
+        : NotificationAuthorizationStatus.denied;
   }
 
   @override
@@ -87,7 +94,7 @@ class LocalNotificationsMobileHostBridge implements MobileHostBridge {
         await _channel.invokeMethod<String>('requestNotificationPermission'),
       );
     }
-    await _plugin
+    final requested = await _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
@@ -97,7 +104,16 @@ class LocalNotificationsMobileHostBridge implements MobileHostBridge {
           IOSFlutterLocalNotificationsPlugin
         >()
         ?.requestPermissions(alert: true, sound: true);
-    return NotificationAuthorizationStatus.authorized;
+    final enabled = await _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.areNotificationsEnabled();
+    return requested == false || enabled == false
+        ? NotificationAuthorizationStatus.denied
+        : enabled == true
+        ? NotificationAuthorizationStatus.authorized
+        : NotificationAuthorizationStatus.unavailable;
   }
 
   @override
