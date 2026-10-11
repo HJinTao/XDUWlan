@@ -19,6 +19,14 @@
 - `flutter analyze lib/tool/thinkpad_lab.dart test/tool/thinkpad_lab_test.dart` 通过。
 - `flutter test --no-pub test/tool/thinkpad_lab_test.dart`：3 tests passed。
 
+## 审查修复
+
+- 所有动作要求 ThinkPad 管理链路为 `wired`；`down/up` 执行后重新读取链路，链路丢失分类为 `unavailable`。
+- `--evidence-directory` 现为必填，只接受新建空目录并拒绝目录本身的符号链接；尽可能设置目录 `0700`、证据文件 `0600`。
+- `--duration-seconds` 仅允许 `observe`，观察器必须由调用方注入并返回固定安全结果；缺少观察器直接拒绝，不伪造成功。
+- `platformIsLinux` 默认读取真实 `Platform.isLinux`，测试可显式注入，避免直接调用默认启用 Linux 行为。
+- 修复后聚焦测试 5 项通过，静态分析无问题。
+
 ## 限制与担忧
 
 - `observe` 当前只生成安全的零计数完成事件；复用既有 Linux recovery/protocol 观察流程由后续 Task 5 负责。

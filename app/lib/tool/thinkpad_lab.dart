@@ -17,13 +17,13 @@ class ThinkPadLabFailure implements Exception {
 class ThinkPadLabOptions {
   const ThinkPadLabOptions({
     required this.action,
-    this.evidenceDirectory,
+    required this.evidenceDirectory,
     this.duration = const Duration(seconds: 60),
     this.batchId,
   });
 
   final ThinkPadLabAction action;
-  final String? evidenceDirectory;
+  final String evidenceDirectory;
   final Duration duration;
   final String? batchId;
 
@@ -59,13 +59,15 @@ class ThinkPadLabOptions {
     final directory = values['--evidence-directory'];
     final batch = values['--batch-id'];
     if (action == null ||
+        directory == null ||
+        action != ThinkPadLabAction.observe &&
+            values.containsKey('--duration-seconds') ||
         !RegExp(r'^[0-9]{1,5}$').hasMatch(durationText) ||
         seconds == null ||
         seconds < 1 ||
         seconds > 10800 ||
-        directory != null &&
-            (!directory.startsWith('/') ||
-                directory.contains(RegExp(r'[\x00-\x1f\x7f]'))) ||
+        !directory.startsWith('/') ||
+        directory.contains(RegExp(r'[\x00-\x1f\x7f]')) ||
         batch != null && !RegExp(r'^[A-Za-z0-9._-]{1,80}$').hasMatch(batch)) {
       throw const FormatException('实验参数不可用');
     }
@@ -111,6 +113,21 @@ class IoThinkPadProcessRunner implements ThinkPadProcessRunner {
 typedef HostLinkReader = Future<HostLinkCategory> Function();
 typedef Clock = DateTime Function();
 
+class ThinkPadObservation {
+  const ThinkPadObservation({
+    required this.resultCategory,
+    this.requests = 0,
+    this.submissions = 0,
+  });
+  final ThinkPadResultCategory resultCategory;
+  final int requests;
+  final int submissions;
+}
+
+typedef ObservationReader = Future<ThinkPadObservation> Function(
+  Duration duration,
+);
+
 class ThinkPadLabEvent {
   const ThinkPadLabEvent({
     required this.time,
@@ -146,10 +163,12 @@ class ThinkPadLabEvent {
 class ThinkPadLab {
   ThinkPadLab({
     ThinkPadProcessRunner? runner,
-    this.platformIsLinux = true,
+    bool? platformIsLinux,
     HostLinkReader? hostLink,
     Clock? clock,
+    this.observe,
   }) : runner = runner ?? IoThinkPadProcessRunner(),
+       platformIsLinux = platformIsLinux ?? Platform.isLinux,
        hostLink = hostLink ?? (() async => HostLinkCategory.unknown),
        clock = clock ?? DateTime.now;
 
@@ -158,11 +177,13 @@ class ThinkPadLab {
   final bool platformIsLinux;
   final HostLinkReader hostLink;
   final Clock clock;
+  final ObservationReader? observe;
 
   Future<ThinkPadLabEvent> run(ThinkPadLabOptions options) async {
     if (!platformIsLinux) throw const ThinkPadLabFailure();
     final evidence = await _Evidence.open(options.evidenceDirectory);
     final link = await hostLink();
+    if (link != HostLinkCategory.wired) throw const ThinkPadLabFailure();
     var result = ThinkPadResultCategory.failed;
     var requests = 0;
     var submissions = 0;
@@ -191,11 +212,16 @@ class ThinkPadLab {
         result = process.exitCode == 0
             ? ThinkPadResultCategory.completed
             : ThinkPadResultCategory.unavailable;
+        if (await hostLink() != HostLinkCategory.wired) {
+          result = ThinkPadResultCategory.unavailable;
+        }
       case ThinkPadLabAction.observe:
-        await Future<void>.delayed(Duration.zero);
-        result = ThinkPadResultCategory.completed;
-        requests = 0;
-        submissions = 0;
+        final reader = observe;
+        if (reader == null) throw const ThinkPadLabFailure();
+        final observation = await reader(options.duration);
+        result = observation.resultCategory;
+        requests = observation.requests;
+        submissions = observation.submissions;
     }
     final event = ThinkPadLabEvent(
       time: clock(),
@@ -206,7 +232,7 @@ class ThinkPadLab {
       protocolSubmissions: submissions,
       batchId: options.batchId,
     );
-    await evidence?.append(event.toJson());
+    await evidence.append(event.toJson());
     return event;
   }
 }
@@ -216,9 +242,9 @@ class _Evidence {
   final Directory directory;
   File get file => File('${directory.path}/thinkpad-lab.jsonl');
 
-  static Future<_Evidence?> open(String? path) async {
-    if (path == null) return null;
+  static Future<_Evidence> open(String path) async {
     final directory = Directory(path);
+    await _rejectSymlinkComponents(directory);
     final type = await FileSystemEntity.type(path, followLinks: false);
     if (type != FileSystemEntityType.notFound) {
       if (type != FileSystemEntityType.directory ||
@@ -227,11 +253,22 @@ class _Evidence {
       }
     }
     await directory.create(recursive: true);
+    if (!Platform.isWindows) {
+      await Process.run('chmod', ['0700', directory.path]);
+    }
     return _Evidence(directory);
+  }
+
+  static Future<void> _rejectSymlinkComponents(Directory directory) async {
+    if (await FileSystemEntity.type(directory.path, followLinks: false) ==
+        FileSystemEntityType.link) {
+      throw const ThinkPadLabFailure();
+    }
   }
 
   Future<void> append(String line) async {
     await file.writeAsString('$line\n', mode: FileMode.append, flush: true);
+    if (!Platform.isWindows) await Process.run('chmod', ['0600', file.path]);
   }
 }
 

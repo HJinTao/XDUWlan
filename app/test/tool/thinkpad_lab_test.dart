@@ -6,7 +6,10 @@ import 'package:xduwlan_app/tool/thinkpad_lab.dart';
 
 void main() {
   test('只接受固定动作、批次标识和安全目录参数', () {
-    expect(ThinkPadLabOptions.parse(['--action=status']), isNotNull);
+    expect(
+      () => ThinkPadLabOptions.parse(['--action=status']),
+      throwsFormatException,
+    );
     expect(
       ThinkPadLabOptions.parse([
         '--action=observe',
@@ -24,6 +27,11 @@ void main() {
       ['--action=status', '--batch-id=contains space'],
       ['--action=observe', '--duration-seconds=0'],
       ['--action=status', '--evidence-directory=relative'],
+      [
+        '--action=status',
+        '--duration-seconds=30',
+        '--evidence-directory=/tmp/x',
+      ],
     ]) {
       expect(() => ThinkPadLabOptions.parse(args), throwsFormatException);
     }
@@ -35,6 +43,10 @@ void main() {
       calls.add([executable, ...arguments]);
       return const ProcessResultData(exitCode: 0, stdout: 'xduwlan-lab-b\n');
     });
+    final evidence = await Directory.systemTemp.createTemp(
+      'thinkpad-evidence-',
+    );
+    addTearDown(() => evidence.delete(recursive: true));
     final lab = ThinkPadLab(
       runner: runner,
       platformIsLinux: true,
@@ -42,13 +54,19 @@ void main() {
     );
 
     final status = await lab.run(
-      const ThinkPadLabOptions(action: ThinkPadLabAction.status),
+      ThinkPadLabOptions(
+        action: ThinkPadLabAction.status,
+        evidenceDirectory: '${evidence.path}/status',
+      ),
     );
     expect(status.resultCategory, ThinkPadResultCategory.ready);
     expect(calls.single, ['nmcli', '-t', '-f', 'NAME', 'connection', 'show']);
 
     final down = await lab.run(
-      const ThinkPadLabOptions(action: ThinkPadLabAction.down),
+      ThinkPadLabOptions(
+        action: ThinkPadLabAction.down,
+        evidenceDirectory: '${evidence.path}/down',
+      ),
     );
     expect(down.resultCategory, ThinkPadResultCategory.completed);
     expect(calls.last, [
@@ -60,6 +78,60 @@ void main() {
     ]);
     expect(jsonDecode(down.toJson())['connection'], isNull);
     expect(down.toJson(), isNot(contains('test-only-password')));
+  });
+
+  test('非有线链路拒绝所有动作，并在切换后重新检查链路', () async {
+    var link = HostLinkCategory.wireless;
+    final calls = <List<String>>[];
+    final root = await Directory.systemTemp.createTemp('thinkpad-link-');
+    addTearDown(() => root.delete(recursive: true));
+    final lab = ThinkPadLab(
+      runner: FakeProcessRunner((executable, arguments) {
+        calls.add([executable, ...arguments]);
+        link = HostLinkCategory.wireless;
+        return const ProcessResultData(exitCode: 0);
+      }),
+      platformIsLinux: true,
+      hostLink: () async => link,
+    );
+    await expectLater(
+      lab.run(
+        ThinkPadLabOptions(
+          action: ThinkPadLabAction.status,
+          evidenceDirectory: '${root.path}/status',
+        ),
+      ),
+      throwsA(isA<ThinkPadLabFailure>()),
+    );
+    link = HostLinkCategory.wired;
+    final event = await lab.run(
+      ThinkPadLabOptions(
+        action: ThinkPadLabAction.down,
+        evidenceDirectory: '${root.path}/down',
+      ),
+    );
+    expect(event.resultCategory, ThinkPadResultCategory.unavailable);
+    expect(event.hostLink, HostLinkCategory.wired);
+    expect(calls, hasLength(1));
+  });
+
+  test('observe 没有注入观察结果时拒绝，不伪造完成', () async {
+    final root = await Directory.systemTemp.createTemp('thinkpad-observe-');
+    addTearDown(() => root.delete(recursive: true));
+    final lab = ThinkPadLab(
+      platformIsLinux: true,
+      hostLink: () async => HostLinkCategory.wired,
+    );
+    await expectLater(
+      lab.run(
+        ThinkPadLabOptions(
+          action: ThinkPadLabAction.observe,
+          duration: const Duration(milliseconds: 1),
+          evidenceDirectory: '${root.path}/observe',
+        ),
+      ),
+      throwsA(isA<ThinkPadLabFailure>()),
+    );
   });
 
   test('证据只能写入空的私有目录并拒绝目录外路径', () async {
