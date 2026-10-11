@@ -223,11 +223,12 @@ class ThinkPadLab {
         requests = observation.requests;
         submissions = observation.submissions;
     }
+    final finalLink = await hostLink();
     final event = ThinkPadLabEvent(
       time: clock(),
       action: options.action,
       resultCategory: result,
-      hostLink: link,
+      hostLink: finalLink,
       protocolRequests: requests,
       protocolSubmissions: submissions,
       batchId: options.batchId,
@@ -254,21 +255,41 @@ class _Evidence {
     }
     await directory.create(recursive: true);
     if (!Platform.isWindows) {
-      await Process.run('chmod', ['0700', directory.path]);
+      final result = await Process.run('chmod', ['0700', directory.path]);
+      if (result.exitCode != 0) throw const ThinkPadLabFailure();
     }
     return _Evidence(directory);
   }
 
   static Future<void> _rejectSymlinkComponents(Directory directory) async {
-    if (await FileSystemEntity.type(directory.path, followLinks: false) ==
-        FileSystemEntityType.link) {
-      throw const ThinkPadLabFailure();
+    final absolute = directory.absolute.path;
+    var current = Directory(Platform.pathSeparator);
+    for (final component
+        in absolute
+            .split(Platform.pathSeparator)
+            .where((part) => part.isNotEmpty)) {
+      current = Directory(
+        current.path == Platform.pathSeparator
+            ? '${Platform.pathSeparator}$component'
+            : '${current.path}${Platform.pathSeparator}$component',
+      );
+      final trustedSystemAlias =
+          (Platform.isMacOS &&
+          (current.path == '/var' || current.path == '/tmp'));
+      if (!trustedSystemAlias &&
+          await FileSystemEntity.type(current.path, followLinks: false) ==
+              FileSystemEntityType.link) {
+        throw const ThinkPadLabFailure();
+      }
     }
   }
 
   Future<void> append(String line) async {
     await file.writeAsString('$line\n', mode: FileMode.append, flush: true);
-    if (!Platform.isWindows) await Process.run('chmod', ['0600', file.path]);
+    if (!Platform.isWindows) {
+      final result = await Process.run('chmod', ['0600', file.path]);
+      if (result.exitCode != 0) throw const ThinkPadLabFailure();
+    }
   }
 }
 

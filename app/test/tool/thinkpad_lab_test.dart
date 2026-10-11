@@ -111,7 +111,7 @@ void main() {
       ),
     );
     expect(event.resultCategory, ThinkPadResultCategory.unavailable);
-    expect(event.hostLink, HostLinkCategory.wired);
+    expect(event.hostLink, HostLinkCategory.wireless);
     expect(calls, hasLength(1));
   });
 
@@ -165,6 +165,20 @@ void main() {
       throwsA(isA<ThinkPadLabFailure>()),
     );
     expect(File('${existing.path}/secret').readAsStringSync(), 'sentinel');
+
+    if (!Platform.isWindows) {
+      final target = Directory('${parent.path}/target')..createSync();
+      final link = Link('${parent.path}/linked')..createSync(target.path);
+      await expectLater(
+        lab.run(
+          ThinkPadLabOptions(
+            action: ThinkPadLabAction.status,
+            evidenceDirectory: '${link.path}/child',
+          ),
+        ),
+        throwsA(isA<ThinkPadLabFailure>()),
+      );
+    }
   });
 }
 
