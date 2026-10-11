@@ -43,6 +43,7 @@ iOS Simulator 的补充测试不修改 macOS 系统代理。Mac 只建立到 Thi
 - 当前产品入口的 `flutter build macos --release -t lib/main.dart` 已在本机构建成功，产物为 `app/build/macos/Build/Products/Release/XDUWlan.app`；构建成功不代表已签名发行或真实网络验收。
 - 当前产品入口的 `flutter build ios --no-codesign` 已在本机构建成功，产物为 `app/build/ios/iphoneos/Runner.app`；工程配置为 iOS 18、移动包标识 `cn.xduwlan.mobile`。
 - 本轮 iOS 离线实现已加入 `NWPathMonitor` 脱敏链路事实、认证安全门、本地通知授权状态与连续事件去重；iOS Simulator/Flutter 测试覆盖畸形路径回退、不可用/蜂窝零请求、Wi-Fi Portal 矩阵、通知拒绝状态和移动认证按钮门控。`flutter build ios --no-codesign` 与 iOS Simulator Debug 构建通过。
+- iOS Simulator Debug 产物已安装并启动于 iPhone 16 Pro 模拟器；首帧启动日志未出现 Flutter 未处理异常。模拟器只作为启动/插件回归证据，不作为蜂窝路径、系统通知授权或真实校园网证据。
 - iOS 18.7.1 真机 `Hhhjt的iPhone` 已完成 Release 签名、安装和启动，使用虚构数据启动验证；尚未进行真实校园网认证。
 - iOS 启动白屏/闪退回归已定位并修复：Workmanager 在首轮初始化时先提交 `BGAppRefreshTask`，但 iOS launch handler 尚未注册，系统抛出 `No launch handler registered for task with identifier cn.xduwlan.mobile.recovery`；`AppDelegate` 现于应用启动阶段提前注册任务标识。iOS 18.6 模拟器已重新安装、启动并显示完整首页，日志无该异常。
 - Flutter 分析、完整 Dart 测试和移动运行时测试通过；`flutter build apk --debug` 已构建成功。Android 模拟器启动后未保持 ADB 连接，尚未完成 Android 安装/启动验收。

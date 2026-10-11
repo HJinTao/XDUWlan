@@ -56,22 +56,25 @@ abstract interface class NetworkPathSource {
 /// 通过固定 MethodChannel 接收 iOS NWPathMonitor 的脱敏事实。
 class MethodChannelNetworkPathSource implements NetworkPathSource {
   MethodChannelNetworkPathSource({MethodChannel? channel})
-    : _channel = channel ?? const MethodChannel(_channelName) {
-    _channel.setMethodCallHandler(_handleCall);
-  }
+    : _channel = channel ?? const MethodChannel(_channelName);
 
   static const _channelName = 'cn.xduwlan/iosNetwork';
   final MethodChannel _channel;
   final StreamController<NetworkPathSnapshot> _updates =
       StreamController<NetworkPathSnapshot>.broadcast();
   bool _disposed = false;
+  bool _handlerAttached = false;
 
   @override
-  Stream<NetworkPathSnapshot> get pathUpdates => _updates.stream;
+  Stream<NetworkPathSnapshot> get pathUpdates {
+    _ensureHandler();
+    return _updates.stream;
+  }
 
   @override
   Future<NetworkPathSnapshot> current() async {
     if (_disposed) return NetworkPathSnapshot.unavailable;
+    _ensureHandler();
     try {
       return NetworkPathSnapshot.fromPayload(
         await _channel.invokeMethod<Object?>('currentPath'),
@@ -95,8 +98,14 @@ class MethodChannelNetworkPathSource implements NetworkPathSource {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _channel.setMethodCallHandler(null);
+    if (_handlerAttached) _channel.setMethodCallHandler(null);
     _updates.close();
+  }
+
+  void _ensureHandler() {
+    if (_disposed || _handlerAttached) return;
+    _channel.setMethodCallHandler(_handleCall);
+    _handlerAttached = true;
   }
 }
 
