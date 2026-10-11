@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xduwlan_app/core/domain.dart';
 import 'package:xduwlan_app/core/srun_protocol.dart';
+import 'package:xduwlan_app/platform/ios_network_path.dart';
 import 'package:xduwlan_app/platform/network_probe.dart';
 
 import '../../tool/recovery_validation_support.dart';
@@ -168,6 +169,7 @@ void main() {
     addTearDown(scope.finish);
     final result = await IoNetworkProbe(
       transport: CountingTransport(transport, counters, observationSink: sink),
+      pathSource: _WifiPathSource(),
     ).check(scope);
     expect(result.portal, NetworkState.unavailable);
     expect(sink.requests, 2);
@@ -195,6 +197,15 @@ class _Probe implements NetworkProbe {
       authenticationAllowed: state == NetworkState.portalRequired,
     );
   }
+}
+
+class _WifiPathSource implements NetworkPathSource {
+  @override
+  Future<NetworkPathSnapshot> current() async =>
+      const NetworkPathSnapshot(link: NetworkLink.wifi, available: true);
+
+  @override
+  Stream<NetworkPathSnapshot> get pathUpdates => const Stream.empty();
 }
 
 class _Credentials implements CredentialStore {

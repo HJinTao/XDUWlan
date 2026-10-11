@@ -154,8 +154,8 @@ class NetworkObservation {
           NetworkState.unknown => CampusNetworkState.unknown,
         },
         portal: state,
-        // 旧探测器没有链路事实；保留旧认证行为，直到其升级为新观察器。
-        authenticationAllowed: state == NetworkState.portalRequired,
+        // 旧探测器没有链路事实，不能把 Portal 结果伪造成 Wi-Fi。
+        authenticationAllowed: false,
       );
 
   NetworkObservation copyWith({
