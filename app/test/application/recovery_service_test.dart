@@ -11,19 +11,18 @@ class Probe implements NetworkProbe {
 }
 
 NetworkObservation _observation(NetworkState state) => NetworkObservation(
-      link: state == NetworkState.portalRequired
-          ? NetworkLink.wifi
-          : NetworkLink.unknown,
-      campus: switch (state) {
-        NetworkState.portalRequired =>
-          CampusNetworkState.authenticationRequired,
-        NetworkState.online => CampusNetworkState.online,
-        NetworkState.unavailable => CampusNetworkState.unavailable,
-        NetworkState.unknown => CampusNetworkState.unknown,
-      },
-      portal: state,
-      authenticationAllowed: state == NetworkState.portalRequired,
-    );
+  link: state == NetworkState.portalRequired
+      ? NetworkLink.wifi
+      : NetworkLink.unknown,
+  campus: switch (state) {
+    NetworkState.portalRequired => CampusNetworkState.authenticationRequired,
+    NetworkState.online => CampusNetworkState.online,
+    NetworkState.unavailable => CampusNetworkState.unavailable,
+    NetworkState.unknown => CampusNetworkState.unknown,
+  },
+  portal: state,
+  authenticationAllowed: state == NetworkState.portalRequired,
+);
 
 class Store implements CredentialStore {
   int reads = 0;

@@ -183,8 +183,8 @@ class _Probe implements NetworkProbe {
       final state = pending != null && calls == 1
           ? await pending!.future
           : states.isEmpty
-              ? NetworkState.online
-              : states.removeAt(0);
+          ? NetworkState.online
+          : states.removeAt(0);
       return NetworkObservation(
         link: state == NetworkState.portalRequired
             ? NetworkLink.wifi

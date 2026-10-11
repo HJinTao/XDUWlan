@@ -45,6 +45,5 @@ String failureMessage(FailureCode failure) => switch (failure) {
   FailureCode.cancelled => '操作已取消，可以重新检查网络。',
   FailureCode.timeout => '操作超时。请检查网络后重试。',
   FailureCode.submittedUnconfirmed => '认证请求已提交，结果尚未确认。请先检查网络，避免重复认证。',
-  FailureCode.authenticationNotAllowed =>
-    '当前网络不允许认证。请连接已确认的校园 Wi-Fi 后重试。',
+  FailureCode.authenticationNotAllowed => '当前网络不允许认证。请连接已确认的校园 Wi-Fi 后重试。',
 };
