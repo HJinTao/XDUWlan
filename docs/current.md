@@ -60,7 +60,7 @@ iOS Simulator 的补充测试不修改 macOS 系统代理。Mac 只建立到 Thi
 | Linux | 调度与平台接口离线测试；启动项原生边界测试；最终 d9059dd CI 原生检查、Release 构建、包核对；Wayland 产品启动、SNI 托盘、隐藏/恢复、单实例和退出；1 轮授权断线恢复 | 两小时持续运行；真实登录启动与休眠恢复；GNOME 无宿主降级和通知送达的完整桌面验收 |
 | Windows | 共享 Dart 分析/测试、插件注册、后台启动与电源事件源码兼容；最终 d9059dd 测试、Release 构建、包核对和 UTF-8 安全错误回归 | 桌面交互不作为本期要求 |
 | iOS | iOS 18 工程、后台任务声明、无签名 Release 构建、共享 Dart 测试、iOS 18.6 模拟器首帧、路径/通知离线测试与 iOS Simulator Debug 构建 | 当前无物理 iOS 机：真机链路类型、系统通知授权变化、前后台本地通知闭环和授权校园网环境仍待验收。ThinkPad 只验证独立的校园网协议链 |
-| Android | API 26 工程、WorkManager 配置、共享 Dart 测试 | 安装 Android SDK 后的调试构建、API 26+ 模拟器/真机前台流程、通知权限和后台任务触发 |
+| Android | API 26 工程、WorkManager 配置、共享 Dart 测试、`flutter build apk --debug` | API 26+ 模拟器/真机前台流程、Android 13+ 通知权限实测和后台任务触发 |
 
 `local_notifier` 0.1.6 的 macOS 实现仍使用已弃用的 `NSUserNotification` API，并依赖 CocoaPods；当前能构建与运行，但 Flutter 提示未来版本可能要求 Swift Package Manager。后续 SDK/插件升级需复核通知与构建兼容性。
 
