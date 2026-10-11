@@ -173,15 +173,32 @@ class _Probe implements NetworkProbe {
   int maxConcurrent = 0;
   final states = <NetworkState>[];
   @override
-  Future<NetworkState> check(OperationScope scope) async {
+  Future<NetworkObservation> check(OperationScope scope) async {
     this.scope = scope;
     calls++;
     concurrent++;
     if (concurrent > maxConcurrent) maxConcurrent = concurrent;
     try {
       if (fail) throw const AppFailure(FailureCode.networkUnavailable);
-      if (pending != null && calls == 1) return await pending!.future;
-      return states.isEmpty ? NetworkState.online : states.removeAt(0);
+      final state = pending != null && calls == 1
+          ? await pending!.future
+          : states.isEmpty
+              ? NetworkState.online
+              : states.removeAt(0);
+      return NetworkObservation(
+        link: state == NetworkState.portalRequired
+            ? NetworkLink.wifi
+            : NetworkLink.unknown,
+        campus: switch (state) {
+          NetworkState.portalRequired =>
+            CampusNetworkState.authenticationRequired,
+          NetworkState.online => CampusNetworkState.online,
+          NetworkState.unavailable => CampusNetworkState.unavailable,
+          NetworkState.unknown => CampusNetworkState.unknown,
+        },
+        portal: state,
+        authenticationAllowed: state == NetworkState.portalRequired,
+      );
     } finally {
       concurrent--;
     }

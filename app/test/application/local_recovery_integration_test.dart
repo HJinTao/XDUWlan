@@ -49,6 +49,28 @@ class _MemoryCredentials implements CredentialStore {
   Future<void> save(Credentials credentials) async => value = credentials;
 }
 
+class _WifiProbe implements NetworkProbe {
+  _WifiProbe(this.inner);
+  final IoNetworkProbe inner;
+
+  @override
+  Future<NetworkObservation> check(OperationScope scope) async {
+    final state = await inner.check(scope);
+    return NetworkObservation(
+      link: NetworkLink.wifi,
+      campus: state == NetworkState.portalRequired
+          ? CampusNetworkState.authenticationRequired
+          : state == NetworkState.online
+              ? CampusNetworkState.online
+              : state == NetworkState.unavailable
+                  ? CampusNetworkState.unavailable
+                  : CampusNetworkState.unknown,
+      portal: state,
+      authenticationAllowed: state == NetworkState.portalRequired,
+    );
+  }
+}
+
 void main() {
   final vector =
       (jsonDecode(
@@ -165,12 +187,12 @@ void main() {
         Credentials(vector['username'] as String, vector['password'] as String),
       );
       final service = RecoveryService(
-        probe: IoNetworkProbe(
+        probe: _WifiProbe(IoNetworkProbe(
           transport: transport,
           probeUrl: probeUri,
           portalUrl: portalOrigin,
           fallbackUrl: entryUri,
-        ),
+        )),
         portal: SrunPortalClient(
           transport: transport,
           portalUri: portalOrigin,

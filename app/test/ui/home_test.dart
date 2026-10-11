@@ -309,9 +309,23 @@ class _Probe implements NetworkProbe {
   Future<NetworkState>? pending;
   int checks = 0;
   @override
-  Future<NetworkState> check(OperationScope scope) async {
+  Future<NetworkObservation> check(OperationScope scope) async {
     checks++;
-    return pending == null ? result : await pending!;
+    final state = pending == null ? result : await pending!;
+    return NetworkObservation(
+      link: state == NetworkState.portalRequired
+          ? NetworkLink.wifi
+          : NetworkLink.unknown,
+      campus: switch (state) {
+        NetworkState.portalRequired =>
+          CampusNetworkState.authenticationRequired,
+        NetworkState.online => CampusNetworkState.online,
+        NetworkState.unavailable => CampusNetworkState.unavailable,
+        NetworkState.unknown => CampusNetworkState.unknown,
+      },
+      portal: state,
+      authenticationAllowed: state == NetworkState.portalRequired,
+    );
   }
 }
 

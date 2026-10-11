@@ -42,10 +42,24 @@ class TestProbe implements NetworkProbe {
   int calls = 0;
   OperationScope? scope;
   @override
-  Future<NetworkState> check(OperationScope scope) async {
+  Future<NetworkObservation> check(OperationScope scope) async {
     this.scope = scope;
     calls++;
-    return pending == null ? state : await pending!.future;
+    final result = pending == null ? state : await pending!.future;
+    return NetworkObservation(
+      link: result == NetworkState.portalRequired
+          ? NetworkLink.wifi
+          : NetworkLink.unknown,
+      campus: switch (result) {
+        NetworkState.portalRequired =>
+          CampusNetworkState.authenticationRequired,
+        NetworkState.online => CampusNetworkState.online,
+        NetworkState.unavailable => CampusNetworkState.unavailable,
+        NetworkState.unknown => CampusNetworkState.unknown,
+      },
+      portal: result,
+      authenticationAllowed: result == NetworkState.portalRequired,
+    );
   }
 }
 

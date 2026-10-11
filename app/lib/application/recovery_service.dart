@@ -45,7 +45,10 @@ class RecoveryService {
           observation: observation,
         );
       }
-      if (!observation.authenticationAllowed) {
+      if (!observation.authenticationAllowed ||
+          observation.link != NetworkLink.wifi ||
+          observation.campus != CampusNetworkState.authenticationRequired ||
+          observation.portal != NetworkState.portalRequired) {
         return RecoveryResult(
           RecoveryOutcome.failed,
           network,

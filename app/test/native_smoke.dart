@@ -145,8 +145,13 @@ class _SmokeDesktop extends PluginDesktopHost {
 
 class _OfflineProbe implements NetworkProbe {
   @override
-  Future<NetworkState> check(OperationScope scope) async =>
-      NetworkState.unknown;
+  Future<NetworkObservation> check(OperationScope scope) async =>
+      const NetworkObservation(
+        link: NetworkLink.none,
+        campus: CampusNetworkState.unknown,
+        portal: NetworkState.unknown,
+        authenticationAllowed: false,
+      );
 }
 
 class _UnusedPortal implements PortalClient {

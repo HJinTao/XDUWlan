@@ -6,8 +6,24 @@ class Probe implements NetworkProbe {
   final List<NetworkState> states;
   Probe(this.states);
   @override
-  Future<NetworkState> check(OperationScope scope) async => states.removeAt(0);
+  Future<NetworkObservation> check(OperationScope scope) async =>
+      _observation(states.removeAt(0));
 }
+
+NetworkObservation _observation(NetworkState state) => NetworkObservation(
+      link: state == NetworkState.portalRequired
+          ? NetworkLink.wifi
+          : NetworkLink.unknown,
+      campus: switch (state) {
+        NetworkState.portalRequired =>
+          CampusNetworkState.authenticationRequired,
+        NetworkState.online => CampusNetworkState.online,
+        NetworkState.unavailable => CampusNetworkState.unavailable,
+        NetworkState.unknown => CampusNetworkState.unknown,
+      },
+      portal: state,
+      authenticationAllowed: state == NetworkState.portalRequired,
+    );
 
 class Store implements CredentialStore {
   int reads = 0;
@@ -180,10 +196,10 @@ void main() {
 class _CancelAwareProbe implements NetworkProbe {
   int calls = 0;
   @override
-  Future<NetworkState> check(OperationScope scope) async {
+  Future<NetworkObservation> check(OperationScope scope) async {
     calls++;
     scope.ensureActive();
-    return NetworkState.online;
+    return _observation(NetworkState.online);
   }
 }
 
@@ -214,6 +230,28 @@ void authenticationGateTests() {
     final scope = OperationScope();
     final result = await RecoveryService(
       probe: probe,
+      portal: portal,
+      store: store,
+    ).login(scope);
+    expect(result.failure, FailureCode.authenticationNotAllowed);
+    expect(store.reads, 0);
+    expect(portal.calls, isEmpty);
+    scope.finish();
+  });
+
+  test('认证门不信任与链路状态矛盾的允许标志', () async {
+    final store = Store();
+    final portal = Portal();
+    final scope = OperationScope();
+    final result = await RecoveryService(
+      probe: ObservationProbe(
+        const NetworkObservation(
+          link: NetworkLink.cellular,
+          campus: CampusNetworkState.authenticationRequired,
+          portal: NetworkState.portalRequired,
+          authenticationAllowed: true,
+        ),
+      ),
       portal: portal,
       store: store,
     ).login(scope);

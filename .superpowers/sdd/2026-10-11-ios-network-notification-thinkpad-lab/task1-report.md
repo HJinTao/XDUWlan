@@ -13,7 +13,8 @@
 - 缺少新诊断字段的旧 JSON 解码为 `unknown` 和 `false`。
 - 新增 `FailureCode.authenticationNotAllowed` 及固定中文文案。
 - `RecoveryService.login` 在读取凭据、获取认证上下文和发起认证前检查观察结果；未通过时不读取凭据、不调用 Portal。
-- 保留旧 fake 的 `NetworkState` 返回兼容迁移路径；新平台探测仍可逐步切换为完整观察结果。
+- 旧 `NetworkState` fake 的迁移测试现在显式构造 `NetworkObservation`；`fromLegacy` 保持安全默认，不会凭 Portal 状态伪造 Wi-Fi 或放行认证。
+- 服务层同时校验链路、校园状态、Portal 状态和允许标志，拒绝互相矛盾的观察结果。
 
 ## TDD 证据
 
@@ -35,4 +36,12 @@ cd app && flutter test test/platform/network_probe_test.dart test/application/re
 
 ## 限制
 
-链路来源和 Wi-Fi 可信 Portal 的真实组合由后续 Task 2 接入；当前 `IoNetworkProbe` 没有原生链路来源时返回未知链路，因此不会自行放行认证。`NetworkProbe.check` 保留 `Future<Object>` 兼容旧 fake，服务层集中归一化为 `NetworkObservation`，后续迁移完成后可收紧静态返回类型。
+链路来源和 Wi-Fi 可信 Portal 的真实组合由后续 Task 2 接入；当前 `IoNetworkProbe` 没有原生链路来源时返回未知链路，因此不会自行放行认证。测试 fake 必须显式提供允许认证的 Wi-Fi observation。
+
+## 审查修复
+
+审查指出旧 `NetworkState.portalRequired` 适配会伪造 Wi-Fi 并放行认证。已将 `fromLegacy` 改为未知链路和禁止认证，并更新 recovery、controller、runtime、UI、协议观察、集成和原生 smoke 测试 fake，在需要认证的场景显式返回 Wi-Fi + `authenticationRequired` + `authenticationAllowed`。新增矛盾观察回归，确保蜂窝链路即使携带 `true` 也不读取凭据。
+
+## 审查发现
+
+- **高风险：旧探测器适配会在缺少链路事实时放行认证。** `NetworkObservation.fromLegacy(NetworkState.portalRequired)` 将旧结果转换为 `wifi`、`authenticationRequired` 和 `authenticationAllowed: true`（`app/lib/core/domain.dart:141-159`）。当前 `IoNetworkProbe.check` 仍返回 `NetworkState`（`app/lib/platform/network_probe.dart:27-45`），因此 `RecoveryService._observation` 会把生产环境的 Portal 探测结果转换成允许认证的 Wi-Fi 观察结果（`app/lib/application/recovery_service.dart:135-139`），随后通过认证门并读取凭据（`app/lib/application/recovery_service.dart:48-62`）。这违背“没有链路来源或未知接口不得认证”的安全要求；报告中关于当前实现不会放行认证的限制描述不成立。应在 Task 2 的链路事实接入完成前禁止该旧路径放行，或将两项变更作为同一发布门槛。
