@@ -21,7 +21,11 @@ Wi-Fi 连接和重连由操作系统负责。本项目专注校园网认证与�
 
 `settings.json` 只保存自动恢复和登录启动开关。`diagnostics.json` 最多保存 50 条时间、操作来源、动作、网络状态、安全结果、失败类别和耗时，不记录账号、密码、Cookie、验证码、认证参数或原始响应。诊断文件损坏时保留一个隔离文件并重新记录；诊断页“清空”同时删除当前和隔离记录。系统通知仅用于自动认证成功或失败，同类连续失败只提示一次。
 
-Linux 的托盘依赖桌面提供 StatusNotifierItem 宿主；GNOME 缺少宿主时会提示启用 AppIndicator，主程序继续运行。macOS 使用用户 LaunchAgent 注册登录启动，直接发行构建不启用 App Store sandbox；修改安装位置前应先关闭原位置的登录启动。
+Linux 的托盘依赖桌面提供 StatusNotifierItem 宿主；GNOME 缺少宿主时会提示启用 AppIndicator，主程序继续运行。
+
+Linux 登录启动使用 `$XDG_CONFIG_HOME/autostart/XDUWlan.desktop`；变量未设置、为空或为相对路径时，使用 `$HOME/.config/autostart/XDUWlan.desktop`。应用只管理内容与当前可执行路径匹配的普通文件，兼容既有插件格式；同名未知内容、符号链接或异常权限会安全拒绝，不覆盖或删除。操作失败会重新查询，仍无法确认状态时禁用开关；请检查同名启动项内容或目录权限后重新打开应用。更改安装位置前，应先用原位置应用关闭登录启动。
+
+macOS 使用用户 LaunchAgent 注册登录启动，直接发行构建不启用 App Store sandbox；修改安装位置前应先关闭原位置的登录启动。
 
 ## 开发
 
@@ -30,7 +34,7 @@ Linux 的托盘依赖桌面提供 StatusNotifierItem 宿主；GNOME 缺少宿主
 ```bash
 cd app
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
 ```
@@ -49,7 +53,33 @@ flutter build macos --release
 flutter build linux --release
 ```
 
-GitHub Actions 对三个桌面平台执行静态分析、离线测试和 Release 构建，成功后上传对应产物，保留 30 天。推送 `v*` 标签时，workflow 将三种平台压缩包发布到对应 GitHub Release；重复发布同一标签会覆盖同名附件。
+GitHub Actions 对三个桌面平台执行静态分析、离线测试和 Release 构建，Linux runner 固定为 Ubuntu 24.04。各平台先生成完整压缩包，再上传、下载并解包核对内容、权限、符号链接和 SHA-256；产物保留 30 天。
+
+| 平台 | 压缩包名称 | 包内结构 |
+| --- | --- | --- |
+| macOS | `xduwlan-<标识>-macos.zip` | 完整 `XDUWlan.app`，用 `ditto` 保留包内权限与链接 |
+| Linux | `xduwlan-<标识>-linux.tar.gz` | `xduwlan_app`、`lib/`、`data/`，保留构建权限与链接 |
+| Windows | `xduwlan-<标识>-windows.zip` | 完整 Release 目录，包括程序、所需 DLL 和 `data/` |
+
+普通分支的标识为完整提交 SHA，标签构建使用标签名。每个产物包含 `<压缩包名>.manifest.json` 和 `SHA256SUMS-<平台>`；前者记录文件摘要及 Unix 权限与链接，后者校验压缩包和清单。Linux 主程序必须具有执行权限，共享库保留构建时的权限，不强制增加执行位。推送 `v*` 标签时，workflow 发布已核对的三种压缩包、清单与汇总 `SHA256SUMS`；重复发布同一标签会覆盖同名附件。
+
+### 手动 Linux 恢复验证
+
+`tool/recovery_validation.dart` 是独立开发入口，须显式构建和运行；产品默认入口与自动测试不会启动实网验证。它复用生产探测、认证、串行控制和调度，惰性读取已有产品账号，不接受凭据命令参数，也不写入账号或系统登录启动项。真实操作边界见[维护约定](AGENTS.md#安全底线)。
+
+在 `app/` 中构建并运行：
+
+```bash
+flutter build linux --release -t tool/recovery_validation.dart
+./build/linux/x64/release/bundle/xduwlan_app \
+  --scenario=observe --duration-seconds=7200 --directory=/tmp/xduwlan-validation-new
+```
+
+场景支持 `check`、`authenticate`、`observe`、`manual-during-auto`、`exit-during-operation`；可选 `--background`、`--without-tray`。工具窗口和安全输出带开发验证标识，CI 单独上传 `<标识>-validation` 的 Linux 工具包。工具与产品使用相同实例 ID，须顺序运行；产品入口与工具分别验收。
+
+指定根目录须为空或尚不存在，不能使用产品支持目录。工具在其下新建随机私有会话子目录，把独立设置、诊断、`reports.jsonl` 与控制命令保存在子目录中；省略 `--directory` 时新建临时会话目录。标准输出只提供安全报告、状态和计数，不公开会话路径或底层异常。
+
+控制方从根目录找到本次会话子目录后，在其中以同目录临时文件和原子重命名发布单行 `command`，每条命令消费后删除。命令支持 `check`、`authenticate`、`hide`、`show`、`status`、`automatic-on`、`automatic-off`、`authenticate-when-busy`、`exit-when-busy`、`exit`。并发新发布的命令留给下一轮，未知内容不执行。
 
 平台验收证据和未验证项见[维护状态](docs/current.md)。自动测试只使用虚构账号、本地服务和测试证书，不连接真实校园网。
 

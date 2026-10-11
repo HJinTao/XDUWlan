@@ -12,25 +12,33 @@
 
 Linux runner 使用 `GtkApplication` 唯一实例和 StatusNotifierItem 宿主检测，监听 logind 睡眠信号。macOS runner 保持关闭隐藏与 Dock 恢复，监听系统睡眠/唤醒；登录启动由 `launch_at_startup` 调用本应用的 LaunchAgent 桥，仅操作内容与路径均匹配的启动项。macOS 直接发行构建已关闭 App Store sandbox，旧安装移动位置前应先关闭登录启动。
 
+Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用 MethodChannel 把文件工作交给 `GTask` 线程，完成回主线程后只传布尔状态或固定错误分类。独立的 `AutostartFile` 核对目录与文件元数据、完整内容和当前可执行路径；启用以同目录 `O_TMPFILE` 和持有的描述符原子无覆盖发布。禁用先移入私有暂存目录再复核，竞争中的未知内容以无覆盖重命名恢复，恢复受阻时保留捕获内容。文件系统不支持所需原子机制时安全失败；用户可见行为见 [README](../README.md#使用与隐私)。
+
+`tool/recovery_validation.dart` 是手动 Linux 开发入口，独立构建与标识，正常产品入口不调用。工具使用生产 `IoNetworkProbe`、`SrunPortalClient`、凭据接口、`RecoveryController` 与 `AppRuntimeController`；计数包装不建立另一套认证或调度。固定命令经原子捕获后调用生产运行时，设置、诊断和安全报告写入新建私有会话目录，不访问真实登录启动项；用法见 [README](../README.md#手动-linux-恢复验证)。
+
 ## 已验证事实
 
 2026-10-10 至 2026-10-11 的本地验证只使用虚构输入、临时目录、内存传输或本地 HTTP/TLS 服务，未使用真实账号、访问校园网、注册用户登录项或改变系统网络设置。
 
-- `dart format --output=none --set-exit-if-changed lib test` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 230 项测试通过。
+- 当前候选的 `dart format --output=none --set-exit-if-changed lib test tool` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 249 项测试通过。
 - 自动测试覆盖首帧后初始化与挂起时交互、统一操作报告、串行排队、单计时器和 60 秒周期、退避重置、账号错误暂停及保存后恢复、隐藏与退出、睡眠与唤醒调度、通知去重、设置和诊断错误恢复、旧目录兼容及查询门户零请求。
-- 回归测试覆盖初始化顺序竞争：无托盘的后台启动保留可见窗口；排队手动认证解除前轮拒绝导致的暂停；设置保存不覆盖系统启动项状态；设置未读完时禁止启动项切换。
+- 回归测试覆盖初始化顺序竞争、账号拒绝后排队恢复、设置保存与启动项状态竞争，以及启动项操作与读回均失败时禁用开关、不把旧值描述为已确认状态。开发工具测试覆盖命令捕获竞争、私有会话目录、白名单输出和生产运行时调用；同步截止时间测试不依赖冷启动延迟。
 - macOS 原生登录启动文件测试在临时目录验证后台参数、权限、启用/禁用、未知内容及符号链接的拒绝行为。此证据不等同于真实登录启动验收。
+- Linux 原生文件逻辑的 14 组临时目录测试覆盖重复操作、旧格式、特殊字符、类型、所有权、权限、损坏内容、写入失败，以及发布、捕获、恢复和临时清理竞争；macOS 本地离线子集与此前候选的 Linux CI 均通过。测试未注册真实用户启动项。
 - macOS 原生离线 Release 入口 `test/native_smoke.dart` 使用独立临时记录和虚构账号，分别以正常模式、`--background` 和系统再激活运行。已验证菜单栏托盘创建、正常模式可见、后台首次启动保持隐藏但完成首帧初始化、关闭隐藏、恢复窗口、通知送达、诊断与显式退出（进程退出码 0）。系统再激活通过 Launch Services 触发，与 Dock 再激活共用原生回调；未模拟鼠标点击 Dock。
-- 最终产品入口的 `flutter build macos --release -t lib/main.dart` 已构建成功，产物为 `app/build/macos/Build/Products/Release/XDUWlan.app`；构建成功不代表已签名发行或真实网络验收。
-- GitHub Actions 保留 Windows、macOS、Linux 的格式、静态分析、测试和 Release 构建矩阵，Linux 补充 GTK 3、X11、Xi、libnotify 依赖，macOS 增加原生启动项文件测试。当前修改尚未提交到远端执行，不能据本地检查宣称三平台 CI 通过。
+- 当前产品入口的 `flutter build macos --release -t lib/main.dart` 已在本机构建成功，产物为 `app/build/macos/Build/Products/Release/XDUWlan.app`；构建成功不代表已签名发行或真实网络验收。
+- GitHub Actions 已加入 Linux/macOS 原生启动项检查、平台内封装及 artifact 下载后核对，并单独构建和上传 Linux 开发工具。此前候选的 [CI](https://github.com/HJinTao/XDUWlan/actions/runs/38071076914) 中，Linux 的 Dart/原生检查与产品 Release 构建通过；封装因错误要求共享库具有执行位而失败。当前修复保留构建权限、只要求 Linux 主程序可执行，虚构的 `0644` 共享库回归已先失败后通过。
+- 最终候选提交 `d9059dd` 的 push [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073853102) 与 PR [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073856520) 均通过；每个平台的 Release 构建、封装、artifact 下载后核对均通过，Windows 还验证了 UTF-8 安全失败输出。审查入口为[草稿 PR #1](https://github.com/HJinTao/XDUWlan/pull/1)。
+- 授权 ThinkPad 的最终应用代码 bundle 已在 Wayland 会话启动；该 bundle 与 d9059dd 的产品源码相同，d9059dd 之后只变更桌面封装脚本与其测试。应用 IPv4/IPv6 默认路由均走目标无线连接，SSH 控制仍走有线。产品入口运行期间诊断记录保持白名单且每 60 秒检查，SNI 宿主注册了托盘菜单；隐藏窗口、托盘恢复、单实例再次启动和托盘退出均得到安全退出证据。开发工具在线检查与认证跳过场景均未读取凭据或提交认证；1 轮受控断线记录为 `unavailable`，重新连接后的下一轮检查报告 `restored`，之后回到 60 秒检查节奏，最大并发请求为 1。
+- 最终候选持续运行已于 2026-10-11 10:06:57（Asia/Shanghai）开始；计时期间仍需保持进程、每 60 秒检查节奏、诊断有界和无错误循环，完成两小时后再更新本记录。真实登录启动和系统休眠恢复仍未验收。
 
 ## 平台验收边界与遗留问题
 
 | 平台 | 本轮证据 | 仍需验收 |
 | --- | --- | --- |
-| macOS | Dart 自动测试、插件边界测试、原生临时目录测试、产品 Release 构建；离线正常/隐藏启动、窗口隐藏恢复、系统再激活、托盘、通知送达与退出 | 真实登录启动、鼠标点击 Dock、真实系统休眠/恢复、安装签名与授权校园网环境 |
-| Linux | 调度与平台接口离线测试；唯一实例、后台启动、SNI 检测与 logind 监听的实现审查；CI 构建配置 | Release 构建、单实例、托盘菜单、隐藏/恢复/退出、GNOME 有无 AppIndicator、隐藏登录启动、通知、真实休眠恢复 |
-| Windows | 共享 Dart 分析/测试、插件注册、后台启动与电源事件源码兼容；CI 构建配置 | 对应工具链的 Release 构建；桌面交互不作为本期要求 |
+| macOS | Dart 自动测试、插件边界测试、原生临时目录测试、本机产品 Release 构建；最终 d9059dd CI 原生检查、Release 构建和包核对 | 真实登录启动、鼠标点击 Dock、真实系统休眠/恢复、安装签名与授权校园网环境 |
+| Linux | 调度与平台接口离线测试；启动项原生边界测试；最终 d9059dd CI 原生检查、Release 构建、包核对；Wayland 产品启动、SNI 托盘、隐藏/恢复、单实例和退出；1 轮授权断线恢复 | 两小时持续运行；真实登录启动与休眠恢复；GNOME 无宿主降级和通知送达的完整桌面验收 |
+| Windows | 共享 Dart 分析/测试、插件注册、后台启动与电源事件源码兼容；最终 d9059dd 测试、Release 构建、包核对和 UTF-8 安全错误回归 | 桌面交互不作为本期要求 |
 
 `local_notifier` 0.1.6 的 macOS 实现仍使用已弃用的 `NSUserNotification` API，并依赖 CocoaPods；当前能构建与运行，但 Flutter 提示未来版本可能要求 Swift Package Manager。后续 SDK/插件升级需复核通知与构建兼容性。
 
