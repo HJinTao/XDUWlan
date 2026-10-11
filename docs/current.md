@@ -30,7 +30,7 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 - GitHub Actions 已加入 Linux/macOS 原生启动项检查、平台内封装及 artifact 下载后核对，并单独构建和上传 Linux 开发工具。此前候选的 [CI](https://github.com/HJinTao/XDUWlan/actions/runs/38071076914) 中，Linux 的 Dart/原生检查与产品 Release 构建通过；封装因错误要求共享库具有执行位而失败。当前修复保留构建权限、只要求 Linux 主程序可执行，虚构的 `0644` 共享库回归已先失败后通过。
 - 最终候选提交 `d9059dd` 的 push [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073853102) 与 PR [三平台 CI](https://github.com/HJinTao/XDUWlan/actions/runs/38073856520) 均通过；每个平台的 Release 构建、封装、artifact 下载后核对均通过，Windows 还验证了 UTF-8 安全失败输出。审查入口为[草稿 PR #1](https://github.com/HJinTao/XDUWlan/pull/1)。
 - 授权 ThinkPad 的最终应用代码 bundle 已在 Wayland 会话启动；该 bundle 与 d9059dd 的产品源码相同，d9059dd 之后只变更桌面封装脚本与其测试。应用 IPv4/IPv6 默认路由均走目标无线连接，SSH 控制仍走有线。产品入口运行期间诊断记录保持白名单且每 60 秒检查，SNI 宿主注册了托盘菜单；隐藏窗口、托盘恢复、单实例再次启动和托盘退出均得到安全退出证据。开发工具在线检查与认证跳过场景均未读取凭据或提交认证；1 轮受控断线记录为 `unavailable`，重新连接后的下一轮检查报告 `restored`，之后回到 60 秒检查节奏，最大并发请求为 1。
-- 最终候选持续运行已于 2026-10-11 10:06:57（Asia/Shanghai）开始；计时期间仍需保持进程、每 60 秒检查节奏、诊断有界和无错误循环，完成两小时后再更新本记录。真实登录启动和系统休眠恢复仍未验收。
+- 最终 d9059dd 包已在 ThinkPad 完成下载、远端完整性核对和解包；启动验证时 Wayland 用户会话进入 `closing` 状态，应用进程静默退出，未形成可依赖的持续运行计时。因此两小时持续运行仍未完成，不能把此前等价源码 bundle 的短时运行证据替代为最终包证据。真实登录启动和系统休眠恢复也仍未验收。
 
 ## 平台验收边界与遗留问题
 
