@@ -9,6 +9,7 @@ import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
 
 import '../application/desktop_host.dart';
+import '../application/runtime_host.dart';
 import '../core/domain.dart';
 import '../core/presentation.dart';
 
@@ -184,6 +185,15 @@ class PluginDesktopHost with WindowListener implements DesktopHost {
     await localNotifier.setup(appName: 'XDUWlan');
     if (!_closed) _notificationsReady = true;
   }
+
+  @override
+  Future<NotificationAuthorizationStatus> notificationStatus() async =>
+      NotificationAuthorizationStatus.authorized;
+
+  @override
+  Future<NotificationAuthorizationStatus>
+  requestNotificationPermission() async =>
+      NotificationAuthorizationStatus.authorized;
 
   @override
   Future<void> notifyAuthentication(OperationReport report) async {

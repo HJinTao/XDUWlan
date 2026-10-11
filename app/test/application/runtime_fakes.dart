@@ -5,6 +5,7 @@ import 'package:xduwlan_app/application/desktop_host.dart';
 import 'package:xduwlan_app/application/diagnostics.dart';
 import 'package:xduwlan_app/application/recovery_controller.dart';
 import 'package:xduwlan_app/application/recovery_service.dart';
+import 'package:xduwlan_app/application/runtime_host.dart';
 import 'package:xduwlan_app/application/settings.dart';
 import 'package:xduwlan_app/core/domain.dart';
 
@@ -151,6 +152,8 @@ class TestDesktop implements DesktopHost {
   final pending = <String, Completer<void>>{};
   final failures = <String>{};
   bool enabled = false;
+  NotificationAuthorizationStatus notificationStatusValue =
+      NotificationAuthorizationStatus.authorized;
   bool background = false;
   bool visible = false;
   int shows = 0;
@@ -189,6 +192,15 @@ class TestDesktop implements DesktopHost {
 
   @override
   Future<void> initializeNotifications() => _initialize('notifications');
+
+  @override
+  Future<NotificationAuthorizationStatus> notificationStatus() async =>
+      notificationStatusValue;
+
+  @override
+  Future<NotificationAuthorizationStatus>
+  requestNotificationPermission() async =>
+      NotificationAuthorizationStatus.authorized;
   @override
   Future<bool> initializeStartup() async {
     await _initialize('startup');

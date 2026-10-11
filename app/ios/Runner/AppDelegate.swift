@@ -1,36 +1,26 @@
 import Flutter
 import Network
 import UIKit
+import UserNotifications
 import workmanager_apple
 
-@main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+private final class NetworkEngineController {
   private let networkMonitor = NWPathMonitor()
   private let networkQueue = DispatchQueue(label: "cn.xduwlan.ios-network")
-  private var networkChannel: FlutterMethodChannel?
+  private weak var messenger: FlutterBinaryMessenger?
   private var currentNetworkPath: [String: Any] = [
     "link": "unknown",
     "available": false,
   ]
+  private var disposed = false
 
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    WorkmanagerPlugin.registerPeriodicTask(
-      withIdentifier: "cn.xduwlan.mobile.recovery"
-    )
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    let channel = FlutterMethodChannel(
+  init(messenger: FlutterBinaryMessenger) {
+    self.messenger = messenger
+    let networkChannel = FlutterMethodChannel(
       name: "cn.xduwlan/iosNetwork",
-      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+      binaryMessenger: messenger
     )
-    networkChannel = channel
-    channel.setMethodCallHandler { [weak self] call, result in
+    networkChannel.setMethodCallHandler { [weak self] call, result in
       guard let self else {
         result(FlutterError(code: "unavailable", message: nil, details: nil))
         return
@@ -47,16 +37,87 @@ import workmanager_apple
       }
     }
     networkMonitor.pathUpdateHandler = { [weak self] path in
-      guard let self else { return }
-      let payload = Self.networkPayload(for: path)
-      self.networkQueue.async {
-        self.currentNetworkPath = payload
-        DispatchQueue.main.async {
-          self.networkChannel?.invokeMethod("pathUpdates", arguments: payload)
-        }
-      }
+      self?.receive(path)
     }
     networkMonitor.start(queue: networkQueue)
+  }
+
+  private func receive(_ path: NWPath) {
+    let payload = AppDelegate.networkPayload(for: path)
+    networkQueue.async { [weak self] in
+      guard let self, !self.disposed else { return }
+      self.currentNetworkPath = payload
+      DispatchQueue.main.async { [weak self] in
+        guard let self, !self.disposed else { return }
+        guard let messenger = self.messenger else { return }
+        FlutterMethodChannel(
+          name: "cn.xduwlan/iosNetwork",
+          binaryMessenger: messenger
+        ).invokeMethod("pathUpdates", arguments: payload)
+      }
+    }
+  }
+
+  deinit {
+    disposed = true
+    networkMonitor.cancel()
+  }
+}
+
+@main
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+  private var notificationChannel: FlutterMethodChannel?
+  private static let networkControllers = NSMapTable<AnyObject, NetworkEngineController>.weakToStrongObjects()
+
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    WorkmanagerPlugin.registerPeriodicTask(
+      withIdentifier: "cn.xduwlan.mobile.recovery"
+    )
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    let messenger = engineBridge.applicationRegistrar.messenger()
+    let networkController = NetworkEngineController(messenger: messenger)
+    // FlutterImplicitEngineDelegate 当前只提供初始化回调。弱键 map 让控制器
+    // 随引擎 messenger 释放，并在引擎重建时替换旧实例。
+    Self.networkControllers.setObject(networkController, forKey: messenger)
+
+    let notificationChannel = FlutterMethodChannel(
+      name: "cn.xduwlan/mobile",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    self.notificationChannel = notificationChannel
+    notificationChannel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "notificationStatus":
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+          DispatchQueue.main.async {
+            result(Self.notificationStatusName(settings.authorizationStatus))
+          }
+        }
+      case "requestNotificationPermission":
+        UNUserNotificationCenter.current().requestAuthorization(
+          options: [.alert, .sound, .badge]
+        ) { _, error in
+          if error != nil {
+            result(FlutterError(code: "permission_unavailable", message: nil, details: nil))
+            return
+          }
+          UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+              result(Self.notificationStatusName(settings.authorizationStatus))
+            }
+          }
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
 
     let storageChannel = FlutterMethodChannel(
       name: "cn.xduwlan/storage",
@@ -80,7 +141,7 @@ import workmanager_apple
     }
   }
 
-  private static func networkPayload(for path: NWPath) -> [String: Any] {
+  fileprivate static func networkPayload(for path: NWPath) -> [String: Any] {
     let link: String
     if path.usesInterfaceType(.wifi) {
       link = "wifi"
@@ -101,8 +162,22 @@ import workmanager_apple
     ]
   }
 
+  private static func notificationStatusName(
+    _ status: UNAuthorizationStatus
+  ) -> String {
+    switch status {
+    case .authorized, .provisional, .ephemeral:
+      return "authorized"
+    case .denied:
+      return "denied"
+    case .notDetermined:
+      return "notDetermined"
+    @unknown default:
+      return "unavailable"
+    }
+  }
+
   deinit {
-    networkMonitor.cancel()
-    networkChannel?.setMethodCallHandler(nil)
+    notificationChannel?.setMethodCallHandler(nil)
   }
 }

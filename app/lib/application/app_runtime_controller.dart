@@ -40,6 +40,8 @@ class AppRuntimeController extends ChangeNotifier {
   bool trayAvailable = false;
   bool notificationReady = false;
   bool notificationsAvailable = false;
+  NotificationAuthorizationStatus notificationAuthorizationStatus =
+      NotificationAuthorizationStatus.unavailable;
   bool startupReady = false;
   bool startupAvailable = false;
   bool windowReady = false;
@@ -59,8 +61,8 @@ class AppRuntimeController extends ChangeNotifier {
   Future<void> _diagnosticTail = Future.value();
   Future<void> _trayTail = Future.value();
   OperationReport? _seenReport;
-  FailureCode? _notifiedFailure;
   FailureCode? _lastFailureType;
+  String? _lastNotificationEventKey;
   int _backoff = 0;
   int _seenAccountRevision = 0;
   int _operationAccountRevision = 0;
@@ -164,11 +166,45 @@ class AppRuntimeController extends ChangeNotifier {
     try {
       await host.initializeNotifications();
       notificationsAvailable = true;
+      await _refreshNotificationStatus(requestIfUndecided: true);
     } catch (_) {
       notificationError = '系统通知不可用，结果仍可在主界面和托盘查看。';
     }
     notificationReady = true;
     _changed();
+  }
+
+  Future<void> _refreshNotificationStatus({
+    bool requestIfUndecided = false,
+  }) async {
+    try {
+      var status = await host.notificationStatus();
+      if (requestIfUndecided &&
+          status == NotificationAuthorizationStatus.notDetermined) {
+        status = await host.requestNotificationPermission();
+      }
+      notificationAuthorizationStatus = status;
+    } catch (_) {
+      notificationAuthorizationStatus =
+          NotificationAuthorizationStatus.unavailable;
+    }
+    _changed();
+  }
+
+  Future<void> requestNotificationPermission() async {
+    if (_exiting || !notificationsAvailable) return;
+    try {
+      if (notificationAuthorizationStatus ==
+          NotificationAuthorizationStatus.notDetermined) {
+        notificationAuthorizationStatus = await host
+            .requestNotificationPermission();
+        _changed();
+      }
+    } catch (_) {
+      notificationAuthorizationStatus =
+          NotificationAuthorizationStatus.unavailable;
+      _changed();
+    }
   }
 
   bool _actualStartup = false;
@@ -290,6 +326,16 @@ class AppRuntimeController extends ChangeNotifier {
   Future<OperationReport?> check(OperationSource source) =>
       recovery.run(OperationKind.check, source);
 
+  /// 网络路径变化只在前台进入检查；挂起或检查进行中时合并到下一轮。
+  void onNetworkPathUpdate() {
+    if (_exiting) return;
+    if (!initialized || _suspended || recovery.busy) {
+      _immediatePending = true;
+      return;
+    }
+    unawaited(check(OperationSource.automatic));
+  }
+
   Future<OperationReport?> authenticate(OperationSource source) {
     authenticationPaused = false;
     return recovery.run(OperationKind.authenticate, source);
@@ -350,8 +396,11 @@ class AppRuntimeController extends ChangeNotifier {
   }
 
   void _consume(OperationReport report) {
+    if (report.source != OperationSource.automatic &&
+        report.source != OperationSource.background) {
+      _lastNotificationEventKey = null;
+    }
     if (report.failure != null && report.failure != _lastFailureType) {
-      _notifiedFailure = null;
       _lastFailureType = report.failure;
     }
     final accountError = {
@@ -366,7 +415,6 @@ class AppRuntimeController extends ChangeNotifier {
     }
     if (report.network == NetworkState.online) {
       _backoff = 0;
-      _notifiedFailure = null;
       _lastFailureType = null;
       _delay = const Duration(seconds: 60);
     } else if (authenticationPaused) {
@@ -390,19 +438,40 @@ class AppRuntimeController extends ChangeNotifier {
       }
       _changed();
     });
-    if ((report.source == OperationSource.automatic ||
-            report.source == OperationSource.background) &&
-        report.kind == OperationKind.authenticate) {
-      if (report.outcome == RecoveryOutcome.restored ||
-          (report.failure != null && report.failure != _notifiedFailure)) {
-        _notifiedFailure = report.failure;
+    if (report.source == OperationSource.automatic ||
+        report.source == OperationSource.background) {
+      final eventKey = _notificationEventKey(report);
+      if (eventKey != null && eventKey != _lastNotificationEventKey) {
+        _lastNotificationEventKey = eventKey;
         if (notificationsAvailable) unawaited(_notify(report));
       }
     }
   }
 
+  String? _notificationEventKey(OperationReport report) {
+    if (report.kind != OperationKind.authenticate) return null;
+    final link = report.link ?? NetworkLink.unknown;
+    final campus = report.campus ?? CampusNetworkState.unknown;
+    if (report.outcome != RecoveryOutcome.restored &&
+        (link == NetworkLink.unknown || campus == CampusNetworkState.unknown)) {
+      return null;
+    }
+    if (report.outcome == RecoveryOutcome.restored) {
+      return 'restored:${link.name}:${campus.name}';
+    }
+    if (report.failure != null) {
+      return 'failure:${link.name}:${campus.name}:${report.failure!.name}';
+    }
+    return 'network:${link.name}:${campus.name}:${report.network.name}';
+  }
+
   Future<void> _notify(OperationReport report) async {
     try {
+      await _refreshNotificationStatus();
+      if (notificationAuthorizationStatus !=
+          NotificationAuthorizationStatus.authorized) {
+        return;
+      }
       await host.notifyAuthentication(report);
     } catch (_) {
       notificationsAvailable = false;
@@ -433,6 +502,7 @@ class AppRuntimeController extends ChangeNotifier {
   void resume() {
     if (_exiting || !_suspended) return;
     _suspended = false;
+    unawaited(_refreshNotificationStatus());
     _immediatePending = true;
     if (initialized && settings.automaticRecoveryEnabled) unawaited(_cycle());
   }

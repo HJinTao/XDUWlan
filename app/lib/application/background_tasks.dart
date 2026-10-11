@@ -4,6 +4,7 @@ import 'package:workmanager/workmanager.dart';
 import 'diagnostics.dart';
 import 'recovery_controller.dart';
 import 'recovery_service.dart';
+import 'runtime_host.dart';
 import '../core/domain.dart';
 import '../platform/credential_store.dart';
 import '../platform/http_transport.dart';
@@ -94,7 +95,10 @@ Future<bool> runMobileBackgroundRecovery() async {
       final notifications = LocalNotificationsMobileHostBridge();
       try {
         await notifications.initializeNotifications(requestPermission: false);
-        await notifications.notifyAuthentication(report);
+        if (await notifications.notificationStatus() ==
+            NotificationAuthorizationStatus.authorized) {
+          await notifications.notifyAuthentication(report);
+        }
       } catch (_) {
         // 后台通知不可用时，安全诊断记录仍然保留。
       }

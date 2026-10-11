@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xduwlan_app/application/settings.dart';
+import 'package:xduwlan_app/application/runtime_host.dart';
 import 'package:xduwlan_app/main.dart';
 
 import '../application/runtime_fakes.dart';
@@ -79,5 +80,18 @@ void main() {
     await tester.tap(find.text('清空'));
     await tester.pumpAndSettle();
     expect(find.text('暂无诊断记录'), findsOneWidget);
+  });
+
+  testWidgets('首页显示通知授权状态并且拒绝状态不展示重复请求入口', (tester) async {
+    final h = RuntimeHarness();
+    addTearDown(h.dispose);
+    h.settings.value = const AppSettings(automaticRecoveryEnabled: false);
+    h.desktop.notificationStatusValue = NotificationAuthorizationStatus.denied;
+
+    await tester.pumpWidget(XduwlanApp(runtime: h.runtime));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('通知：已拒绝'), findsOneWidget);
+    expect(find.text('允许通知'), findsNothing);
   });
 }

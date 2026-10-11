@@ -104,10 +104,115 @@ void main() {
     runtime.dispose();
     recovery.dispose();
   });
+
+  test('首次初始化只在未决定时请求通知权限，并保留已拒绝状态', () async {
+    final host = _MobileHost()
+      ..status = NotificationAuthorizationStatus.notDetermined;
+    final runtime = _mobileRuntime(host: host);
+
+    await runtime.initialize();
+
+    expect(host.permissionRequests, 1);
+    expect(
+      runtime.notificationAuthorizationStatus,
+      NotificationAuthorizationStatus.denied,
+    );
+    await runtime.requestNotificationPermission();
+    expect(host.permissionRequests, 1);
+
+    runtime.dispose();
+    runtime.recovery.dispose();
+  });
+
+  test('后台通知按安全事件键连续去重，未知状态不发送', () async {
+    final host = _MobileHost()
+      ..status = NotificationAuthorizationStatus.authorized;
+    final runtime = _mobileRuntime(host: host);
+    await runtime.initialize();
+    await runtime.setAutomaticRecovery(false);
+
+    final probe = runtime.recovery.service.probe as TestProbe;
+    probe.state = NetworkState.portalRequired;
+    await runtime.recovery.run(
+      OperationKind.authenticate,
+      OperationSource.background,
+      allowAuthentication: true,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(host.notifications, hasLength(1));
+
+    await runtime.recovery.run(
+      OperationKind.authenticate,
+      OperationSource.background,
+      allowAuthentication: true,
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(host.notifications, hasLength(1));
+
+    probe.state = NetworkState.unknown;
+    await runtime.recovery.run(OperationKind.check, OperationSource.background);
+    await Future<void>.delayed(Duration.zero);
+    expect(host.notifications, hasLength(1));
+
+    runtime.dispose();
+    runtime.recovery.dispose();
+  });
+
+  test('挂起时网络路径更新只排队，恢复后执行一次检查', () async {
+    final host = _MobileHost();
+    final runtime = _mobileRuntime(host: host);
+    await runtime.initialize();
+    final probe = runtime.recovery.service.probe as TestProbe;
+    final initialCalls = probe.calls;
+
+    runtime.suspend();
+    runtime.onNetworkPathUpdate();
+    expect(probe.calls, initialCalls);
+    runtime.resume();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(probe.calls, greaterThan(initialCalls));
+    runtime.dispose();
+    runtime.recovery.dispose();
+  });
+
+  test('非 iOS 移动端没有路径来源时仍可安全初始化', () async {
+    final runtime = _mobileRuntime(host: _MobileHost());
+
+    await runtime.initialize();
+
+    expect(runtime.isDesktop, isFalse);
+    expect(runtime.notificationReady, isTrue);
+    runtime.dispose();
+    runtime.recovery.dispose();
+  });
+}
+
+AppRuntimeController _mobileRuntime({required _MobileHost host}) {
+  final accounts = TestAccounts();
+  final recovery = RecoveryController(
+    service: RecoveryService(
+      probe: TestProbe(),
+      portal: TestPortal(),
+      store: accounts,
+    ),
+    store: accounts,
+  );
+  return AppRuntimeController(
+    recovery: recovery,
+    host: host,
+    backgroundScheduler: _Scheduler(),
+    settingsStore: TestSettings(),
+    diagnosticStore: TestDiagnostics(),
+  );
 }
 
 class _MobileHost implements RuntimeHost {
   bool notificationsInitialized = false;
+  NotificationAuthorizationStatus status =
+      NotificationAuthorizationStatus.authorized;
+  int permissionRequests = 0;
+  final notifications = <OperationReport>[];
 
   @override
   Future<void> initializeNotifications() async {
@@ -115,7 +220,20 @@ class _MobileHost implements RuntimeHost {
   }
 
   @override
-  Future<void> notifyAuthentication(OperationReport report) async {}
+  Future<NotificationAuthorizationStatus> notificationStatus() async => status;
+
+  @override
+  Future<NotificationAuthorizationStatus>
+  requestNotificationPermission() async {
+    permissionRequests++;
+    status = NotificationAuthorizationStatus.denied;
+    return status;
+  }
+
+  @override
+  Future<void> notifyAuthentication(OperationReport report) async {
+    notifications.add(report);
+  }
 
   @override
   Future<void> exit() async {}

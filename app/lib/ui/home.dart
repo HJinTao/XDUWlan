@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../application/recovery_controller.dart';
 import '../application/app_runtime_controller.dart';
+import '../application/runtime_host.dart';
 import '../core/presentation.dart';
 import 'diagnostics_page.dart';
 import '../core/domain.dart';
@@ -95,9 +96,14 @@ class XduwlanHome extends StatelessWidget {
                     const Text('已记录待执行操作，当前操作结束后立即执行。'),
                   const SizedBox(height: 24),
                   FilledButton.icon(
-                    onPressed: () => runtime == null
-                        ? controller.login()
-                        : runtime!.authenticate(OperationSource.manual),
+                    onPressed:
+                        runtime != null &&
+                            !runtime!.isDesktop &&
+                            !controller.authenticationAllowed
+                        ? null
+                        : () => runtime == null
+                              ? controller.login()
+                              : runtime!.authenticate(OperationSource.manual),
                     icon: const Icon(Icons.login_rounded, size: 20),
                     label: const Text('一键认证'),
                     style: FilledButton.styleFrom(
@@ -226,6 +232,13 @@ class _NetworkCard extends StatelessWidget {
             controller.busy ? '请稍候，正在处理本次操作。' : detail,
             style: const TextStyle(color: _muted, height: 1.5),
           ),
+          if (!controller.busy) ...[
+            const SizedBox(height: 12),
+            Text(
+              '链路：${_linkMessage(controller.link)} · 校园身份：${_campusMessage(controller.campus)}',
+              style: const TextStyle(color: _muted, fontSize: 13),
+            ),
+          ],
         ],
       ),
     );
@@ -535,6 +548,17 @@ class _RuntimeControls extends StatelessWidget {
       ),
       if (!runtime.trayReady) const Text('托盘准备中'),
       if (!runtime.notificationReady) const Text('系统通知准备中'),
+      if (runtime.notificationReady)
+        Text(
+          '通知：${_notificationStatusMessage(runtime.notificationAuthorizationStatus)}',
+        ),
+      if (runtime.notificationAuthorizationStatus ==
+          NotificationAuthorizationStatus.notDetermined)
+        TextButton.icon(
+          onPressed: runtime.requestNotificationPermission,
+          icon: const Icon(Icons.notifications_outlined),
+          label: const Text('允许通知'),
+        ),
       for (final message in [
         runtime.settingsError,
         runtime.trayError,
@@ -574,6 +598,31 @@ class _RuntimeControls extends StatelessWidget {
     ],
   );
 }
+
+String _linkMessage(NetworkLink link) => switch (link) {
+  NetworkLink.cellular => '蜂窝网络',
+  NetworkLink.wifi => 'Wi-Fi',
+  NetworkLink.wired => '有线网络',
+  NetworkLink.other => '其他网络',
+  NetworkLink.none => '无网络',
+  NetworkLink.unknown => '未知',
+};
+
+String _campusMessage(CampusNetworkState campus) => switch (campus) {
+  CampusNetworkState.unconfirmed => '未确认',
+  CampusNetworkState.authenticationRequired => '需要认证',
+  CampusNetworkState.online => '已联网',
+  CampusNetworkState.unavailable => '不可用',
+  CampusNetworkState.unknown => '未知',
+};
+
+String _notificationStatusMessage(NotificationAuthorizationStatus status) =>
+    switch (status) {
+      NotificationAuthorizationStatus.authorized => '已允许',
+      NotificationAuthorizationStatus.notDetermined => '尚未决定',
+      NotificationAuthorizationStatus.denied => '已拒绝，请在系统设置中允许',
+      NotificationAuthorizationStatus.unavailable => '不可用',
+    };
 
 class _MobileRuntimeControls extends StatelessWidget {
   const _MobileRuntimeControls({required this.runtime});
