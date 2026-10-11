@@ -9,6 +9,7 @@ class SrunPortalClient implements PortalClient {
     Uri? portalUri,
     Uri? entryUri,
     DateTime Function()? clock,
+    this.observationSink,
   }) : _portal = _portalOrigin(
          portalUri ?? Uri.parse('https://w.xidian.edu.cn'),
        ),
@@ -21,6 +22,7 @@ class SrunPortalClient implements PortalClient {
   final Uri _portal;
   final Uri _entry;
   final DateTime Function() _clock;
+  final SrunObservationSink? observationSink;
 
   @override
   Future<PortalContext> prepare(OperationScope scope) async {
@@ -31,6 +33,7 @@ class SrunPortalClient implements PortalClient {
       final response = await scope.run(
         () => transport.request(method, uri, scope),
       );
+      observationSink?.request();
       scope.ensureActive();
       if (response.statusCode >= 300 && response.statusCode < 400) {
         final location = response.location;
@@ -91,8 +94,10 @@ class SrunPortalClient implements PortalClient {
       callback,
       _clock().millisecondsSinceEpoch,
     );
+    observationSink?.inspectLoginRequest(params, credentials, context);
     scope.ensureActive();
     await scope.run(beforeSubmit);
+    observationSink?.submission();
     scope.ensureActive();
     _requireSuccess(await _requestJsonp('/cgi-bin/srun_portal', params, scope));
   }
@@ -112,6 +117,7 @@ class SrunPortalClient implements PortalClient {
     final response = await scope.run(
       () => transport.request('GET', uri, scope),
     );
+    observationSink?.request();
     scope.ensureActive();
     if (response.statusCode >= 300 && response.statusCode < 400) {
       throw const AppFailure(FailureCode.protocol);

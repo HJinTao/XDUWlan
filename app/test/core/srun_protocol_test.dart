@@ -101,6 +101,25 @@ void main() {
       'error': 'ok',
     });
   });
+
+  test('运营商候选后缀只追加一次并保留 Unicode', () {
+    expect(
+      appendOperatorSuffixOnce('fictional-user', '@campus'),
+      'fictional-user@campus',
+    );
+    expect(
+      appendOperatorSuffixOnce('fictional-user@campus', '@campus'),
+      'fictional-user@campus',
+    );
+    expect(appendOperatorSuffixOnce('测试用户😀', '@campus'), '测试用户😀@campus');
+  });
+
+  test('非法候选后缀不能进入协议请求', () {
+    expect(
+      () => appendOperatorSuffixOnce('fictional-user', 'candidate'),
+      throwsA(isA<AppFailure>()),
+    );
+  });
   for (final text in [
     'wrong({"error":"ok"})',
     'xduwlan_cb([])',

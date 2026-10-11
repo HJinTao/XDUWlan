@@ -5,6 +5,26 @@ import 'package:crypto/crypto.dart';
 
 import 'domain.dart';
 
+/// 将受验证的运营商后缀追加到用户名，最多追加一次。
+String appendOperatorSuffixOnce(String username, String suffix) {
+  if (!RegExp(r'^@[A-Za-z0-9._-]{1,32}$').hasMatch(suffix)) {
+    throw const AppFailure(FailureCode.credentialsInvalid);
+  }
+  _requireUnicode(username);
+  return username.endsWith(suffix) ? username : '$username$suffix';
+}
+
+/// 仅供受限验证工具使用的内存观察回调；实现不得保存请求值。
+abstract interface class SrunObservationSink {
+  void request();
+  void submission();
+  void inspectLoginRequest(
+    Map<String, Object> params,
+    Credentials credentials,
+    PortalContext context,
+  );
+}
+
 const _portalAlphabet =
     'LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA';
 const _standardAlphabet =

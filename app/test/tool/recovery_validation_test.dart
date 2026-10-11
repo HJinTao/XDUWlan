@@ -40,6 +40,11 @@ void main() {
     expect(options.duration, const Duration(hours: 2));
     expect(options.background, isTrue);
     expect(options.withoutTray, isTrue);
+    final protocolOptions = ValidationOptions.parse([
+      '--scenario=protocol-observe',
+      '--directory=/tmp/test-only-validation',
+    ])!;
+    expect(protocolOptions.scenario, ValidationScenario.protocolObserve);
   });
 
   test('独立验证目录拒绝产品记录和符号链接且保留原内容', () async {

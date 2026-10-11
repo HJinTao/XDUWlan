@@ -183,6 +183,7 @@ class _ValidationSession {
     this.log,
     this.driver,
     this.host,
+    this.protocolObserver,
   );
   final ValidationOptions options;
   final AppRuntimeController runtime;
@@ -190,6 +191,7 @@ class _ValidationSession {
   final _SafeLog log;
   final ValidationDriver driver;
   final _ValidationDesktop host;
+  final ProtocolObserver? protocolObserver;
   Timer? _poll;
   Timer? _deadline;
   bool _polling = false;
@@ -207,9 +209,14 @@ class _ValidationSession {
     final settings = LocalSettingsStore(directory: files.directory);
     final automatic =
         options.scenario != ValidationScenario.check &&
-        options.scenario != ValidationScenario.authenticate;
+        options.scenario != ValidationScenario.authenticate &&
+        options.scenario != ValidationScenario.protocolObserve;
     await settings.save(AppSettings(automaticRecoveryEnabled: automatic));
     final transport = CountingTransport(IoPortalTransport(), counters);
+    final observationSink =
+        options.scenario == ValidationScenario.protocolObserve
+        ? InMemoryProtocolObservationSink()
+        : null;
     // 现有产品路径保持惰性；工具没有读取或修改账号的其他入口。
     final credentials = CountingCredentials(LocalCredentialStore(), counters);
     final recovery = RecoveryController(
@@ -245,6 +252,24 @@ class _ValidationSession {
       log,
       driver,
       host,
+      options.scenario == ValidationScenario.protocolObserve
+          ? ProtocolObserver(
+              probe: CountingProbe(
+                IoNetworkProbe(transport: transport),
+                counters,
+              ),
+              portal: CountingPortal(
+                SrunPortalClient(
+                  transport: transport,
+                  observationSink: observationSink!,
+                ),
+                counters,
+              ),
+              store: credentials,
+              sink: observationSink,
+              thinkPad: Platform.isLinux,
+            )
+          : null,
     );
     host.beforeExit = session._beforeExit;
     return session;
@@ -285,6 +310,22 @@ class _ValidationSession {
         await runtime.flushDiagnostics();
         await driver.dispatch(ValidationCommand.exit);
       case ValidationScenario.observe:
+      case ValidationScenario.protocolObserve:
+        if (options.scenario == ValidationScenario.protocolObserve) {
+          final observer = protocolObserver;
+          if (observer == null) throw const ValidationFailure();
+          final observation = await observer.observe(
+            candidateReader: files.takeCandidate,
+          );
+          log.write(
+            ValidationOutput.encode(
+              ValidationEvent.protocolObservation,
+              counters: driver.counters,
+              observation: observation,
+            ),
+          );
+          await driver.dispatch(ValidationCommand.exit);
+        }
       case ValidationScenario.exitDuringOperation:
         break;
     }

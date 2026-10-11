@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:xduwlan_app/application/app_runtime_controller.dart';
 import 'package:xduwlan_app/application/diagnostics.dart';
 import 'package:xduwlan_app/core/domain.dart';
+import 'package:xduwlan_app/core/srun_protocol.dart';
 
 enum ValidationScenario {
   check,
   authenticate,
   observe,
+  protocolObserve,
   manualDuringAutomatic,
   exitDuringOperation,
 }
@@ -38,6 +40,7 @@ enum ValidationEvent {
   commandRejected,
   exiting,
   failed,
+  protocolObservation,
 }
 
 /// 不携带输入、文件路径或底层异常。
@@ -62,6 +65,7 @@ class ValidationOptions {
     'check': ValidationScenario.check,
     'authenticate': ValidationScenario.authenticate,
     'observe': ValidationScenario.observe,
+    'protocol-observe': ValidationScenario.protocolObserve,
     'manual-during-auto': ValidationScenario.manualDuringAutomatic,
     'exit-during-operation': ValidationScenario.exitDuringOperation,
   };
@@ -114,11 +118,296 @@ class ValidationOptions {
   }
 }
 
+enum ProtocolVerificationState { notAttempted, loginSucceeded, verified }
+
+enum ProtocolObservationFailure {
+  none,
+  unsupportedHost,
+  candidateUnavailable,
+  candidateInvalid,
+  portalUnavailable,
+  loginFailed,
+  verificationFailed,
+  unexpected,
+}
+
+class ProtocolObservation {
+  const ProtocolObservation({
+    required this.candidateAccepted,
+    required this.encodingRulePassed,
+    required this.verificationState,
+    required this.requests,
+    required this.submissions,
+    required this.credentialReads,
+    required this.elapsedMilliseconds,
+    required this.failure,
+  });
+  final bool candidateAccepted;
+  final bool encodingRulePassed;
+  final ProtocolVerificationState verificationState;
+  final int requests;
+  final int submissions;
+  final int credentialReads;
+  final int elapsedMilliseconds;
+  final ProtocolObservationFailure failure;
+  Map<String, Object> toJson() => {
+    'candidateAccepted': candidateAccepted,
+    'encodingRulePassed': encodingRulePassed,
+    'verificationState': verificationState.name,
+    'requests': requests,
+    'submissions': submissions,
+    'credentialReads': credentialReads,
+    'elapsedMilliseconds': elapsedMilliseconds,
+    'failure': failure.name,
+  };
+  @override
+  String toString() => 'ProtocolObservation(${toJson()})';
+}
+
+abstract interface class ProtocolObservationSink
+    implements SrunObservationSink {
+  bool get encodingRulePassed;
+  int get requests;
+  int get submissions;
+  @override
+  void request();
+  @override
+  void submission();
+  @override
+  void inspectLoginRequest(
+    Map<String, Object> params,
+    Credentials credentials,
+    PortalContext context,
+  );
+}
+
+class InMemoryProtocolObservationSink implements ProtocolObservationSink {
+  bool _encodingRulePassed = false;
+  int _requests = 0;
+  int _submissions = 0;
+  @override
+  bool get encodingRulePassed => _encodingRulePassed;
+  @override
+  int get requests => _requests;
+  @override
+  int get submissions => _submissions;
+  @override
+  void request() => _requests++;
+  @override
+  void submission() => _submissions++;
+  @override
+  void inspectLoginRequest(
+    Map<String, Object> params,
+    Credentials credentials,
+    PortalContext context,
+  ) {
+    final username = params['username'];
+    final info = params['info'];
+    final checksum = params['chksum'];
+    final password = params['password'];
+    _encodingRulePassed =
+        username == credentials.username &&
+        info is String &&
+        checksum is String &&
+        password is String &&
+        password.startsWith('{MD5}') &&
+        password != credentials.password &&
+        params['ip'] == context.ip &&
+        params['ac_id'] == context.acid;
+  }
+
+  @override
+  String toString() =>
+      'InMemoryProtocolObservationSink(encodingRulePassed=$_encodingRulePassed, requests=$_requests, submissions=$_submissions)';
+}
+
+class ProtocolObserver {
+  ProtocolObserver({
+    required this.probe,
+    required this.portal,
+    required this.store,
+    required this.sink,
+    required this.thinkPad,
+  });
+  final NetworkProbe probe;
+  final PortalClient portal;
+  final CredentialStore store;
+  final ProtocolObservationSink sink;
+  final bool thinkPad;
+
+  Future<ProtocolObservation> observe({
+    required Future<String?> Function() candidateReader,
+  }) async {
+    final started = DateTime.now();
+    var credentialReads = 0;
+    try {
+      if (!thinkPad) {
+        return _result(
+          started,
+          credentialReads,
+          ProtocolObservationFailure.unsupportedHost,
+        );
+      }
+      final candidate = await candidateReader();
+      if (candidate == null || candidate.isEmpty) {
+        return _result(
+          started,
+          credentialReads,
+          ProtocolObservationFailure.candidateUnavailable,
+        );
+      }
+      if (!RegExp(r'^@[A-Za-z0-9._-]{1,32}$').hasMatch(candidate)) {
+        return _result(
+          started,
+          credentialReads,
+          ProtocolObservationFailure.candidateInvalid,
+        );
+      }
+      final scope = OperationScope();
+      try {
+        sink.request();
+        if (_portalState(await probe.check(scope)) !=
+            NetworkState.portalRequired) {
+          return _result(
+            started,
+            credentialReads,
+            ProtocolObservationFailure.portalUnavailable,
+          );
+        }
+        final context = await portal.prepare(scope);
+        final loaded = await store.load();
+        credentialReads++;
+        if (loaded == null) {
+          return _result(
+            started,
+            credentialReads,
+            ProtocolObservationFailure.candidateUnavailable,
+          );
+        }
+        final effective = Credentials(
+          appendOperatorSuffixOnce(loaded.username.trim(), candidate),
+          loaded.password,
+        );
+        await portal.authenticate(
+          context,
+          effective,
+          scope,
+          beforeSubmit: () async {},
+        );
+        final loginSucceeded = sink.submissions == 1;
+        sink.request();
+        final verified =
+            _portalState(await probe.check(scope)) == NetworkState.online;
+        return _result(
+          started,
+          credentialReads,
+          verified
+              ? ProtocolObservationFailure.none
+              : ProtocolObservationFailure.verificationFailed,
+          state: verified
+              ? ProtocolVerificationState.verified
+              : loginSucceeded
+              ? ProtocolVerificationState.loginSucceeded
+              : ProtocolVerificationState.notAttempted,
+          accepted: verified && loginSucceeded && sink.encodingRulePassed,
+        );
+      } finally {
+        scope.finish();
+      }
+    } on AppFailure catch (_) {
+      return _result(
+        started,
+        credentialReads,
+        ProtocolObservationFailure.loginFailed,
+      );
+    } catch (_) {
+      return _result(
+        started,
+        credentialReads,
+        ProtocolObservationFailure.unexpected,
+      );
+    }
+  }
+
+  ProtocolObservation _result(
+    DateTime started,
+    int credentialReads,
+    ProtocolObservationFailure failure, {
+    ProtocolVerificationState state = ProtocolVerificationState.notAttempted,
+    bool accepted = false,
+  }) => ProtocolObservation(
+    candidateAccepted: accepted,
+    encodingRulePassed: sink.encodingRulePassed,
+    verificationState: state,
+    requests: sink.requests,
+    submissions: sink.submissions,
+    credentialReads: credentialReads,
+    elapsedMilliseconds: DateTime.now().difference(started).inMilliseconds,
+    failure: failure,
+  );
+
+  NetworkState _portalState(Object value) => value is NetworkObservation
+      ? value.portal
+      : value is NetworkState
+      ? value
+      : NetworkState.unknown;
+}
+
+class ProtocolPromotionGate {
+  int _accepted = 0;
+  bool _resetAccepted = false;
+  bool get promotable => _accepted >= 2 && _resetAccepted;
+  void record(
+    ProtocolObservation observation, {
+    required bool afterNetworkReset,
+  }) {
+    if (!observation.candidateAccepted ||
+        !observation.encodingRulePassed ||
+        observation.verificationState != ProtocolVerificationState.verified ||
+        observation.failure != ProtocolObservationFailure.none) {
+      return;
+    }
+    _accepted++;
+    _resetAccepted = _resetAccepted || afterNetworkReset;
+  }
+}
+
 class ValidationFiles {
   ValidationFiles._(this.directory);
   final Directory directory;
   File get command => File('${directory.path}/command');
   File get reports => File('${directory.path}/reports.jsonl');
+  File get candidate => File('${directory.path}/candidate');
+
+  Future<String?> takeCandidate() async {
+    final type = await FileSystemEntity.type(
+      candidate.path,
+      followLinks: false,
+    );
+    if (type == FileSystemEntityType.notFound) return null;
+    if (type != FileSystemEntityType.file) throw const ValidationFailure();
+    final capturedDirectory = await directory.createTemp('.xduwlan-candidate-');
+    final captured = File('${capturedDirectory.path}/candidate');
+    try {
+      await candidate.rename(captured.path);
+      final bytes = await captured.readAsBytes();
+      if (bytes.length > 128) throw const ValidationFailure();
+      final value = utf8.decode(bytes);
+      if (value.contains('\n') || value.contains('\r')) {
+        throw const ValidationFailure();
+      }
+      return value;
+    } on FormatException {
+      throw const ValidationFailure();
+    } finally {
+      try {
+        if (await captured.exists()) await captured.delete();
+        await capturedDirectory.delete();
+      } catch (_) {
+        throw const ValidationFailure();
+      }
+    }
+  }
 
   /// 只使用新建私有会话目录；指定根目录须为空且不指向产品支持目录。
   static Future<ValidationFiles> create(
@@ -268,12 +557,14 @@ class ValidationOutput {
     OperationReport? report,
     required ValidationCounters counters,
     RecoveryStage? phase,
+    ProtocolObservation? observation,
     bool? windowVisible,
     bool? trayAvailable,
   }) => jsonEncode({
     'identity': 'xduwlan-recovery-validation',
     'event': event.name,
     if (report != null) 'report': DiagnosticRecord.fromReport(report).toJson(),
+    if (observation != null) 'protocolObservation': observation.toJson(),
     'counts': counters.toJson(),
     if (phase != null) 'phase': phase.name,
     'windowVisible': ?windowVisible,
@@ -309,7 +600,7 @@ class CountingProbe implements NetworkProbe {
   final NetworkProbe inner;
   final ValidationCounters counters;
   @override
-  Future<NetworkState> check(OperationScope scope) {
+  Future<Object> check(OperationScope scope) {
     counters.probes++;
     return inner.check(scope);
   }
