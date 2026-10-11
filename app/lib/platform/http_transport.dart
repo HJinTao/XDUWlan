@@ -3,7 +3,39 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import '../core/domain.dart';
+
+/// 仅供 Debug/测试观察使用的回环 HTTP 代理。
+///
+/// 代理地址不参与业务报告，也不写入设置或诊断文件。
+class HttpProxy {
+  HttpProxy(this.host, this.port) {
+    validate();
+  }
+
+  final String host;
+  final int port;
+
+  void validate() {
+    final parsed = InternetAddress.tryParse(host);
+    final loopback = host == 'localhost' || (parsed?.isLoopback ?? false);
+    if (!loopback || port < 1 || port > 65535) {
+      throw const AppFailure(FailureCode.protocol);
+    }
+  }
+
+  String get pacAuthority {
+    validate();
+    final parsed = InternetAddress.tryParse(host);
+    final ipv6 = parsed?.type == InternetAddressType.IPv6;
+    return ipv6 ? '[$host]:$port' : '$host:$port';
+  }
+
+  @override
+  String toString() => 'HttpProxy(<redacted>)';
+}
 
 /// 每次请求独立管理连接，取消不会影响其他操作。
 class IoPortalTransport implements PortalTransport {
@@ -11,15 +43,31 @@ class IoPortalTransport implements PortalTransport {
     this.requestTimeout = const Duration(seconds: 5),
     this.maxBodyBytes = 65536,
     this.securityContext,
+    HttpProxy? testProxy,
   }) {
     if (requestTimeout <= Duration.zero || maxBodyBytes < 1) {
       throw const AppFailure(FailureCode.protocol);
     }
+    if (testProxy != null) {
+      if (kReleaseMode) throw const AppFailure(FailureCode.protocol);
+      testProxy.validate();
+    }
+    _testProxy = testProxy;
   }
 
   final Duration requestTimeout;
   final int maxBodyBytes;
   final SecurityContext? securityContext;
+  late final HttpProxy? _testProxy;
+
+  /// 返回安全 PAC 片段；默认及非 HTTP(S) 目标均直连。
+  String proxyFor(Uri url) {
+    final proxy = _testProxy;
+    if (proxy == null || (url.scheme != 'http' && url.scheme != 'https')) {
+      return 'DIRECT';
+    }
+    return 'PROXY ${proxy.pacAuthority}';
+  }
 
   @override
   Future<PortalResponse> request(
@@ -37,7 +85,7 @@ class IoPortalTransport implements PortalTransport {
     }
 
     final client = HttpClient(context: securityContext)
-      ..findProxy = ((_) => 'DIRECT')
+      ..findProxy = proxyFor
       ..autoUncompress = false;
     HttpClientRequest? outgoing;
     AppFailure? stopped;

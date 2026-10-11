@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'application/app_runtime_controller.dart';
@@ -22,7 +23,10 @@ import 'ui/home.dart';
 /// 首帧前仅同步装配对象；所有外部能力在首帧后初始化。
 void main(List<String> args) {
   final store = LocalCredentialStore();
-  final transport = IoPortalTransport();
+  final background =
+      args.contains('--background') ||
+      Platform.executableArguments.contains('--background');
+  final transport = IoPortalTransport(testProxy: _debugProxy(background));
   final pathSource = Platform.isIOS ? MethodChannelNetworkPathSource() : null;
   final recovery = RecoveryController(
     service: RecoveryService(
@@ -40,13 +44,27 @@ void main(List<String> args) {
     settingsStore: LocalSettingsStore(),
     diagnosticStore: LocalDiagnosticStore(),
     backgroundScheduler: mobile ? WorkmanagerBackgroundTaskScheduler() : null,
-    background:
-        args.contains('--background') ||
-        Platform.executableArguments.contains('--background'),
+    background: background,
   );
   runApp(
     XduwlanApp(runtime: runtime, ownsRuntime: true, pathSource: pathSource),
   );
+}
+
+/// 代理仅通过显式 Debug/测试 dart-define 注入，且永远不进入后台任务。
+HttpProxy? _debugProxy(bool background) {
+  const enabled = bool.fromEnvironment(
+    'XDUWLAN_TEST_PROXY_ENABLED',
+    defaultValue: false,
+  );
+  if (!enabled || kReleaseMode || background) return null;
+  const host = String.fromEnvironment('XDUWLAN_TEST_PROXY_HOST');
+  const portText = String.fromEnvironment('XDUWLAN_TEST_PROXY_PORT');
+  final port = int.tryParse(portText);
+  if (host.isEmpty || port == null) {
+    throw const AppFailure(FailureCode.protocol);
+  }
+  return HttpProxy(host, port);
 }
 
 class XduwlanApp extends StatefulWidget {
