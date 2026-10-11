@@ -212,11 +212,15 @@ class _ValidationSession {
         options.scenario != ValidationScenario.authenticate &&
         options.scenario != ValidationScenario.protocolObserve;
     await settings.save(AppSettings(automaticRecoveryEnabled: automatic));
-    final transport = CountingTransport(IoPortalTransport(), counters);
     final observationSink =
         options.scenario == ValidationScenario.protocolObserve
         ? InMemoryProtocolObservationSink()
         : null;
+    final transport = CountingTransport(
+      IoPortalTransport(),
+      counters,
+      observationSink: observationSink,
+    );
     // 现有产品路径保持惰性；工具没有读取或修改账号的其他入口。
     final credentials = CountingCredentials(LocalCredentialStore(), counters);
     final recovery = RecoveryController(

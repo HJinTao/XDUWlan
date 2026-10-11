@@ -33,7 +33,6 @@ class SrunPortalClient implements PortalClient {
       final response = await scope.run(
         () => transport.request(method, uri, scope),
       );
-      observationSink?.request();
       scope.ensureActive();
       if (response.statusCode >= 300 && response.statusCode < 400) {
         final location = response.location;
@@ -117,7 +116,6 @@ class SrunPortalClient implements PortalClient {
     final response = await scope.run(
       () => transport.request('GET', uri, scope),
     );
-    observationSink?.request();
     scope.ensureActive();
     if (response.statusCode >= 300 && response.statusCode < 400) {
       throw const AppFailure(FailureCode.protocol);

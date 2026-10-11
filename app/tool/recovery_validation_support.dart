@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:xduwlan_app/application/app_runtime_controller.dart';
 import 'package:xduwlan_app/application/diagnostics.dart';
 import 'package:xduwlan_app/core/domain.dart';
@@ -141,6 +143,8 @@ class ProtocolObservation {
     required this.credentialReads,
     required this.elapsedMilliseconds,
     required this.failure,
+    this.candidateIdentity,
+    this.runIdentity,
   });
   final bool candidateAccepted;
   final bool encodingRulePassed;
@@ -150,6 +154,12 @@ class ProtocolObservation {
   final int credentialReads;
   final int elapsedMilliseconds;
   final ProtocolObservationFailure failure;
+
+  /// 仅供同一候选的离线提升门比较，永不序列化。
+  final String? candidateIdentity;
+
+  /// 每次观察生成的内部运行标识，永不序列化。
+  final String? runIdentity;
   Map<String, Object> toJson() => {
     'candidateAccepted': candidateAccepted,
     'encodingRulePassed': encodingRulePassed,
@@ -239,6 +249,8 @@ class ProtocolObserver {
     required Future<String?> Function() candidateReader,
   }) async {
     final started = DateTime.now();
+    final runIdentity = _nextProtocolRunIdentity();
+    String? candidateIdentity;
     var credentialReads = 0;
     try {
       if (!thinkPad) {
@@ -263,9 +275,9 @@ class ProtocolObserver {
           ProtocolObservationFailure.candidateInvalid,
         );
       }
+      candidateIdentity = _candidateIdentity(candidate);
       final scope = OperationScope();
       try {
-        sink.request();
         if (_portalState(await probe.check(scope)) !=
             NetworkState.portalRequired) {
           return _result(
@@ -295,7 +307,6 @@ class ProtocolObserver {
           beforeSubmit: () async {},
         );
         final loginSucceeded = sink.submissions == 1;
-        sink.request();
         final verified =
             _portalState(await probe.check(scope)) == NetworkState.online;
         return _result(
@@ -310,6 +321,8 @@ class ProtocolObserver {
               ? ProtocolVerificationState.loginSucceeded
               : ProtocolVerificationState.notAttempted,
           accepted: verified && loginSucceeded && sink.encodingRulePassed,
+          candidateIdentity: candidateIdentity,
+          runIdentity: runIdentity,
         );
       } finally {
         scope.finish();
@@ -319,12 +332,16 @@ class ProtocolObserver {
         started,
         credentialReads,
         ProtocolObservationFailure.loginFailed,
+        candidateIdentity: candidateIdentity,
+        runIdentity: runIdentity,
       );
     } catch (_) {
       return _result(
         started,
         credentialReads,
         ProtocolObservationFailure.unexpected,
+        candidateIdentity: candidateIdentity,
+        runIdentity: runIdentity,
       );
     }
   }
@@ -335,6 +352,8 @@ class ProtocolObserver {
     ProtocolObservationFailure failure, {
     ProtocolVerificationState state = ProtocolVerificationState.notAttempted,
     bool accepted = false,
+    String? candidateIdentity,
+    String? runIdentity,
   }) => ProtocolObservation(
     candidateAccepted: accepted,
     encodingRulePassed: sink.encodingRulePassed,
@@ -344,6 +363,8 @@ class ProtocolObserver {
     credentialReads: credentialReads,
     elapsedMilliseconds: DateTime.now().difference(started).inMilliseconds,
     failure: failure,
+    candidateIdentity: candidateIdentity,
+    runIdentity: runIdentity,
   );
 
   NetworkState _portalState(Object value) => value is NetworkObservation
@@ -353,22 +374,58 @@ class ProtocolObserver {
       : NetworkState.unknown;
 }
 
+int _protocolRunSequence = 0;
+
+String _nextProtocolRunIdentity() =>
+    '${DateTime.now().microsecondsSinceEpoch}-${++_protocolRunSequence}';
+
+String _candidateIdentity(String candidate) =>
+    sha256.convert(utf8.encode(candidate)).toString();
+
+/// 由固定的无线 down/up 完成顺序产生的内部证据；不能用布尔值替代。
+class ProtocolResetEvidence {
+  const ProtocolResetEvidence._(this.identity);
+  final String identity;
+}
+
+class ProtocolResetEvidenceBuilder {
+  bool _downCompleted = false;
+  int _sequence = 0;
+
+  void recordDownCompleted() => _downCompleted = true;
+
+  ProtocolResetEvidence? recordUpCompleted() {
+    if (!_downCompleted) return null;
+    _downCompleted = false;
+    return ProtocolResetEvidence._(
+      'reset-${DateTime.now().microsecondsSinceEpoch}-${++_sequence}',
+    );
+  }
+}
+
 class ProtocolPromotionGate {
-  int _accepted = 0;
+  String? _candidateIdentity;
+  final Set<String> _runs = {};
   bool _resetAccepted = false;
-  bool get promotable => _accepted >= 2 && _resetAccepted;
+  bool get promotable => _runs.length >= 2 && _resetAccepted;
   void record(
     ProtocolObservation observation, {
-    required bool afterNetworkReset,
+    ProtocolResetEvidence? resetEvidence,
   }) {
     if (!observation.candidateAccepted ||
         !observation.encodingRulePassed ||
         observation.verificationState != ProtocolVerificationState.verified ||
-        observation.failure != ProtocolObservationFailure.none) {
+        observation.failure != ProtocolObservationFailure.none ||
+        observation.candidateIdentity == null ||
+        observation.runIdentity == null) {
       return;
     }
-    _accepted++;
-    _resetAccepted = _resetAccepted || afterNetworkReset;
+    final candidate = observation.candidateIdentity!;
+    final run = observation.runIdentity!;
+    if (_candidateIdentity != null && _candidateIdentity != candidate) return;
+    if (!_runs.add(run)) return;
+    _candidateIdentity = candidate;
+    _resetAccepted = _resetAccepted || resetEvidence != null;
   }
 }
 
@@ -573,9 +630,10 @@ class ValidationOutput {
 }
 
 class CountingTransport implements PortalTransport {
-  CountingTransport(this.inner, this.counters);
+  CountingTransport(this.inner, this.counters, {this.observationSink});
   final PortalTransport inner;
   final ValidationCounters counters;
+  final ProtocolObservationSink? observationSink;
   @override
   Future<PortalResponse> request(
     String method,
@@ -583,6 +641,7 @@ class CountingTransport implements PortalTransport {
     OperationScope scope,
   ) async {
     counters.requests++;
+    observationSink?.request();
     counters.activeRequests++;
     if (counters.activeRequests > counters.maxActiveRequests) {
       counters.maxActiveRequests = counters.activeRequests;

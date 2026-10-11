@@ -20,3 +20,17 @@
 ## 担忧与限制
 
 真实候选仍需在授权 ThinkPad 上分别完成两次成功认证和独立 HTTPS 复查，且至少一次经过固定无线 `down/up`；本提交没有把任何真实观察结论提升为产品默认规则。共享工作区同时包含其他任务对网络观察/恢复模块的改动，本任务未覆盖或回滚这些来源不明的改动。
+
+## Review fix
+
+- `ProtocolObservation` 现在携带仅供内存比较的候选 SHA-256 摘要和单轮运行标识；两者不进入 JSON 或 `toString`。`ProtocolPromotionGate` 只接受同一候选、两个不同运行标识的成功观察，并拒绝重复运行或不同候选。
+- `ProtocolResetEvidenceBuilder` 只在已记录完成的 `down` 后接收到 `up` 时生成一次性重置证据；提升门不再接受调用方传入的任意布尔值。
+- 请求计数统一由验证工具的 `CountingTransport` 在实际调用传输层前记录，覆盖 HTTPS 主探测、HTTP 回退、Portal 导航、challenge 和 login；移除了观察器及 Srun/Probe 中的合成请求计数。
+
+## Review fix tests
+
+- `flutter analyze lib/platform/network_probe.dart lib/platform/srun_client.dart tool/recovery_validation_support.dart tool/recovery_validation.dart test/tool/protocol_observation_test.dart`：通过。
+- `flutter test --no-pub test/tool/protocol_observation_test.dart test/core/srun_protocol_test.dart test/platform/network_probe_test.dart test/platform/srun_client_test.dart test/tool/recovery_validation_test.dart`：84 项通过。
+- `git diff --check`：通过。
+
+本次修复仍只使用虚构输入与本地 fake transport，没有访问真实网络、校园网、ThinkPad 或真实凭据。
