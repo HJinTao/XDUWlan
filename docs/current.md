@@ -18,6 +18,18 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 
 `tool/recovery_validation.dart` 是手动 Linux 开发入口，独立构建与标识，正常产品入口不调用。工具使用生产 `IoNetworkProbe`、`SrunPortalClient`、凭据接口、`RecoveryController` 与 `AppRuntimeController`；计数包装不建立另一套认证或调度。固定命令经原子捕获后调用生产运行时，设置、诊断和安全报告写入新建私有会话目录，不访问真实登录启动项；用法见 [README](../README.md#手动-linux-恢复验证)。
 
+协议观察场景 `--scenario=protocol-observe` 已加入该入口。它只接受 Linux/ThinkPad、本次私有会话目录中的一次性候选文件，读取现有凭据并在内存中完成一轮 challenge/login 与独立 HTTPS 复查；输出为固定脱敏布尔值、计数、耗时和失败类别。候选、凭据、认证派生字段和响应内容不会写入输出。规则提升仍需两次独立成功且至少一次经过固定无线 `down/up`，当前没有真实校园网观察结论，产品默认映射未改变。
+
+移动端真实环境验证固定使用授权的 ThinkPad Ubuntu 实验机。Mac 与 ThinkPad 通过网线 SSH 相连；ThinkPad 的无线接口使用 NetworkManager 连接 `xduwlan-lab-b` 和随机 MAC，网络上下线只通过固定的 `nmcli connection down/up xduwlan-lab-b` 操作。ThinkPad 现有用户信息文件只由授权 Linux 验证入口惰性读取；不复制账号、密码、SSID、IP、MAC、认证参数或原始响应。
+
+ThinkPad 负责真实网络控制、NetworkManager 状态、Linux 认证结果和主机侧脱敏证据；其 `down/up` 只改变 ThinkPad 自身无线连接，不控制 iPhone 的网络路径。iOS 真机独立负责观察当时的链路显示、认证按钮是否禁用、前后台状态和本地通知；iOS 应用不提供上下线控制，需要另一种路径时只能使用 iOS 系统控制或现有网络条件。两端证据按时间和测试批次关联，离线测试、模拟器测试或单侧记录不能替代对应的真实设备证据。
+
+新增 `app/tool/thinkpad_lab.dart` 固定动作控制器，接受 `status`、`down`、`up`、`observe` 和受限时长/批次参数。它只构造固定的 NetworkManager 命令，输出固定类别的脱敏 JSON；证据目录必须新建且为空。当前仅完成离线测试，未在真实 ThinkPad 执行 `down/up`。
+
+iOS Simulator 的补充测试不修改 macOS 系统代理。Mac 只建立到 ThinkPad 测试 HTTP CONNECT 代理的 SSH 本地端口转发，XDUWlan Debug/测试构造显式注入回环代理端口；当前生产传输默认 `DIRECT`，Release 和后台任务不启用代理。ThinkPad 侧必须看到代理命中和安全计数，才能证明 XDUWlan 请求经过该观察链路；该证据只用于 Portal/协议观察，不用于蜂窝路径或真实 iOS 通知结论。
+
+`IoPortalTransport` 的 `testProxy` 只接受回环主机和数字端口，代理地址仅保留在内存中；默认、Release 和后台构造都返回 `DIRECT`。`app/test/tool/simulator_proxy_smoke.sh` 仅用于授权环境的手动烟测，限制 RFC1918 SSH 目标、数字端口、固定本地转发和一次无凭据探测；当前未执行真实 SSH 或 ThinkPad 代理验证。
+
 ## 已验证事实
 
 2026-10-10 至 2026-10-11 的本地验证只使用虚构输入、临时目录、内存传输或本地 HTTP/TLS 服务，未使用真实账号、访问校园网、注册用户登录项或改变系统网络设置。
@@ -30,6 +42,7 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 - macOS 原生离线 Release 入口 `test/native_smoke.dart` 使用独立临时记录和虚构账号，分别以正常模式、`--background` 和系统再激活运行。已验证菜单栏托盘创建、正常模式可见、后台首次启动保持隐藏但完成首帧初始化、关闭隐藏、恢复窗口、通知送达、诊断与显式退出（进程退出码 0）。系统再激活通过 Launch Services 触发，与 Dock 再激活共用原生回调；未模拟鼠标点击 Dock。
 - 当前产品入口的 `flutter build macos --release -t lib/main.dart` 已在本机构建成功，产物为 `app/build/macos/Build/Products/Release/XDUWlan.app`；构建成功不代表已签名发行或真实网络验收。
 - 当前产品入口的 `flutter build ios --no-codesign` 已在本机构建成功，产物为 `app/build/ios/iphoneos/Runner.app`；工程配置为 iOS 18、移动包标识 `cn.xduwlan.mobile`。
+- 本轮 iOS 离线实现已加入 `NWPathMonitor` 脱敏链路事实、认证安全门、本地通知授权状态与连续事件去重；iOS Simulator/Flutter 测试覆盖畸形路径回退、不可用/蜂窝零请求、Wi-Fi Portal 矩阵、通知拒绝状态和移动认证按钮门控。`flutter build ios --no-codesign` 与 iOS Simulator Debug 构建通过。
 - iOS 18.7.1 真机 `Hhhjt的iPhone` 已完成 Release 签名、安装和启动，使用虚构数据启动验证；尚未进行真实校园网认证。
 - iOS 启动白屏/闪退回归已定位并修复：Workmanager 在首轮初始化时先提交 `BGAppRefreshTask`，但 iOS launch handler 尚未注册，系统抛出 `No launch handler registered for task with identifier cn.xduwlan.mobile.recovery`；`AppDelegate` 现于应用启动阶段提前注册任务标识。iOS 18.6 模拟器已重新安装、启动并显示完整首页，日志无该异常。
 - Flutter 分析、完整 Dart 测试和移动运行时测试通过；`flutter build apk --debug` 已构建成功。Android 模拟器启动后未保持 ADB 连接，尚未完成 Android 安装/启动验收。
@@ -45,7 +58,7 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 | macOS | Dart 自动测试、插件边界测试、原生临时目录测试、本机产品 Release 构建；最终 d9059dd CI 原生检查、Release 构建和包核对 | 真实登录启动、鼠标点击 Dock、真实系统休眠/恢复、安装签名与授权校园网环境 |
 | Linux | 调度与平台接口离线测试；启动项原生边界测试；最终 d9059dd CI 原生检查、Release 构建、包核对；Wayland 产品启动、SNI 托盘、隐藏/恢复、单实例和退出；1 轮授权断线恢复 | 两小时持续运行；真实登录启动与休眠恢复；GNOME 无宿主降级和通知送达的完整桌面验收 |
 | Windows | 共享 Dart 分析/测试、插件注册、后台启动与电源事件源码兼容；最终 d9059dd 测试、Release 构建、包核对和 UTF-8 安全错误回归 | 桌面交互不作为本期要求 |
-| iOS | iOS 18 工程、后台任务声明、无签名 Release 构建、共享 Dart 测试、iOS 18.6 模拟器首帧、iOS 18.7.1 真机签名安装启动 | 前后台生命周期、通知权限和系统后台任务实际触发；真实校园网环境 |
+| iOS | iOS 18 工程、后台任务声明、无签名 Release 构建、共享 Dart 测试、iOS 18.6 模拟器首帧、路径/通知离线测试与 iOS Simulator Debug 构建 | 当前无物理 iOS 机：真机链路类型、系统通知授权变化、前后台本地通知闭环和授权校园网环境仍待验收。ThinkPad 只验证独立的校园网协议链 |
 | Android | API 26 工程、WorkManager 配置、共享 Dart 测试 | 安装 Android SDK 后的调试构建、API 26+ 模拟器/真机前台流程、通知权限和后台任务触发 |
 
 `local_notifier` 0.1.6 的 macOS 实现仍使用已弃用的 `NSUserNotification` API，并依赖 CocoaPods；当前能构建与运行，但 Flutter 提示未来版本可能要求 Swift Package Manager。后续 SDK/插件升级需复核通知与构建兼容性。

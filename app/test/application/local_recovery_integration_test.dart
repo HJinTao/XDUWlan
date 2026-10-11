@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:xduwlan_app/application/recovery_service.dart';
 import 'package:xduwlan_app/core/domain.dart';
 import 'package:xduwlan_app/platform/http_transport.dart';
+import 'package:xduwlan_app/platform/ios_network_path.dart';
 import 'package:xduwlan_app/platform/network_probe.dart';
 import 'package:xduwlan_app/platform/srun_client.dart';
 
@@ -69,6 +70,15 @@ class _WifiProbe implements NetworkProbe {
       authenticationAllowed: state == NetworkState.portalRequired,
     );
   }
+}
+
+class _WifiPathSource implements NetworkPathSource {
+  @override
+  Future<NetworkPathSnapshot> current() async =>
+      const NetworkPathSnapshot(link: NetworkLink.wifi, available: true);
+
+  @override
+  Stream<NetworkPathSnapshot> get pathUpdates => const Stream.empty();
 }
 
 void main() {
@@ -193,6 +203,7 @@ void main() {
             probeUrl: probeUri,
             portalUrl: portalOrigin,
             fallbackUrl: entryUri,
+            pathSource: _WifiPathSource(),
           ),
         ),
         portal: SrunPortalClient(
