@@ -1,11 +1,17 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+#include <unistd.h>
+
+#include <cstdlib>
+#include <memory>
+#include <string>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
 
 #include "flutter/generated_plugin_registrant.h"
+#include "autostart_file.h"
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -13,6 +19,7 @@ struct _MyApplication {
   gboolean background;
   GtkWindow* window;
   FlMethodChannel* lifecycle_channel;
+  FlMethodChannel* startup_channel;
   GCancellable* lifecycle_cancellable;
   GDBusConnection* sleep_connection;
   guint sleep_subscription;
@@ -104,6 +111,94 @@ static void lifecycle_method_cb(FlMethodChannel* channel, FlMethodCall* call,
   }
 }
 
+struct StartupRequest {
+  FlMethodCall* call;
+  std::string config_home;
+  std::string executable;
+  bool change;
+  bool enabled;
+};
+
+static void startup_request_free(gpointer data) {
+  auto* request = static_cast<StartupRequest*>(data);
+  g_clear_object(&request->call);
+  delete request;
+}
+
+static void startup_worker(GTask* task, gpointer source, gpointer data,
+                           GCancellable* cancellable) {
+  if (g_task_return_error_if_cancelled(task)) return;
+  auto* request = static_cast<StartupRequest*>(data);
+  xduwlan::AutostartFile startup(request->config_home, request->executable);
+  auto* result = new xduwlan::StartupResult(request->change
+      ? startup.SetEnabled(request->enabled) : startup.IsEnabled());
+  g_task_return_pointer(task, result, [](gpointer value) {
+    delete static_cast<xduwlan::StartupResult*>(value);
+  });
+}
+
+static void startup_complete(GObject* source, GAsyncResult* response,
+                             gpointer data) {
+  GTask* task = G_TASK(response);
+  auto* request = static_cast<StartupRequest*>(g_task_get_task_data(task));
+  // GTask 数据析构可能在工作线程执行；Flutter 对象由完成回调在主线程释放。
+  g_autoptr(FlMethodCall) call = request->call;
+  request->call = nullptr;
+  g_autoptr(GError) error = nullptr;
+  std::unique_ptr<xduwlan::StartupResult> result(
+      static_cast<xduwlan::StartupResult*>(g_task_propagate_pointer(task, &error)));
+  if (g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED)) return;
+  if (result == nullptr) {
+    fl_method_call_respond_error(call, "startup_io_failed", nullptr,
+                                nullptr, nullptr);
+  } else if (result->error != nullptr) {
+    fl_method_call_respond_error(call, result->error, nullptr,
+                                nullptr, nullptr);
+  } else {
+    g_autoptr(FlValue) value = fl_value_new_bool(result->enabled);
+    fl_method_call_respond_success(call, value, nullptr);
+  }
+}
+
+// 路径由宿主读取；文件 I/O 在工作线程执行，不阻塞账号配置和窗口交互。
+static void startup_method_cb(FlMethodChannel* channel, FlMethodCall* call,
+                              gpointer data) {
+  const gchar* method = fl_method_call_get_name(call);
+  gboolean change = g_strcmp0(method, "setEnabled") == 0;
+  if (!change && g_strcmp0(method, "isEnabled") != 0) {
+    fl_method_call_respond_not_implemented(call, nullptr);
+    return;
+  }
+  FlValue* arguments = fl_method_call_get_args(call);
+  if (change && (arguments == nullptr ||
+                 fl_value_get_type(arguments) != FL_VALUE_TYPE_BOOL)) {
+    fl_method_call_respond_error(call, "startup_change_failed", nullptr,
+                                nullptr, nullptr);
+    return;
+  }
+  char path[4096];
+  ssize_t length = readlink("/proc/self/exe", path, sizeof(path));
+  if (length <= 0 || static_cast<size_t>(length) >= sizeof(path)) {
+    fl_method_call_respond_error(call, "startup_path_unavailable", nullptr,
+                                nullptr, nullptr);
+    return;
+  }
+  const char* xdg = std::getenv("XDG_CONFIG_HOME");
+  const char* home = std::getenv("HOME");
+  auto* request = new StartupRequest{
+      FL_METHOD_CALL(g_object_ref(call)),
+      xduwlan::StartupConfigHome(xdg == nullptr ? "" : xdg,
+                                 home == nullptr ? "" : home),
+      std::string(path, static_cast<size_t>(length)),
+      static_cast<bool>(change),
+      change ? static_cast<bool>(fl_value_get_bool(arguments)) : false};
+  MyApplication* self = MY_APPLICATION(data);
+  g_autoptr(GTask) task = g_task_new(nullptr, self->lifecycle_cancellable,
+                                   startup_complete, nullptr);
+  g_task_set_task_data(task, request, startup_request_free);
+  g_task_run_in_thread(task, startup_worker);
+}
+
 static void sleep_signal_cb(GDBusConnection* connection, const gchar* sender,
                             const gchar* path, const gchar* interface,
                             const gchar* signal, GVariant* parameters,
@@ -183,6 +278,11 @@ static void my_application_activate(GApplication* application) {
       "xduwlan/lifecycle", FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(self->lifecycle_channel,
                                           lifecycle_method_cb, self, nullptr);
+  self->startup_channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "xduwlan/startup", FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(self->startup_channel,
+                                          startup_method_cb, self, nullptr);
   g_bus_get(G_BUS_TYPE_SYSTEM, self->lifecycle_cancellable, sleep_bus_cb,
             g_object_ref(self));
 
@@ -233,6 +333,11 @@ static void my_application_dispose(GObject* object) {
                                             nullptr, nullptr);
   }
   g_clear_object(&self->lifecycle_channel);
+  if (self->startup_channel != nullptr) {
+    fl_method_channel_set_method_call_handler(self->startup_channel, nullptr,
+                                            nullptr, nullptr);
+  }
+  g_clear_object(&self->startup_channel);
   g_clear_object(&self->lifecycle_cancellable);
   if (self->window != nullptr) {
     g_object_remove_weak_pointer(G_OBJECT(self->window),
