@@ -67,4 +67,63 @@ void main() {
       const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
     );
   });
+
+  test(
+    'pathUpdates emits valid snapshots and ignores malformed payloads',
+    () async {
+      const channel = MethodChannel('cn.xduwlan.test.networkUpdates');
+      final source = MethodChannelNetworkPathSource(channel: channel);
+      addTearDown(source.dispose);
+      final events = <NetworkPathSnapshot>[];
+      final subscription = source.pathUpdates.listen(events.add);
+      addTearDown(subscription.cancel);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      Future<void> emit(Object? arguments) async {
+        await messenger.handlePlatformMessage(
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            MethodCall('pathUpdates', arguments),
+          ),
+          (_) {},
+        );
+      }
+
+      await emit(<String, Object?>{'link': 'wifi', 'available': true});
+      await emit(<String, Object?>{'link': 'wifi', 'available': 'yes'});
+      await Future<void>.delayed(Duration.zero);
+
+      expect(events, [
+        const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
+      ]);
+    },
+  );
+
+  test('disposed source ignores late updates and closes its stream', () async {
+    const channel = MethodChannel('cn.xduwlan.test.networkDispose');
+    final source = MethodChannelNetworkPathSource(channel: channel);
+    var events = 0;
+    var done = false;
+    source.pathUpdates.listen((_) => events++, onDone: () => done = true);
+    source.dispose();
+    await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .handlePlatformMessage(
+          channel.name,
+          const StandardMethodCodec().encodeMethodCall(
+            MethodCall('pathUpdates', <String, Object?>{
+              'link': 'wifi',
+              'available': true,
+            }),
+          ),
+          (_) {},
+        );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(events, 0);
+    expect(done, isTrue);
+    expect(
+      await source.current(),
+      const NetworkPathSnapshot(link: NetworkLink.unknown, available: false),
+    );
+  });
 }

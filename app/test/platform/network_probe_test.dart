@@ -29,10 +29,26 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      (await IoNetworkProbe(transport: transport).check(scope)).portal,
+      (await IoNetworkProbe(
+        transport: transport,
+        pathSource: _wifiPathSource,
+      ).check(scope)).portal,
       NetworkState.online,
     );
     expect(transport.requested.single.scheme, 'https');
+  });
+
+  test('没有路径来源时不发出 Portal 请求', () async {
+    final transport = _Responses([const PortalResponse(204, '')]);
+    final scope = OperationScope();
+    addTearDown(scope.finish);
+
+    final observation = await IoNetworkProbe(transport: transport).check(scope);
+
+    expect(observation.portal, NetworkState.unknown);
+    expect(observation.link, NetworkLink.unknown);
+    expect(observation.authenticationAllowed, isFalse);
+    expect(transport.requested, isEmpty);
   });
 
   test('HTTP 204 不能覆盖主 HTTPS 的 TLS 失败', () async {
@@ -43,7 +59,10 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      (await IoNetworkProbe(transport: transport).check(scope)).portal,
+      (await IoNetworkProbe(
+        transport: transport,
+        pathSource: _wifiPathSource,
+      ).check(scope)).portal,
       NetworkState.unavailable,
     );
     expect(transport.requested.map((url) => url.scheme), ['https', 'http']);
@@ -128,6 +147,7 @@ void main() {
         (await IoNetworkProbe(
           transport: transport,
           enableHttpFallback: false,
+          pathSource: _wifiPathSource,
         ).check(scope)).portal,
         expected,
       );
@@ -142,7 +162,10 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      (await IoNetworkProbe(transport: transport).check(scope)).portal,
+      (await IoNetworkProbe(
+        transport: transport,
+        pathSource: _wifiPathSource,
+      ).check(scope)).portal,
       NetworkState.portalRequired,
     );
   });
@@ -155,6 +178,7 @@ void main() {
       (await IoNetworkProbe(
         transport: transport,
         probeUrl: Uri.parse('http://probe.invalid/'),
+        pathSource: _wifiPathSource,
       ).check(scope)).portal,
       NetworkState.unknown,
     );
@@ -166,7 +190,10 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     await expectLater(
-      IoNetworkProbe(transport: transport).check(scope),
+      IoNetworkProbe(
+        transport: transport,
+        pathSource: _wifiPathSource,
+      ).check(scope),
       throwsA(
         isA<AppFailure>().having(
           (error) => error.code,
@@ -203,8 +230,9 @@ void main() {
     () async {
       final scope = OperationScope();
       addTearDown(scope.finish);
+      final transport = _Responses([const PortalResponse(204, '')]);
       final observation = await IoNetworkProbe(
-        transport: _Responses([const PortalResponse(204, '')]),
+        transport: transport,
         enableHttpFallback: false,
         pathSource: _PathSource(
           const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
@@ -213,24 +241,28 @@ void main() {
 
       expect(observation.campus, CampusNetworkState.unconfirmed);
       expect(observation.authenticationAllowed, isFalse);
+      expect(transport.requested, hasLength(1));
     },
   );
 
   test('cellular Portal evidence never permits authentication', () async {
     final scope = OperationScope();
     addTearDown(scope.finish);
+    final transport = _Responses([
+      const PortalResponse(302, '', location: 'http://w.xidian.edu.cn/index'),
+    ]);
     final observation = await IoNetworkProbe(
-      transport: _Responses([
-        const PortalResponse(302, '', location: 'http://w.xidian.edu.cn/index'),
-      ]),
+      transport: transport,
       enableHttpFallback: false,
       pathSource: _PathSource(
         const NetworkPathSnapshot(link: NetworkLink.cellular, available: true),
       ),
     ).check(scope);
 
-    expect(observation.campus, CampusNetworkState.authenticationRequired);
+    expect(observation.portal, NetworkState.unknown);
+    expect(observation.campus, CampusNetworkState.unknown);
     expect(observation.authenticationAllowed, isFalse);
+    expect(transport.requested, isEmpty);
   });
 
   test(
@@ -238,8 +270,9 @@ void main() {
     () async {
       final scope = OperationScope();
       addTearDown(scope.finish);
+      final transport = _Responses([const PortalResponse(204, '')]);
       final observation = await IoNetworkProbe(
-        transport: _Responses([const PortalResponse(204, '')]),
+        transport: transport,
         enableHttpFallback: false,
         pathSource: _PathSource(
           const NetworkPathSnapshot(
@@ -252,9 +285,14 @@ void main() {
       expect(observation.link, NetworkLink.unknown);
       expect(observation.campus, CampusNetworkState.unknown);
       expect(observation.authenticationAllowed, isFalse);
+      expect(transport.requested, isEmpty);
     },
   );
 }
+
+final _wifiPathSource = _PathSource(
+  const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
+);
 
 class _PathSource implements NetworkPathSource {
   _PathSource(this.snapshot);

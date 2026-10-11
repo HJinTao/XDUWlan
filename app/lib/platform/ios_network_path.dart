@@ -87,8 +87,8 @@ class MethodChannelNetworkPathSource implements NetworkPathSource {
 
   Future<Object?> _handleCall(MethodCall call) async {
     if (call.method != 'pathUpdates') return null;
-    final snapshot = NetworkPathSnapshot.fromPayload(call.arguments);
-    if (!_disposed) _updates.add(snapshot);
+    final snapshot = _tryFromPayload(call.arguments);
+    if (snapshot != null && !_disposed) _updates.add(snapshot);
     return null;
   }
 
@@ -98,4 +98,14 @@ class MethodChannelNetworkPathSource implements NetworkPathSource {
     _channel.setMethodCallHandler(null);
     _updates.close();
   }
+}
+
+NetworkPathSnapshot? _tryFromPayload(Object? payload) {
+  if (payload is! Map) return null;
+  final linkValue = payload['link'];
+  final availableValue = payload['available'];
+  if (linkValue is! String || availableValue is! bool) return null;
+  final link = _linkFromName(linkValue);
+  if (link == null) return null;
+  return NetworkPathSnapshot(link: link, available: availableValue);
 }

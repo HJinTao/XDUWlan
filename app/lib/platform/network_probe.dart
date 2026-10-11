@@ -30,6 +30,9 @@ class IoNetworkProbe implements NetworkProbe {
   Future<NetworkObservation> check(OperationScope scope) async {
     scope.ensureActive();
     final path = await _pathSnapshot();
+    if (!path.available || path.link != NetworkLink.wifi) {
+      return _observation(NetworkState.unknown, path);
+    }
     if (!_validEndpoint(probeUrl, 'https') ||
         !_validEndpoint(portalUrl, 'https') ||
         portalUrl.port != 443 ||

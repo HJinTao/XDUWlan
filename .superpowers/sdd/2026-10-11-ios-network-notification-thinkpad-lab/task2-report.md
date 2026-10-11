@@ -1,36 +1,36 @@
-# Task 2 完成报告
+# Task 2 Review
 
-## 状态
+Verdict: **changes requested**. The payload mapping and Portal classification are conservative for unknown paths, but the native lifecycle and update handling leave two unsafe or incorrect runtime paths.
 
-已完成 iOS 原生链路事实、Dart MethodChannel 映射、Portal 探测组合和首帧后路径更新检查。
+## Findings
 
-## 实现
+### P1: Blocked interfaces still make Portal requests
 
-- 新增 `app/lib/platform/ios_network_path.dart`，固定使用 `cn.xduwlan/iosNetwork`，只接受 `link` 枚举名和 `available` 布尔值。
-- 原生路径值覆盖 `cellular`、`wifi`、`wired`、`other`、`none`、`unknown`；缺失插件、平台异常、关闭后的 source 或畸形 payload 都安全降级为 `unknown`/不可用。
-- iOS `AppDelegate` 使用私有队列上的 `NWPathMonitor`，`currentPath` 返回当前脱敏值，路径变化通过 `pathUpdates` 回调 Dart；未传递 SSID、IP、MAC、原始 `NWPath` 或底层文本，engine 销毁时停止 monitor 并移除 handler。
-- `IoNetworkProbe` 在同一轮 HTTPS/Portal 探测中读取路径事实并返回 `NetworkObservation`：Wi-Fi + 可信 Portal 重定向才设置 `authenticationAllowed`；Wi-Fi 普通 204 标记 `unconfirmed`；蜂窝、不可用、未知路径均禁止认证。
-- `main.dart` 仅在 iOS 装配原生 path source；路径变化监听注册在首帧之后并触发一次前台检查，source 在 widget 释放时销毁。Android 和桌面继续使用无路径源的安全未知默认。
-- 迁移直接依赖旧 `NetworkState` 的测试适配器，显式注入虚构 Wi-Fi path source，不读取或写入真实网络标识。
+`IoNetworkProbe.check` reads the path at [`app/lib/platform/network_probe.dart:30-50`](app/lib/platform/network_probe.dart:30), then performs the HTTPS/HTTP probes regardless of whether the path is cellular, unavailable, or unknown. `RecoveryService.login` applies `authenticationAllowed` only after that probe at [`app/lib/application/recovery_service.dart:26-56`](app/lib/application/recovery_service.dart:26), so a manual or automatic authentication attempt on cellular still sends Portal/probe requests before it is rejected. The Task 2 security gate requirement says disallowed operations must avoid Portal requests; short-circuit the probe for a known non-Wi-Fi path (and for unavailable/unknown path) with a blocked observation, while retaining the normal probe for an allowed Wi-Fi path.
 
-## TDD 证据
+### P1: NWPathMonitor/channel teardown is attached to AppDelegate lifetime, not engine lifetime
 
-先添加 `test/platform/ios_network_path_test.dart` 和 `network_probe_test.dart` 的路径映射、畸形输入、缺失 channel、Wi-Fi/Portal 组合矩阵；在生产实现创建前测试因缺少 `ios_network_path.dart` 和新 API 而失败。实现后 focused 测试通过：
+The monitor and channel are created in `didInitializeImplicitFlutterEngine` at [`app/ios/Runner/AppDelegate.swift:26-59`](app/ios/Runner/AppDelegate.swift:26), but teardown exists only in `AppDelegate.deinit` at [`app/ios/Runner/AppDelegate.swift:104-107`](app/ios/Runner/AppDelegate.swift:104). Releasing or recreating an implicit Flutter engine leaves the monitor running and the old method handler/messenger retained until the whole AppDelegate is destroyed; a later callback can target a stale channel, and a new engine overwrites `networkChannel` while the old monitor continues publishing. Implement the Flutter engine teardown callback (or an explicit engine-owned monitor object) to cancel the monitor and clear the handler for that engine, and make repeated engine initialization replace the previous instance safely.
 
-```text
-cd app && flutter test --no-pub test/platform/ios_network_path_test.dart test/platform/network_probe_test.dart test/application/local_recovery_integration_test.dart
-27 tests passed
-```
+### P2: Path updates can trigger checks while the app is suspended
 
-相关迁移回归通过：
+The Dart listener is installed once after the first frame at [`app/lib/main.dart:75-81`](app/lib/main.dart:75) and calls `widget.runtime.check(...)` for every update at [`app/lib/main.dart:76-79`](app/lib/main.dart:76). `AppRuntimeController.suspend()` only stops its timer at [`app/lib/application/app_runtime_controller.dart:426-431`](app/lib/application/app_runtime_controller.dart:426); `check()` directly delegates to `recovery.run` at [`app/lib/application/app_runtime_controller.dart:290-291`](app/lib/application/app_runtime_controller.dart:290), so a network transition delivered while iOS is inactive or backgrounded still starts a probe. Gate the listener on foreground lifecycle (or route it through a runtime method that honors suspension), and coalesce updates while a check is active.
 
-```text
-cd app && flutter test --no-pub test/application/query_portal_boundary_test.dart test/tool/protocol_observation_test.dart
-8 tests passed
-```
+### P2: Tests do not cover the required update/lifecycle behavior
 
-完整 Dart 测试已运行；迁移消费者后共 279 项通过。此前两项旧消费者因 `IoNetworkProbe.check` 返回观察值而失败，已更新为显式 Wi-Fi 测试源和 `.portal` 断言。`flutter analyze` 通过，`flutter build ios --no-codesign` 成功生成 `build/ios/iphoneos/Runner.app`。
+`ios_network_path_test.dart` covers payload conversion and `currentPath`, but has no `pathUpdates` stream test, disposal/late-callback test, or assertion that malformed update payloads cannot trigger a runtime check. There is also no widget/runtime test for first-frame registration, suspended updates, or Android's no-path-source fallback. Add focused tests for those contracts before treating the Task 2 lifecycle wiring as complete.
 
-## 限制
+## Positive checks
 
-当前任务没有实现通知授权或通知发送；这些属于 Task 3。真实 iOS 链路和校园 Portal 认证仍需授权真机验收，离线测试不代表校园网事实。无原生路径源的平台保持未知并禁止认证。
+- Dart malformed payloads, missing channel, and native exceptions map to `unknown`/unavailable in [`app/lib/platform/ios_network_path.dart:19-26`](app/lib/platform/ios_network_path.dart:19).
+- `IoNetworkProbe` only sets `authenticationAllowed` for available Wi-Fi plus trusted Portal classification at [`app/lib/platform/network_probe.dart:77-84`](app/lib/platform/network_probe.dart:77).
+- Android and other non-iOS foreground construction passes no path source, so the resulting unknown/unavailable observation does not grant authentication. The separate mobile background constructor also defaults safely, although it cannot authenticate without a native path source.
+
+## 修复记录（2026-10-11）
+
+- `IoNetworkProbe` 先检查路径；无路径、不可用、蜂窝、wired、other、none 和 unknown 均立即返回 unknown observation，不发出 HTTPS/HTTP Portal 请求。可用 Wi-Fi 仍执行原有 HTTPS 后 HTTP 回退；测试覆盖请求计数。
+- iOS NWPathMonitor 与 method channel 收拢到 `NetworkEngineController`，以 engine messenger 为弱键的 map 持有。重复初始化会替换旧控制器，控制器释放时取消 monitor；Flutter 当前 headers 没有 engine teardown callback，因此采用 messenger 生命周期绑定；Workmanager、storage 与 notification channel 保持在 AppDelegate。
+- 路径流只交给 `AppRuntimeController.onNetworkPathUpdate()`。挂起、未初始化或检查进行中时只置 pending，恢复或当前检查结束后由现有调度执行；前台更新不会绕过暂停状态。
+- 增加路径流合法/非法 payload、dispose 后迟到回调、无路径来源不请求、挂起更新和 Android 无路径来源回退测试。
+
+验证：`flutter test test/platform/network_probe_test.dart test/platform/ios_network_path_test.dart test/application/mobile_runtime_test.dart` 通过（35 tests）；`flutter analyze` 通过；`xcodebuild -workspace Runner.xcworkspace -scheme Runner -sdk iphonesimulator -configuration Debug -quiet build CODE_SIGNING_ALLOWED=NO` 通过。此前 `flutter build ios --simulator --no-codesign` 因共享 `background_tasks.dart` 缺少 `runtime_host.dart` import 在 Dart 编译阶段失败，该 import 已由共享改动补齐。

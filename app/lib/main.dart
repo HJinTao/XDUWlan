@@ -92,9 +92,7 @@ class _XduwlanAppState extends State<XduwlanApp> with WidgetsBindingObserver {
     widget.runtime.onConfigureRequest = _configure;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pathSubscription = widget.pathSource?.pathUpdates.listen((_) {
-        if (mounted && widget.runtime.initialized) {
-          unawaited(widget.runtime.check(OperationSource.automatic));
-        }
+        if (mounted) widget.runtime.onNetworkPathUpdate();
       });
       if (mounted) unawaited(widget.runtime.initialize());
     });
