@@ -8,6 +8,23 @@ String networkMessage(NetworkState network) => switch (network) {
   NetworkState.unknown => '网络状态未确认',
 };
 
+String linkMessage(NetworkLink link) => switch (link) {
+  NetworkLink.cellular => '蜂窝网络',
+  NetworkLink.wifi => 'Wi-Fi',
+  NetworkLink.wired => '有线网络',
+  NetworkLink.other => '其他网络',
+  NetworkLink.none => '无网络',
+  NetworkLink.unknown => '网络类型未确认',
+};
+
+String campusMessage(CampusNetworkState campus) => switch (campus) {
+  CampusNetworkState.unconfirmed => '校园网未确认',
+  CampusNetworkState.authenticationRequired => '需要校园网认证',
+  CampusNetworkState.online => '校园网已连接',
+  CampusNetworkState.unavailable => '校园网络暂不可达',
+  CampusNetworkState.unknown => '校园网状态未确认',
+};
+
 String stageMessage(RecoveryStage? stage) => switch (stage) {
   RecoveryStage.checking => '正在检查网络',
   RecoveryStage.preparing => '正在准备认证',
@@ -28,4 +45,6 @@ String failureMessage(FailureCode failure) => switch (failure) {
   FailureCode.cancelled => '操作已取消，可以重新检查网络。',
   FailureCode.timeout => '操作超时。请检查网络后重试。',
   FailureCode.submittedUnconfirmed => '认证请求已提交，结果尚未确认。请先检查网络，避免重复认证。',
+  FailureCode.authenticationNotAllowed =>
+    '当前网络不允许认证。请连接已确认的校园 Wi-Fi 后重试。',
 };

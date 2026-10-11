@@ -173,6 +173,8 @@ void main() {
     expect(result.outcome, RecoveryOutcome.failed);
     scope.finish();
   });
+
+  authenticationGateTests();
 }
 
 class _CancelAwareProbe implements NetworkProbe {
@@ -183,4 +185,41 @@ class _CancelAwareProbe implements NetworkProbe {
     scope.ensureActive();
     return NetworkState.online;
   }
+}
+
+class ObservationProbe implements NetworkProbe {
+  ObservationProbe(this.observation);
+  final NetworkObservation observation;
+  int calls = 0;
+
+  @override
+  Future<NetworkObservation> check(OperationScope scope) async {
+    calls++;
+    return observation;
+  }
+}
+
+void authenticationGateTests() {
+  test('认证门在读取凭据前拒绝非校园 Wi-Fi', () async {
+    final store = Store();
+    final portal = Portal();
+    final probe = ObservationProbe(
+      const NetworkObservation(
+        link: NetworkLink.cellular,
+        campus: CampusNetworkState.authenticationRequired,
+        portal: NetworkState.portalRequired,
+        authenticationAllowed: false,
+      ),
+    );
+    final scope = OperationScope();
+    final result = await RecoveryService(
+      probe: probe,
+      portal: portal,
+      store: store,
+    ).login(scope);
+    expect(result.failure, FailureCode.authenticationNotAllowed);
+    expect(store.reads, 0);
+    expect(portal.calls, isEmpty);
+    scope.finish();
+  });
 }

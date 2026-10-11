@@ -5,6 +5,18 @@ import 'dart:async';
 
 enum NetworkState { online, portalRequired, unavailable, unknown }
 
+/// 设备当前使用的链路类型。只保留可用于安全决策的类别，不保存地址。
+enum NetworkLink { cellular, wifi, wired, other, none, unknown }
+
+/// 校园网络身份状态，与普通互联网可达性分开表示。
+enum CampusNetworkState {
+  unconfirmed,
+  authenticationRequired,
+  online,
+  unavailable,
+  unknown,
+}
+
 enum FailureCode {
   credentialsMissing,
   credentialsInvalid,
@@ -17,6 +29,7 @@ enum FailureCode {
   cancelled,
   timeout,
   submittedUnconfirmed,
+  authenticationNotAllowed,
 }
 
 enum RecoveryStage { checking, preparing, authenticating, verifying }
@@ -36,6 +49,9 @@ class OperationReport {
     required this.failure,
     required this.elapsed,
     required this.completedAt,
+    this.link,
+    this.campus,
+    this.authenticationAllowed,
   });
 
   final OperationKind kind;
@@ -45,6 +61,9 @@ class OperationReport {
   final FailureCode? failure;
   final Duration elapsed;
   final DateTime completedAt;
+  final NetworkLink? link;
+  final CampusNetworkState? campus;
+  final bool? authenticationAllowed;
 }
 
 class AppFailure implements Exception {
@@ -82,10 +101,16 @@ class PortalResponse {
 }
 
 class RecoveryResult {
-  const RecoveryResult(this.outcome, this.network, {this.failure});
+  const RecoveryResult(
+    this.outcome,
+    this.network, {
+    this.failure,
+    this.observation,
+  });
   final RecoveryOutcome outcome;
   final NetworkState network;
   final FailureCode? failure;
+  final NetworkObservation? observation;
 }
 
 abstract interface class CredentialStore {
@@ -94,7 +119,67 @@ abstract interface class CredentialStore {
 }
 
 abstract interface class NetworkProbe {
-  Future<NetworkState> check(OperationScope scope);
+  /// 新实现返回 [NetworkObservation]，旧实现可继续返回 [NetworkState]。
+  Future<Object> check(OperationScope scope);
+}
+
+/// 网络事实与 Portal 探测结果的共享值对象。
+class NetworkObservation {
+  const NetworkObservation({
+    required this.link,
+    required this.campus,
+    required this.portal,
+    required this.authenticationAllowed,
+  });
+
+  final NetworkLink link;
+  final CampusNetworkState campus;
+  final NetworkState portal;
+  final bool authenticationAllowed;
+
+  /// 让旧 fake 在迁移期间继续提供安全的默认观察结果。
+  factory NetworkObservation.fromLegacy(NetworkState state) =>
+      NetworkObservation(
+        link: switch (state) {
+          NetworkState.portalRequired => NetworkLink.wifi,
+          NetworkState.online => NetworkLink.unknown,
+          NetworkState.unavailable => NetworkLink.none,
+          NetworkState.unknown => NetworkLink.unknown,
+        },
+        campus: switch (state) {
+          NetworkState.portalRequired =>
+            CampusNetworkState.authenticationRequired,
+          NetworkState.online => CampusNetworkState.online,
+          NetworkState.unavailable => CampusNetworkState.unavailable,
+          NetworkState.unknown => CampusNetworkState.unknown,
+        },
+        portal: state,
+        // 旧探测器没有链路事实；保留旧认证行为，直到其升级为新观察器。
+        authenticationAllowed: state == NetworkState.portalRequired,
+      );
+
+  NetworkObservation copyWith({
+    NetworkLink? link,
+    CampusNetworkState? campus,
+    NetworkState? portal,
+    bool? authenticationAllowed,
+  }) => NetworkObservation(
+    link: link ?? this.link,
+    campus: campus ?? this.campus,
+    portal: portal ?? this.portal,
+    authenticationAllowed: authenticationAllowed ?? this.authenticationAllowed,
+  );
+
+  @override
+  bool operator ==(Object other) => other is NetworkObservation
+      ? other.link == link &&
+            other.campus == campus &&
+            other.portal == portal &&
+            other.authenticationAllowed == authenticationAllowed
+      : other is NetworkState && other == portal;
+
+  @override
+  int get hashCode => Object.hash(link, campus, portal, authenticationAllowed);
 }
 
 abstract interface class PortalTransport {

@@ -72,6 +72,33 @@ void main() {
     expect(await credentialFile.readAsString(), 'fake-credential-sentinel');
   });
 
+  test('旧诊断记录缺少链路字段时兼容为未知，新报告写入安全枚举', () async {
+    await diagnosticFile.writeAsString(jsonEncode([validJson()]));
+    final loaded = await LocalDiagnosticStore(directory: directory).load();
+    expect(loaded.single.link, NetworkLink.unknown);
+    expect(loaded.single.campus, CampusNetworkState.unknown);
+    expect(loaded.single.authenticationAllowed, isFalse);
+
+    final report = OperationReport(
+      kind: OperationKind.check,
+      source: OperationSource.manual,
+      network: NetworkState.online,
+      outcome: RecoveryOutcome.alreadyOnline,
+      failure: null,
+      elapsed: const Duration(milliseconds: 1),
+      completedAt: DateTime.utc(2026, 10, 10, 0, 0, 2),
+      link: NetworkLink.wifi,
+      campus: CampusNetworkState.unconfirmed,
+      authenticationAllowed: false,
+    );
+    await LocalDiagnosticStore(directory: directory)
+        .append(DiagnosticRecord.fromReport(report));
+    final raw = jsonDecode(await diagnosticFile.readAsString()) as List;
+    expect(raw.first, containsPair('link', 'wifi'));
+    expect(raw.first, containsPair('campus', 'unconfirmed'));
+    expect(raw.first, containsPair('authenticationAllowed', false));
+  });
+
   test('乱序追加仍按时间倒序保存最新五十条', () async {
     final store = LocalDiagnosticStore(directory: directory);
     await diagnosticFile.writeAsString('[]');

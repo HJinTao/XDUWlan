@@ -14,6 +14,9 @@ class DiagnosticRecord {
     required this.outcome,
     required this.failure,
     required this.elapsedMilliseconds,
+    this.link,
+    this.campus,
+    this.authenticationAllowed,
   });
 
   final DateTime time;
@@ -23,6 +26,9 @@ class DiagnosticRecord {
   final RecoveryOutcome? outcome;
   final FailureCode? failure;
   final int elapsedMilliseconds;
+  final NetworkLink? link;
+  final CampusNetworkState? campus;
+  final bool? authenticationAllowed;
 
   factory DiagnosticRecord.fromReport(OperationReport report) {
     if (report.elapsed.isNegative) {
@@ -36,6 +42,9 @@ class DiagnosticRecord {
       outcome: report.outcome,
       failure: report.failure,
       elapsedMilliseconds: report.elapsed.inMilliseconds,
+      link: report.link,
+      campus: report.campus,
+      authenticationAllowed: report.authenticationAllowed,
     );
   }
 
@@ -51,6 +60,10 @@ class DiagnosticRecord {
       if (outcome != null) 'outcome': outcome!.name,
       if (failure != null) 'failure': failure!.name,
       'elapsedMilliseconds': elapsedMilliseconds,
+      if (link != null) 'link': link!.name,
+      if (campus != null) 'campus': campus!.name,
+      if (authenticationAllowed != null)
+        'authenticationAllowed': authenticationAllowed,
     };
   }
 
@@ -62,6 +75,9 @@ class DiagnosticRecord {
     'outcome',
     'failure',
     'elapsedMilliseconds',
+    'link',
+    'campus',
+    'authenticationAllowed',
   };
 
   factory DiagnosticRecord.fromJson(Map<String, dynamic> raw) {
@@ -77,6 +93,19 @@ class DiagnosticRecord {
       final time = DateTime.parse(timeText);
       // DateTime.parse 会将溢出的日期自动进位；只接受本程序保存的标准格式。
       if (time.toIso8601String() != timeText) throw const FormatException();
+      final link = raw['link'] == null
+          ? NetworkLink.unknown
+          : NetworkLink.values.byName(raw['link'] as String);
+      final campus = raw['campus'] == null
+          ? CampusNetworkState.unknown
+          : CampusNetworkState.values.byName(raw['campus'] as String);
+      final authenticationAllowed = raw['authenticationAllowed'] == null
+          ? false
+          : raw['authenticationAllowed'] as bool;
+      if (raw['authenticationAllowed'] != null &&
+          raw['authenticationAllowed'] is! bool) {
+        throw const FormatException();
+      }
       return DiagnosticRecord(
         time: time,
         source: OperationSource.values.byName(raw['source'] as String),
@@ -89,6 +118,9 @@ class DiagnosticRecord {
             ? null
             : FailureCode.values.byName(raw['failure'] as String),
         elapsedMilliseconds: elapsed,
+        link: link,
+        campus: campus,
+        authenticationAllowed: authenticationAllowed,
       );
     } catch (_) {
       throw const FormatException('本地诊断记录不可用');

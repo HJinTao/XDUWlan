@@ -11,20 +11,29 @@ class RecoveryService {
   final PortalClient portal;
   final CredentialStore store;
 
-  Future<NetworkState> check(OperationScope scope) => probe.check(scope);
+  Future<NetworkObservation> check(OperationScope scope) async =>
+      _observation(await probe.check(scope));
 
   Future<RecoveryResult> login(
     OperationScope scope, {
     void Function(RecoveryStage)? onStage,
   }) async {
     var network = NetworkState.unknown;
+    NetworkObservation observation = NetworkObservation.fromLegacy(network);
     try {
       scope.ensureActive();
       onStage?.call(RecoveryStage.checking);
-      network = await scope.run(() => probe.check(scope));
+      observation = await scope.run(
+        () async => _observation(await probe.check(scope)),
+      );
+      network = observation.portal;
       scope.ensureActive();
       if (network == NetworkState.online) {
-        return RecoveryResult(RecoveryOutcome.alreadyOnline, network);
+        return RecoveryResult(
+          RecoveryOutcome.alreadyOnline,
+          network,
+          observation: observation,
+        );
       }
       if (network != NetworkState.portalRequired) {
         return RecoveryResult(
@@ -33,6 +42,15 @@ class RecoveryService {
           failure: network == NetworkState.unavailable
               ? FailureCode.networkUnavailable
               : FailureCode.protocol,
+          observation: observation,
+        );
+      }
+      if (!observation.authenticationAllowed) {
+        return RecoveryResult(
+          RecoveryOutcome.failed,
+          network,
+          failure: FailureCode.authenticationNotAllowed,
+          observation: observation,
         );
       }
       onStage?.call(RecoveryStage.preparing);
@@ -65,15 +83,23 @@ class RecoveryService {
       );
       scope.ensureActive();
       onStage?.call(RecoveryStage.verifying);
-      network = await scope.run(() => probe.check(scope));
+      observation = await scope.run(
+        () async => _observation(await probe.check(scope)),
+      );
+      network = observation.portal;
       scope.ensureActive();
       if (network == NetworkState.online) {
-        return RecoveryResult(RecoveryOutcome.restored, network);
+        return RecoveryResult(
+          RecoveryOutcome.restored,
+          network,
+          observation: observation,
+        );
       }
       return RecoveryResult(
         RecoveryOutcome.failed,
         network,
         failure: FailureCode.verificationFailed,
+        observation: observation,
       );
     } on AppFailure catch (error) {
       final uncertain =
@@ -89,6 +115,7 @@ class RecoveryService {
             : RecoveryOutcome.failed,
         network,
         failure: uncertain ? FailureCode.submittedUnconfirmed : error.code,
+        observation: observation,
       );
     } catch (_) {
       return RecoveryResult(
@@ -97,7 +124,14 @@ class RecoveryService {
         failure: scope.submitted
             ? FailureCode.submittedUnconfirmed
             : FailureCode.protocol,
+        observation: observation,
       );
     }
   }
+
+  NetworkObservation _observation(Object value) => value is NetworkObservation
+      ? value
+      : value is NetworkState
+      ? NetworkObservation.fromLegacy(value)
+      : NetworkObservation.fromLegacy(NetworkState.unknown);
 }

@@ -13,6 +13,9 @@ class RecoveryController extends ChangeNotifier {
   bool busy = false;
   bool accountSaving = false;
   NetworkState network = NetworkState.unknown;
+  NetworkLink link = NetworkLink.unknown;
+  CampusNetworkState campus = CampusNetworkState.unknown;
+  bool authenticationAllowed = false;
   RecoveryStage? stage;
   FailureCode? failure;
   FailureCode? accountFailure;
@@ -90,6 +93,9 @@ class RecoveryController extends ChangeNotifier {
     outcome = null;
     var kind = intent.kind;
     var resultNetwork = NetworkState.unknown;
+    var resultLink = NetworkLink.unknown;
+    var resultCampus = CampusNetworkState.unknown;
+    var resultAuthenticationAllowed = false;
     FailureCode? resultFailure;
     RecoveryOutcome? resultOutcome;
     notifyListeners();
@@ -108,12 +114,20 @@ class RecoveryController extends ChangeNotifier {
           },
         );
         resultNetwork = result.network;
+        resultLink = result.observation?.link ?? NetworkLink.unknown;
+        resultCampus = result.observation?.campus ?? CampusNetworkState.unknown;
+        resultAuthenticationAllowed =
+            result.observation?.authenticationAllowed ?? false;
         resultFailure = result.failure;
         resultOutcome = kind == OperationKind.authenticate
             ? result.outcome
             : null;
       } else {
-        resultNetwork = await scope.run(() => service.check(scope));
+        final observation = await scope.run(() => service.check(scope));
+        resultNetwork = observation.portal;
+        resultLink = observation.link;
+        resultCampus = observation.campus;
+        resultAuthenticationAllowed = observation.authenticationAllowed;
         resultFailure = switch (resultNetwork) {
           NetworkState.unavailable => FailureCode.networkUnavailable,
           NetworkState.unknown => FailureCode.protocol,
@@ -142,9 +156,15 @@ class RecoveryController extends ChangeNotifier {
       failure: resultFailure,
       elapsed: elapsed.elapsed,
       completedAt: DateTime.now(),
+      link: resultLink,
+      campus: resultCampus,
+      authenticationAllowed: resultAuthenticationAllowed,
     );
     if (!_disposed) {
       network = report.network;
+      link = report.link ?? NetworkLink.unknown;
+      campus = report.campus ?? CampusNetworkState.unknown;
+      authenticationAllowed = report.authenticationAllowed ?? false;
       failure = report.failure;
       outcome = report.outcome;
       lastReport = report;
