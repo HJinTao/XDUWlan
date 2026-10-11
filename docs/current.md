@@ -18,7 +18,7 @@ Linux 登录启动已替换插件的文件操作。`PluginDesktopHost` 经专用
 
 `tool/recovery_validation.dart` 是手动 Linux 开发入口，独立构建与标识，正常产品入口不调用。工具使用生产 `IoNetworkProbe`、`SrunPortalClient`、凭据接口、`RecoveryController` 与 `AppRuntimeController`；计数包装不建立另一套认证或调度。固定命令经原子捕获后调用生产运行时，设置、诊断和安全报告写入新建私有会话目录，不访问真实登录启动项；用法见 [README](../README.md#手动-linux-恢复验证)。
 
-协议观察场景 `--scenario=protocol-observe` 已加入该入口。它只接受 Linux/ThinkPad、本次私有会话目录中的一次性候选文件，读取现有凭据并在内存中完成一轮 challenge/login 与独立 HTTPS 复查；输出为固定脱敏布尔值、计数、耗时和失败类别。候选、凭据、认证派生字段和响应内容不会写入输出。规则提升仍需两次独立成功且至少一次经过固定无线 `down/up`，当前没有真实校园网观察结论，产品默认映射未改变。
+协议观察场景 `--scenario=protocol-observe` 已加入该入口。它只接受 Linux/ThinkPad、本次私有会话目录中的一次性候选文件，读取现有凭据并在内存中完成两次同候选的独立 challenge/login 与 HTTPS 复查；输出为固定脱敏布尔值、计数、耗时和失败类别。候选、凭据、认证派生字段和响应内容不会写入输出。规则提升仍需额外的固定无线 `down/up` 证据，当前没有真实校园网观察结论，产品默认映射未改变。
 
 移动端真实环境验证固定使用授权的 ThinkPad Ubuntu 实验机。Mac 与 ThinkPad 通过网线 SSH 相连；ThinkPad 的无线接口使用 NetworkManager 连接 `xduwlan-lab-b` 和随机 MAC，网络上下线只通过固定的 `nmcli connection down/up xduwlan-lab-b` 操作。ThinkPad 现有用户信息文件只由授权 Linux 验证入口惰性读取；不复制账号、密码、SSID、IP、MAC、认证参数或原始响应。
 
@@ -34,7 +34,7 @@ iOS Simulator 的补充测试不修改 macOS 系统代理。Mac 只建立到 Thi
 
 2026-10-10 至 2026-10-11 的本地验证只使用虚构输入、临时目录、内存传输或本地 HTTP/TLS 服务，未使用真实账号、访问校园网、注册用户登录项或改变系统网络设置。
 
-- 当前候选的 `dart format --output=none --set-exit-if-changed lib test tool` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 252 项测试通过。
+- 当前候选的 `dart format --output=none --set-exit-if-changed lib test tool` 与 `flutter analyze` 通过；完整 `flutter test --no-pub` 的 294 项测试通过。
 - 自动测试覆盖首帧后初始化与挂起时交互、统一操作报告、串行排队、单计时器和 60 秒周期、退避重置、账号错误暂停及保存后恢复、隐藏与退出、睡眠与唤醒调度、通知去重、设置和诊断错误恢复、旧目录兼容及查询门户零请求。
 - 回归测试覆盖初始化顺序竞争、账号拒绝后排队恢复、设置保存与启动项状态竞争，以及启动项操作与读回均失败时禁用开关、不把旧值描述为已确认状态。开发工具测试覆盖命令捕获竞争、私有会话目录、白名单输出和生产运行时调用；同步截止时间测试不依赖冷启动延迟。
 - macOS 原生登录启动文件测试在临时目录验证后台参数、权限、启用/禁用、未知内容及符号链接的拒绝行为。此证据不等同于真实登录启动验收。
