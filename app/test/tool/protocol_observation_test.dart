@@ -167,13 +167,9 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     final result = await IoNetworkProbe(
-      transport: CountingTransport(
-        transport,
-        counters,
-        observationSink: sink,
-      ),
+      transport: CountingTransport(transport, counters, observationSink: sink),
     ).check(scope);
-    expect(result, NetworkState.unavailable);
+    expect(result.portal, NetworkState.unavailable);
     expect(sink.requests, 2);
     expect(counters.requests, 2);
     expect(transport.calls, 2);

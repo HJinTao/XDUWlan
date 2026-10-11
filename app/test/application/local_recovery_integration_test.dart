@@ -55,16 +55,16 @@ class _WifiProbe implements NetworkProbe {
 
   @override
   Future<NetworkObservation> check(OperationScope scope) async {
-    final state = await inner.check(scope);
+    final state = (await inner.check(scope)).portal;
     return NetworkObservation(
       link: NetworkLink.wifi,
       campus: state == NetworkState.portalRequired
           ? CampusNetworkState.authenticationRequired
           : state == NetworkState.online
-              ? CampusNetworkState.online
-              : state == NetworkState.unavailable
-                  ? CampusNetworkState.unavailable
-                  : CampusNetworkState.unknown,
+          ? CampusNetworkState.online
+          : state == NetworkState.unavailable
+          ? CampusNetworkState.unavailable
+          : CampusNetworkState.unknown,
       portal: state,
       authenticationAllowed: state == NetworkState.portalRequired,
     );
@@ -187,12 +187,14 @@ void main() {
         Credentials(vector['username'] as String, vector['password'] as String),
       );
       final service = RecoveryService(
-        probe: _WifiProbe(IoNetworkProbe(
-          transport: transport,
-          probeUrl: probeUri,
-          portalUrl: portalOrigin,
-          fallbackUrl: entryUri,
-        )),
+        probe: _WifiProbe(
+          IoNetworkProbe(
+            transport: transport,
+            probeUrl: probeUri,
+            portalUrl: portalOrigin,
+            fallbackUrl: entryUri,
+          ),
+        ),
         portal: SrunPortalClient(
           transport: transport,
           portalUri: portalOrigin,

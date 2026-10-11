@@ -6,6 +6,7 @@ import 'package:xduwlan_app/application/recovery_controller.dart';
 import 'package:xduwlan_app/application/recovery_service.dart';
 import 'package:xduwlan_app/core/domain.dart';
 import 'package:xduwlan_app/platform/network_probe.dart';
+import 'package:xduwlan_app/platform/ios_network_path.dart';
 import 'package:xduwlan_app/platform/srun_client.dart';
 
 import 'runtime_fakes.dart';
@@ -16,7 +17,10 @@ void main() {
     final accounts = TestAccounts();
     final recovery = RecoveryController(
       service: RecoveryService(
-        probe: IoNetworkProbe(transport: transport),
+        probe: IoNetworkProbe(
+          transport: transport,
+          pathSource: _WifiPathSource(),
+        ),
         portal: SrunPortalClient(transport: transport),
         store: accounts,
       ),
@@ -50,6 +54,15 @@ void main() {
     expect(transport.queryRequests, 0);
     expect(transport.otherRequests, 0);
   });
+}
+
+class _WifiPathSource implements NetworkPathSource {
+  @override
+  Future<NetworkPathSnapshot> current() async =>
+      const NetworkPathSnapshot(link: NetworkLink.wifi, available: true);
+
+  @override
+  Stream<NetworkPathSnapshot> get pathUpdates => const Stream.empty();
 }
 
 /// 逻辑主机与生产默认值一致，传输完全在内存中完成，不创建真实连接。

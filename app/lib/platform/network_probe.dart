@@ -1,5 +1,6 @@
 import '../core/domain.dart';
 import '../core/portal_pages.dart';
+import 'ios_network_path.dart';
 
 /// HTTPS 验证联网，HTTP 回退仅用于发现认证入口。
 class IoNetworkProbe implements NetworkProbe {
@@ -9,6 +10,7 @@ class IoNetworkProbe implements NetworkProbe {
     Uri? portalUrl,
     Uri? fallbackUrl,
     this.enableHttpFallback = true,
+    this.pathSource,
   }) : probeUrl =
            probeUrl ?? Uri.parse('https://connect.rom.miui.com/generate_204'),
        portalUrl = portalUrl ?? Uri.parse('https://w.xidian.edu.cn'),
@@ -22,26 +24,65 @@ class IoNetworkProbe implements NetworkProbe {
   final Uri portalUrl;
   final Uri fallbackUrl;
   final bool enableHttpFallback;
+  final NetworkPathSource? pathSource;
 
   @override
-  Future<NetworkState> check(OperationScope scope) async {
+  Future<NetworkObservation> check(OperationScope scope) async {
     scope.ensureActive();
+    final path = await _pathSnapshot();
     if (!_validEndpoint(probeUrl, 'https') ||
         !_validEndpoint(portalUrl, 'https') ||
         portalUrl.port != 443 ||
         (enableHttpFallback && !_validEndpoint(fallbackUrl, 'http'))) {
-      return NetworkState.unknown;
+      return _observation(NetworkState.unknown, path);
     }
     final primary = await _checkOnce(probeUrl, scope);
     scope.ensureActive();
     if (primary == NetworkState.online ||
         primary == NetworkState.portalRequired ||
         !enableHttpFallback) {
-      return primary;
+      return _observation(primary, path);
     }
     final fallback = await _checkOnce(fallbackUrl, scope);
     scope.ensureActive();
-    return fallback == NetworkState.portalRequired ? fallback : primary;
+    return _observation(
+      fallback == NetworkState.portalRequired ? fallback : primary,
+      path,
+    );
+  }
+
+  Future<NetworkPathSnapshot> _pathSnapshot() async {
+    final source = pathSource;
+    if (source == null) return NetworkPathSnapshot.unavailable;
+    try {
+      return await source.current();
+    } catch (_) {
+      return NetworkPathSnapshot.unavailable;
+    }
+  }
+
+  NetworkObservation _observation(
+    NetworkState state,
+    NetworkPathSnapshot path,
+  ) {
+    final campus = !path.available
+        ? CampusNetworkState.unknown
+        : switch (state) {
+            NetworkState.portalRequired =>
+              CampusNetworkState.authenticationRequired,
+            NetworkState.online => CampusNetworkState.unconfirmed,
+            NetworkState.unavailable => CampusNetworkState.unavailable,
+            NetworkState.unknown => CampusNetworkState.unknown,
+          };
+    return NetworkObservation(
+      link: path.link,
+      campus: campus,
+      portal: state,
+      authenticationAllowed:
+          path.available &&
+          path.link == NetworkLink.wifi &&
+          state == NetworkState.portalRequired,
+    );
   }
 
   Future<NetworkState> _checkOnce(Uri url, OperationScope scope) async {

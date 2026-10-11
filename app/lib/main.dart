@@ -9,11 +9,13 @@ import 'application/diagnostics.dart';
 import 'application/recovery_controller.dart';
 import 'application/recovery_service.dart';
 import 'application/settings.dart';
+import 'core/domain.dart';
 import 'platform/credential_store.dart';
 import 'platform/desktop_host.dart';
 import 'platform/http_transport.dart';
 import 'platform/mobile_host.dart';
 import 'platform/network_probe.dart';
+import 'platform/ios_network_path.dart';
 import 'platform/srun_client.dart';
 import 'ui/home.dart';
 
@@ -21,9 +23,10 @@ import 'ui/home.dart';
 void main(List<String> args) {
   final store = LocalCredentialStore();
   final transport = IoPortalTransport();
+  final pathSource = Platform.isIOS ? MethodChannelNetworkPathSource() : null;
   final recovery = RecoveryController(
     service: RecoveryService(
-      probe: IoNetworkProbe(transport: transport),
+      probe: IoNetworkProbe(transport: transport, pathSource: pathSource),
       portal: SrunPortalClient(transport: transport),
       store: store,
     ),
@@ -41,7 +44,9 @@ void main(List<String> args) {
         args.contains('--background') ||
         Platform.executableArguments.contains('--background'),
   );
-  runApp(XduwlanApp(runtime: runtime, ownsRuntime: true));
+  runApp(
+    XduwlanApp(runtime: runtime, ownsRuntime: true, pathSource: pathSource),
+  );
 }
 
 class XduwlanApp extends StatefulWidget {
@@ -49,9 +54,11 @@ class XduwlanApp extends StatefulWidget {
     super.key,
     required this.runtime,
     this.ownsRuntime = false,
+    this.pathSource,
   });
   final AppRuntimeController runtime;
   final bool ownsRuntime;
+  final NetworkPathSource? pathSource;
   @override
   State<XduwlanApp> createState() => _XduwlanAppState();
 }
@@ -59,12 +66,18 @@ class XduwlanApp extends StatefulWidget {
 class _XduwlanAppState extends State<XduwlanApp> with WidgetsBindingObserver {
   final _navigator = GlobalKey<NavigatorState>();
   bool _configuring = false;
+  StreamSubscription<NetworkPathSnapshot>? _pathSubscription;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.runtime.onConfigureRequest = _configure;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pathSubscription = widget.pathSource?.pathUpdates.listen((_) {
+        if (mounted && widget.runtime.initialized) {
+          unawaited(widget.runtime.check(OperationSource.automatic));
+        }
+      });
       if (mounted) unawaited(widget.runtime.initialize());
     });
   }
@@ -100,6 +113,10 @@ class _XduwlanAppState extends State<XduwlanApp> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.runtime.onConfigureRequest = null;
+    _pathSubscription?.cancel();
+    if (widget.pathSource is MethodChannelNetworkPathSource) {
+      (widget.pathSource! as MethodChannelNetworkPathSource).dispose();
+    }
     if (widget.ownsRuntime) {
       widget.runtime.dispose();
       widget.runtime.recovery.dispose();

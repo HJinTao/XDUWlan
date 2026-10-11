@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:xduwlan_app/core/domain.dart';
+import 'package:xduwlan_app/platform/ios_network_path.dart';
 import 'package:xduwlan_app/platform/network_probe.dart';
 
 class _Responses implements PortalTransport {
@@ -28,7 +29,7 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      await IoNetworkProbe(transport: transport).check(scope),
+      (await IoNetworkProbe(transport: transport).check(scope)).portal,
       NetworkState.online,
     );
     expect(transport.requested.single.scheme, 'https');
@@ -42,7 +43,7 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      await IoNetworkProbe(transport: transport).check(scope),
+      (await IoNetworkProbe(transport: transport).check(scope)).portal,
       NetworkState.unavailable,
     );
     expect(transport.requested.map((url) => url.scheme), ['https', 'http']);
@@ -124,10 +125,10 @@ void main() {
       final scope = OperationScope();
       addTearDown(scope.finish);
       expect(
-        await IoNetworkProbe(
+        (await IoNetworkProbe(
           transport: transport,
           enableHttpFallback: false,
-        ).check(scope),
+        ).check(scope)).portal,
         expected,
       );
     });
@@ -141,7 +142,7 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      await IoNetworkProbe(transport: transport).check(scope),
+      (await IoNetworkProbe(transport: transport).check(scope)).portal,
       NetworkState.portalRequired,
     );
   });
@@ -151,10 +152,10 @@ void main() {
     final scope = OperationScope();
     addTearDown(scope.finish);
     expect(
-      await IoNetworkProbe(
+      (await IoNetworkProbe(
         transport: transport,
         probeUrl: Uri.parse('http://probe.invalid/'),
-      ).check(scope),
+      ).check(scope)).portal,
       NetworkState.unknown,
     );
     expect(transport.requested, isEmpty);
@@ -176,4 +177,90 @@ void main() {
     );
     expect(transport.requested, hasLength(1));
   });
+
+  test('Wi-Fi 加可信 Portal 证据允许认证', () async {
+    final transport = _Responses([
+      const PortalResponse(302, '', location: 'http://w.xidian.edu.cn/index'),
+    ]);
+    final scope = OperationScope();
+    addTearDown(scope.finish);
+    final observation = await IoNetworkProbe(
+      transport: transport,
+      enableHttpFallback: false,
+      pathSource: _PathSource(
+        const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
+      ),
+    ).check(scope);
+
+    expect(observation, isA<NetworkObservation>());
+    expect(observation.link, NetworkLink.wifi);
+    expect(observation.campus, CampusNetworkState.authenticationRequired);
+    expect(observation.authenticationAllowed, isTrue);
+  });
+
+  test(
+    'Wi-Fi public online stays unconfirmed and blocks authentication',
+    () async {
+      final scope = OperationScope();
+      addTearDown(scope.finish);
+      final observation = await IoNetworkProbe(
+        transport: _Responses([const PortalResponse(204, '')]),
+        enableHttpFallback: false,
+        pathSource: _PathSource(
+          const NetworkPathSnapshot(link: NetworkLink.wifi, available: true),
+        ),
+      ).check(scope);
+
+      expect(observation.campus, CampusNetworkState.unconfirmed);
+      expect(observation.authenticationAllowed, isFalse);
+    },
+  );
+
+  test('cellular Portal evidence never permits authentication', () async {
+    final scope = OperationScope();
+    addTearDown(scope.finish);
+    final observation = await IoNetworkProbe(
+      transport: _Responses([
+        const PortalResponse(302, '', location: 'http://w.xidian.edu.cn/index'),
+      ]),
+      enableHttpFallback: false,
+      pathSource: _PathSource(
+        const NetworkPathSnapshot(link: NetworkLink.cellular, available: true),
+      ),
+    ).check(scope);
+
+    expect(observation.campus, CampusNetworkState.authenticationRequired);
+    expect(observation.authenticationAllowed, isFalse);
+  });
+
+  test(
+    'unavailable path defaults to unknown and blocks authentication',
+    () async {
+      final scope = OperationScope();
+      addTearDown(scope.finish);
+      final observation = await IoNetworkProbe(
+        transport: _Responses([const PortalResponse(204, '')]),
+        enableHttpFallback: false,
+        pathSource: _PathSource(
+          const NetworkPathSnapshot(
+            link: NetworkLink.unknown,
+            available: false,
+          ),
+        ),
+      ).check(scope);
+
+      expect(observation.link, NetworkLink.unknown);
+      expect(observation.campus, CampusNetworkState.unknown);
+      expect(observation.authenticationAllowed, isFalse);
+    },
+  );
+}
+
+class _PathSource implements NetworkPathSource {
+  _PathSource(this.snapshot);
+  final NetworkPathSnapshot snapshot;
+  @override
+  Future<NetworkPathSnapshot> current() async => snapshot;
+  @override
+  Stream<NetworkPathSnapshot> get pathUpdates => const Stream.empty();
 }
