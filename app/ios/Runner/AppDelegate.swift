@@ -8,6 +8,7 @@ private final class NetworkEngineController {
   private let networkMonitor = NWPathMonitor()
   private let networkQueue = DispatchQueue(label: "cn.xduwlan.ios-network")
   private weak var messenger: FlutterBinaryMessenger?
+  private let networkChannel: FlutterMethodChannel
   private var currentNetworkPath: [String: Any] = [
     "link": "unknown",
     "available": false,
@@ -16,7 +17,7 @@ private final class NetworkEngineController {
 
   init(messenger: FlutterBinaryMessenger) {
     self.messenger = messenger
-    let networkChannel = FlutterMethodChannel(
+    networkChannel = FlutterMethodChannel(
       name: "cn.xduwlan/iosNetwork",
       binaryMessenger: messenger
     )
@@ -61,6 +62,7 @@ private final class NetworkEngineController {
   deinit {
     disposed = true
     networkMonitor.cancel()
+    networkChannel.setMethodCallHandler(nil)
   }
 }
 
